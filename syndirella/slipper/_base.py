@@ -8,7 +8,6 @@ product of a reaction.
 from typing import (List, Dict, Tuple, Union, Optional)
 from rdkit import Chem
 import pandas as pd
-from syndirella.cobblers_workshop._cobbler_bench import CobblerBench
 from syndirella.slipper.slipper_synthesizer._base import SlipperSynthesizer
 from syndirella.cobblers_workshop._library import Library
 

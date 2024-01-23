@@ -5,17 +5,10 @@ smarts.py
 This module contains the SMARTSHandler class. This class contains information about the reaction SMARTS.
 """
 import json
-import itertools
 from collections import OrderedDict
-from chemUtils.geometry import findCloseAtomIdxsFromRefAtomIdxs
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
-from .config import reaction_constants_path
-from constants import reaction_smarts
-from embed import embedMolUsingRefs
-from engine import myMap
-from findNeighbours import expand2DIdxsToNeigs
 from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
 from ._cli_defaults import cli_default_settings
 
