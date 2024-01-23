@@ -145,7 +145,7 @@ class SlipperSynthesizer:
         all_products = self.enumerate_stereoisomers(products)
         return all_products
 
-    def apply_reaction(self, row) -> pd.Series
+    def apply_reaction(self, row) -> pd.Series:
         """
         This function applies the original reaction to each row of the reactant combinations dataframe. Can return 
         multiple products. 

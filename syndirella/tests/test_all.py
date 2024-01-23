@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!venv/bin/python python
 """
 syndirella.tests.test_all.py
 
@@ -16,6 +16,32 @@ from rdkit import Chem
 from syndirella.slipper.slipper_synthesizer._base import SlipperSynthesizer
 from syndirella.slipper._base import Slipper
 import pickle
+
+class TestWarrenOneStep(unittest.TestCase):
+    def setUp(self):
+        self.product = 'c1ccc(-c2cccc3cc[nH]c23)nc1'
+        self.reactants = [('OB(O)c1cccc2cc[nH]c12', 'Brc1ccccn1')]
+        self.reaction_names = ['Sp2-sp2_Suzuki_coupling']
+        self.analogues = None
+        self.num_steps = 1
+        self.output_dir = ('/Users/kate_fieseler/PycharmProjects/retrievesynthesizable/syndirella/tests/'
+                           'one_step_warren_A71EV2A')
+        self.database_search = None #postera? might not need this
+        self.final_library = None
+        self.slipper = None
+        self.products = None
+
+    def test_CobblersWorkshop(self):
+        cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
+                                             self.output_dir, self.database_search)
+        self.final_library = cobblers_workshop.get_final_library()
+        # TODO: Where is the final library saving??
+        self.assertIsNotNone(self.final_library)
+
+    def test_Slipper(self):
+        self.slipper = Slipper(self.final_library)
+        self.products = self.slipper.get_products()
+        self.assertIsNotNone(self.products)
 
 class TestSyndirellaOneStep(unittest.TestCase):
     def setUp(self):
