@@ -163,9 +163,9 @@ def matchMolToReactan(df, reaction_name, reactant_smarts, reactant_Num):
     :return:
     """
     # if reactantNum == 1:
-    #     valid_patterns = PATTERN_REACTANT1
+    #     valid_patterns = pattern_reactant1
     # elif reactantNum == 2:
-    #     valid_patterns = PATTERN_REACTANT2  # Need to have two reactants, flip the order to find both combinations
+    #     valid_patterns = pattern_reactant2  # Need to have two reactants, flip the order to find both combinations
     # else:
     #     raise ValueError("Only 1 and 2 valid for reactant_num")
     # matching_reactions = myMap(lambda mol_attachmentIdx:

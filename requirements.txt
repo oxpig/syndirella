@@ -1,0 +1,6 @@
+pandas~=2.2.0rc0
+numpy~=1.26.3
+glob2~=0.7
+rdkit~=2023.3.2
+requests~=2.31.0
+pillow~=10.0.1

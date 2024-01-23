@@ -9,22 +9,19 @@ import ast
 import os
 import sys
 import argparse
-import csv
 import pandas as pd
 from rdkit import Chem
-import datetime
 import numpy as np
 import glob2
 import traceback
 import datetime
 
 sys.path.append('/Users/kate_fieseler/PycharmProjects/chemUtils')
-import chemUtils
 
 from config import config
 from wholeMoleculePipeline import searchReactantAnalogues, searchExactReactantAnalogues
 from constants import REACTIONS_NAMES
-from utils import input
+from syndirella.utils import input
 
 
 def find_rows_to_process(df, batch_num, batch_size):
@@ -282,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--input_csv', type=str,
                         help=('Path to the input CSV file. The expected CSV structure is:\n'
                               'SMILES (str) - SMILES of product\n'
-                              'dir_name (list) - Name of the directories to save results. Usually target ID.\n'
+                              'dir_name (list) - Name of the directories to save results. Usually target id.\n'
                               'num_steps (int) - Number of steps in the route\n'
                               'rxn_order_first_to_last (list(str)) - Reaction name to produce product\n'
                               'reactants (list(tuple)) - Reactants listed in tuples\n'
