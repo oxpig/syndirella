@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!venv/bin/env python3
 """
 syndirella._cobbler_bench.py
 

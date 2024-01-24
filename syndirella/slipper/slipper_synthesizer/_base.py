@@ -46,6 +46,10 @@ class SlipperSynthesizer:
         This function is used to find the products of the analogues of reactants. It is the main function that is
         called.
         """
+        # Check if products already exist
+        if self.check_product_csv_exists():
+            self.load_products()
+            return self.products
         # Filter analogues
         self.filter_analogues()
         # Get cartesian product of all analogues
@@ -53,6 +57,36 @@ class SlipperSynthesizer:
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
         return self.products
+
+    def check_product_csv_exists(self):
+        """
+        This function checks if the products csv already exists and if so it loads it.
+        """
+        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.csv")
+        if self.library.num_steps != self.library.current_step:
+            if os.path.exists(f"{self.library.output_dir}/extra/{csv_name}"):
+                print(f"Products already exist at {self.library.output_dir}/extra/{csv_name}. "
+                      f"Loading from file...")
+                return True
+        else:
+            if os.path.exists(f"{self.library.output_dir}/{csv_name}"):
+                print(f"Products already exist at {self.library.output_dir}/{csv_name}. "
+                      f"Loading from file...")
+                return True
+        return False
+
+    def load_products(self):
+        """
+        This function loads the product .csv file.
+        """
+        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.csv")
+        if self.library.num_steps != self.library.current_step:
+            self.products = pd.read_csv(f"{self.library.output_dir}/extra/{csv_name}")
+        else:
+            self.products = pd.read_csv(f"{self.library.output_dir}/{csv_name}")
+        print(f"Loaded {len(self.products)} products.")
 
     def filter_analogues(self):
         """
@@ -65,6 +99,7 @@ class SlipperSynthesizer:
             self.analogue_columns = [column for column in analogue_columns]
             df = self.filter_analogues_on_smarts(df, analogue_columns, reactant_prefix)
             self.analogues_dataframes_to_react[key] = df
+        # Filters analogue df by size, shortens if necessary
         self.filter_analogues_by_size()
 
     def filter_analogues_on_smarts(self, df: pd.DataFrame, analogue_columns: Tuple[str, str], reactant_prefix: str) \
@@ -92,21 +127,29 @@ class SlipperSynthesizer:
         is less than 10,000.
         """
         max_allowed_size = 10000
-        lengths = [len(df) for df in self.analogues_dataframes_to_react.values()]
+        lengths: List[int] = [len(df) for df in self.analogues_dataframes_to_react.values()]
         product_of_lengths = lengths[0] * lengths[1]
         if product_of_lengths <= max_allowed_size:
             return  # No need to filter
         max_length_each = int(max_allowed_size ** 0.5)  # Taking the square root will give an approximation
         if lengths[0] > max_length_each and lengths[1] <= max_length_each:
             # Cut the first dataframe
+            print(f"Too many analogues for r{list(self.analogues_dataframes_to_react.keys())[0]}.")
+            print(f"Cutting {lengths[0] - max_length_each} analogues from "
+                  f"r{list(self.analogues_dataframes_to_react.keys())[0]} dataframe.")
             self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]] = \
             self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]].head(max_length_each)
         elif lengths[1] > max_length_each and lengths[0] <= max_length_each:
             # Cut the second dataframe
+            print(f"Too many analogues for r{list(self.analogues_dataframes_to_react.keys())[1]}.")
+            print(f"Cutting {lengths[1] - max_length_each} analogues from "
+                  f"r{list(self.analogues_dataframes_to_react.keys())[1]}")
             self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[1]] = \
             self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[1]].head(max_length_each)
         else:
             # Cut both dataframes to max_length_each
+            print(f"Too many analogues for both reactants.")
+            print(f"Cutting {lengths[0] - max_length_each} analogues from both reactants.")
             for key in self.analogues_dataframes_to_react.keys():
                 self.analogues_dataframes_to_react[key] = self.analogues_dataframes_to_react[key].head(max_length_each)
 
@@ -143,6 +186,7 @@ class SlipperSynthesizer:
         products = self.add_metadata(products)
         # Enumerate stereoisomers
         all_products = self.enumerate_stereoisomers(products)
+        print(f"Found {len(all_products)} products.")
         return all_products
 
     def apply_reaction(self, row) -> pd.Series:
@@ -269,10 +313,12 @@ class SlipperSynthesizer:
         """
         csv_name = f"{self.library.id}_{self.library.reaction.reaction_name}_products_{self.library.current_step}of{self.library.num_steps}.csv"
         if self.library.num_steps != self.library.current_step:
-            print("Since these products are not the final products they will be saved in the /extra folder.")
+            print("Since these products are not the final products they will be saved in the /extra folder. \n")
+            print("Saving products to {self.library.output_dir}/extra/{csv_name} \n")
             os.makedirs(f"{self.library.output_dir}/extra/", exist_ok=True)
             self.products.to_csv(f"{self.library.output_dir}/extra/{csv_name}")
         else:
+            print(f"Saving final products to {self.library.output_dir}/{csv_name} \n")
             os.makedirs(f"{self.library.output_dir}/", exist_ok=True)
             self.products.to_csv(f"{self.library.output_dir}/{csv_name}")
 

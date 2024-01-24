@@ -4,3 +4,5 @@ __pycache__
 output
 /venv
 
+# tests
+/syndirella/tests/one_step_warren_A71EV2A/

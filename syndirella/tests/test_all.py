@@ -24,21 +24,26 @@ class TestWarrenOneStep(unittest.TestCase):
         self.reaction_names = ['Sp2-sp2_Suzuki_coupling']
         self.analogues = None
         self.num_steps = 1
-        self.output_dir = ('/Users/kate_fieseler/PycharmProjects/retrievesynthesizable/syndirella/tests/'
+        self.output_dir = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/'
                            'one_step_warren_A71EV2A')
         self.database_search = None #postera? might not need this
         self.final_library = None
         self.slipper = None
         self.products = None
 
+        # need to set variables for Fragmenstein
+        self.fragments = None
+
     def test_CobblersWorkshop(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.database_search)
         self.final_library = cobblers_workshop.get_final_library()
-        # TODO: Where is the final library saving??
+        self.final_library.save()
         self.assertIsNotNone(self.final_library)
 
     def test_Slipper(self):
+        # load final library
+        self.final_library = Library.load(self.output_dir)
         self.slipper = Slipper(self.final_library)
         self.products = self.slipper.get_products()
         self.assertIsNotNone(self.products)

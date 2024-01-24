@@ -26,14 +26,17 @@ class Slipper:
         Main entry to the Slipper class. This function is used to get the products from the final library.
         """
         slipper_synth = SlipperSynthesizer(self.final_library)
-        products: pd.DataFrame = slipper_synth.get_products()
+        self.products: pd.DataFrame = slipper_synth.get_products()
         slipper_synth.save_products()
-        return products
+        return self.products
 
     def place_products(self):
         """
         This function is used to place the products with Fragmenstein.
         """
+        # add Fragmenstein information to the products
+
+
         pass
 
 

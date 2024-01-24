@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!venv/bin/env python3
 """
 syndirella.cobblers_workshop._library.py
 
@@ -10,12 +10,13 @@ import pandas as pd
 from rdkit import Chem
 from ._reaction import Reaction
 from ._postera import Postera
-from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
+from typing import (List, Dict, Tuple)
 import os
 from collections import OrderedDict
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 import glob
+import pickle
 
 class Library:
     """
@@ -150,7 +151,7 @@ class Library:
         """
         os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
         csv_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.csv"
-        print()
+        print(f"Saving {analogue_prefix} analogue library to {self.output_dir}/extra/{csv_name} \n")
         df.to_csv(f"{self.output_dir}/extra/{csv_name}")
 
     def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> List[str]:
@@ -170,3 +171,23 @@ class Library:
             return analogues
         except KeyError:
             print(f"No {analogue_prefix}_smiles column found in {reactant_analogues_path}. Stopping...")
+
+    def save(self):
+        """
+        This function saves the library object in the self.output_dir.
+        """
+        with open(f"{self.output_dir}/extra/{self.id}_library.pkl", "wb") as f:
+            pickle.dump(self, f, "wb")
+
+    @staticmethod
+    def load(output_dir: str):
+        """
+        This function loads the library object from the self.output_dir.
+        """
+        # get .pkl in output_dir, should be only one
+        library_pkls: List[str] = glob.glob(f"{output_dir}/extra/*library*.pkl")
+        assert len(library_pkls) == 1, "More than one library .pkl file found."
+        with open(library_pkls[0], "rb") as f:
+            library = pickle.load(f)
+        return library
+
