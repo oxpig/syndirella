@@ -150,6 +150,7 @@ class Library:
         """
         os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
         csv_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.csv"
+        print()
         df.to_csv(f"{self.output_dir}/extra/{csv_name}")
 
     def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> List[str]:
