@@ -177,7 +177,7 @@ class Library:
         This function saves the library object in the self.output_dir.
         """
         with open(f"{self.output_dir}/extra/{self.id}_library.pkl", "wb") as f:
-            pickle.dump(self, f, "wb")
+            pickle.dump(self, f)
 
     @staticmethod
     def load(output_dir: str):

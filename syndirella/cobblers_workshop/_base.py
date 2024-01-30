@@ -20,14 +20,13 @@ class CobblersWorkshop():
     This is the CobblersWorkshop class. It represents a full route.
     """
     def __init__(self, product: str, reactants: List[Tuple], reaction_names: List[str],
-                 num_steps: int, output_dir: str, database_search: DatabaseSearch):
+                 num_steps: int, output_dir: str):
         self.product: str = product
         self.id: str = self.generate_inchi_ID()
         self.reactants: List[Tuple[str]] = reactants
         self.reaction_names: List[str] = reaction_names
         self.num_steps: int = num_steps
         self.output_dir: str = output_dir
-        self.database_search: DatabaseSearch = database_search
         self.smarts_handler = SMARTSHandler()
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None

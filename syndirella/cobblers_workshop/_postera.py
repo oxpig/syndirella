@@ -38,14 +38,14 @@ class Postera(DatabaseSearch):
         else:
             raise ValueError("Error, library_type must be either 'superstructure' or 'ring_replace'.")
         filtered_hits: List[str] = self.filter_out_hits(hits, reactant)
-        print(f'Found {len(filtered_hits)} hits for {smiles}')
+        print(f'Found {len(filtered_hits)} hits_path for {smiles}')
         return hits
 
     def filter_out_hits(self, hits: List[str], reactant: Chem.Mol) -> List[str]:
         """
-        This function is used to filter out hits that have
+        This function is used to filter out hits_path that have
             chirality specification
-            repeat hits
+            repeat hits_path
             non-abundant isotopes
             original reactant
         """
@@ -55,7 +55,7 @@ class Postera(DatabaseSearch):
         filtered_hits = [Chem.MolToSmiles(mol) for mol in filtered_mols]
         filtered_hits = [hit for hit in filtered_hits if "@" not in hit] # remove chirality specification
         filtered_hits = [hit for hit in filtered_hits if not ('15' in hit) or ('13' in hit)] # TODO: Test if this works
-        # Remove original reactant if is in the list of hits
+        # Remove original reactant if is in the list of hits_path
         r_smiles = Chem.MolToSmiles(reactant)
         if r_smiles in filtered_hits: filtered_hits.remove(r_smiles)
         return filtered_hits
@@ -81,7 +81,7 @@ class Postera(DatabaseSearch):
         Recursively get all pages for the endpoint until reach null next page or
         the max_pages threshold.
         """
-        # List where we will gather up all the hits.
+        # List where we will gather up all the hits_path.
         all_hits = []
         data = {
             **data,
@@ -92,7 +92,7 @@ class Postera(DatabaseSearch):
             return all_hits
         else:
             all_hits.extend(response.get('results', []))
-        # Grab more hits if there is a next page supplied.
+        # Grab more hits_path if there is a next page supplied.
         next_page = response.get('nextPage', None)
         if next_page is not None and next_page < max_pages:
             next_hits = self.get_search_results(

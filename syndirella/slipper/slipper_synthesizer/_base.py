@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!venv/bin/env python3
 """
-_cobbler_bench.py
+slipper_synthesizer/_base.py
 
 This module contains the SlipperSynthesizer class.
 """
@@ -22,17 +22,6 @@ class SlipperSynthesizer:
 
     This is supposed to be instantiated for each step in the route.
     """
-    # NEED TO HAVE COLUMN NAMED 'PRODUCT_SMILES' IN FINAL LIBRARY. IF 1of2 step, then it needs to have same naming
-    # convention as the library saving function.
-    """
-    # TODO: Desired functionality
-    def __init__(self, cobbler_bench: CobblerBench):
-        self.product = cobbler_bench.product
-        self.reaction = cobbler_bench.reaction
-        self.library = cobbler_bench.library
-        self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
-        self.products: pd.DataFrame = None
-    """
 
     def __init__(self, library: Library):
         self.library = library
@@ -40,6 +29,7 @@ class SlipperSynthesizer:
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
         self.reactant_combinations: pd.DataFrame = None
+        self.final_products_csv_path: str = None
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -65,13 +55,15 @@ class SlipperSynthesizer:
         csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
-            if os.path.exists(f"{self.library.output_dir}/extra/{csv_name}"):
-                print(f"Products already exist at {self.library.output_dir}/extra/{csv_name}. "
+            csv_path = os.path.join(self.library.output_dir, 'extra', csv_name)
+            if os.path.exists(csv_path):
+                print(f"Products already exist at {csv_path}. "
                       f"Loading from file...")
                 return True
         else:
-            if os.path.exists(f"{self.library.output_dir}/{csv_name}"):
-                print(f"Products already exist at {self.library.output_dir}/{csv_name}. "
+            final_csv_path = os.path.join(self.library.output_dir, csv_name)
+            if os.path.exists(final_csv_path):
+                print(f"Products already exist at {final_csv_path}. "
                       f"Loading from file...")
                 return True
         return False
@@ -86,6 +78,10 @@ class SlipperSynthesizer:
             self.products = pd.read_csv(f"{self.library.output_dir}/extra/{csv_name}")
         else:
             self.products = pd.read_csv(f"{self.library.output_dir}/{csv_name}")
+        # Check if any 'Unnamed' columns and remove them
+        unnamed_columns = [col for col in self.products.columns if 'Unnamed' in col]
+        if len(unnamed_columns) > 0:
+            self.products.drop(unnamed_columns, axis=1, inplace=True)
         print(f"Loaded {len(self.products)} products.")
 
     def filter_analogues(self):
@@ -273,9 +269,9 @@ class SlipperSynthesizer:
             return None
         else:
             if row['num_atom_diff'] == 0:
-                name = f"{self.library.id}_base"
+                name = f"{self.library.id}-base"
             else:
-                name = f"{self.library.id}_{row.name}"
+                name = f"{self.library.id}-{row.name}"
         return name
 
     def enumerate_stereoisomers(self, products: pd.DataFrame) -> pd.DataFrame:
@@ -288,7 +284,7 @@ class SlipperSynthesizer:
             for i, iso in enumerate(stereoisomers):
                 new_row = row.copy()
                 new_row['smiles'] = iso
-                new_row['name'] = f"{row['name']}_{chr(65 + i)}"  # Appending A, B, C, etc., to the name
+                new_row['name'] = f"{row['name']}-{chr(65 + i)}"  # Appending A, B, C, etc., to the name
                 new_row['conformer'] = chr(65 + i)
                 new_rows.append(new_row)
         new_df = pd.DataFrame(new_rows)
@@ -318,9 +314,10 @@ class SlipperSynthesizer:
             os.makedirs(f"{self.library.output_dir}/extra/", exist_ok=True)
             self.products.to_csv(f"{self.library.output_dir}/extra/{csv_name}")
         else:
-            print(f"Saving final products to {self.library.output_dir}/{csv_name} \n")
+            self.final_products_csv_path: str = f"{self.library.output_dir}/{csv_name}"
+            print(f"Saving final products to {self.final_products_csv_path} \n")
             os.makedirs(f"{self.library.output_dir}/", exist_ok=True)
-            self.products.to_csv(f"{self.library.output_dir}/{csv_name}")
+            self.products.to_csv(self.final_products_csv_path)
 
 
 
