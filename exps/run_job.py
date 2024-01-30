@@ -29,9 +29,9 @@ def main():
     reactants = [('OB(O)c1cccc2cc[nH]c12', 'Brc1ccccn1')]
     reaction_names = ['Sp2-sp2_Suzuki_coupling']
     num_steps = 1
-    output_dir: str = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/original' #settings['output']
-    filter: bool = settings['dundee']
-    cluster: bool = settings['kclust']
+    output_dir: str = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/dundee_noclust' #settings['output']
+    filter: bool = True #settings['dundee']
+    cluster: bool = False #settings['kclust']
     template = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/fragments/x0310_template.pdb' #settings['template']
     hits = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/fragments/clean_hits.sdf' #settings['hits']
     hits_names = ['x0566_0A']
@@ -39,7 +39,7 @@ def main():
 
     # Run the pipeline
     cobblers_workshop = CobblersWorkshop(product, reactants, reaction_names, num_steps,
-                                         output_dir)
+                                         output_dir, filter)
     final_library = cobblers_workshop.get_final_library()
     final_library.save()
     slipper = Slipper(final_library, template, hits, hits_names, batch_num)

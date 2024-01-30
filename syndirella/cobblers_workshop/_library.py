@@ -8,6 +8,7 @@ analogue library from the Reaction object. It will also store the analogue libra
 
 import pandas as pd
 from rdkit import Chem
+from rdkit.Chem.FilterCatalog import *
 from ._reaction import Reaction
 from ._postera import Postera
 from typing import (List, Dict, Tuple)
@@ -24,13 +25,15 @@ class Library:
     object. It will also store the analogue library as a .csv file.
 
     """
-    def __init__(self, reaction: Reaction, output_dir: str, id: str, num_steps: int, current_step: int):
+    def __init__(self, reaction: Reaction, output_dir: str, id: str, num_steps: int, current_step: int, filter: bool):
         self.reaction: Reaction = reaction
         self.output_dir: str = output_dir
         self.id: str = id
         self.num_steps: int = num_steps
         self.current_step: int = current_step
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
+        self.filter: bool = filter
+
         self.r1 = None
         self.r2 = None
 
@@ -84,16 +87,51 @@ class Library:
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:
         """
-        This function is used to filter out analogues that are not valid.
+        This function is used to filter out analogues.
         """
         mols: List[Chem.Mol] = [Chem.MolFromSmiles(mol) for mol in analogues]
-        filtered_mols: List[Chem.Mol] = list(OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
-            mol, 2)), mol) for mol in mols).values())
-        filtered_analogues: List[str] = [Chem.MolToSmiles(mol) for mol in filtered_mols]
-        num_filtered = len(analogues) - len(filtered_analogues)
-        percent_diff = round((num_filtered / len(analogues)) * 100, 2)
-        print(f'Removed {num_filtered} replicates ({percent_diff}%) of {analogue_prefix} analogues.')
+        passing_mols: List[Chem.Mol] = self.check_for_validity(mols)
+        self.print_diff(mols, passing_mols, analogue_prefix)
+        if self.filter:
+            mols = passing_mols
+            passing_mols: List[Chem.Mol] = self.filter_on_substructure_filters(mols)
+            self.print_diff(mols, passing_mols, analogue_prefix)
+        filtered_analogues: List[str] = [Chem.MolToSmiles(mol) for mol in passing_mols]
         return filtered_analogues
+
+    def print_diff(self, mols: List[Chem.Mol], valid_mols: List[Chem.Mol], analogue_prefix: str):
+        """
+        This function is used to print the difference between the original number of analogues and the number of
+        valid analogues.
+        """
+        assert len(valid_mols) <= len(mols), ("Problem with finding valid molecules. There are more than were in "
+                                              "the original list of molecules.")
+        num_filtered = len(mols) - len(valid_mols)
+        percent_diff = round((num_filtered / len(mols)) * 100, 2)
+        print(f'Removed {num_filtered} invalid molecules ({percent_diff}%) of {analogue_prefix} analogues.')
+
+    def check_for_validity(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
+        """
+        This function is used to check if the molecules are valid.
+        """
+        valid_mols: List[Chem.Mol] = list(
+            OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
+                mol, 2)), mol) for mol in mols).values())
+        return valid_mols
+
+    def filter_on_substructure_filters(self, mols: List[Chem.Mol], ) -> List[str]:
+        """
+        This function is used to filter out analogues that do not pass the substructure filters.
+        """
+        print('Filtering analogues on PAINS_A filters...')
+        params = FilterCatalogParams()
+        params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS_A)
+        catalog = FilterCatalog(params)
+        passing_molecules: List[Chem.Mol] = []
+        for mol in mols:
+            if not catalog.HasMatch(mol):
+                passing_molecules.append(mol)
+        return passing_molecules
 
     def check_analogue_contains_other_reactant_smarts_pattern(self, analogues_mols: List[Chem.Mol],
                                                               reactant_smarts: str) -> List[bool]:
@@ -101,6 +139,7 @@ class Library:
         This function is used to check if the analogues contains the SMARTS patterns of the other reactant.
         """
         # get other reactant SMARTS pattern
+        print('Checking if analogues contain SMARTS pattern of other reactant...')
         other_reactant_smarts_pattern = [smarts for smarts in self.reaction.matched_smarts_to_reactant.keys() if not smarts == reactant_smarts][0]
         assert other_reactant_smarts_pattern is not None, "Other reactant SMARTS pattern not found."
         other_reactant_prefix = self.reaction.matched_smarts_to_reactant[other_reactant_smarts_pattern][2]
