@@ -20,7 +20,7 @@ class CobblersWorkshop():
     This is the CobblersWorkshop class. It represents a full route.
     """
     def __init__(self, product: str, reactants: List[Tuple], reaction_names: List[str],
-                 num_steps: int, output_dir: str):
+                 num_steps: int, output_dir: str, filter: bool):
         self.product: str = product
         self.id: str = self.generate_inchi_ID()
         self.reactants: List[Tuple[str]] = reactants
@@ -28,6 +28,8 @@ class CobblersWorkshop():
         self.num_steps: int = num_steps
         self.output_dir: str = output_dir
         self.smarts_handler = SMARTSHandler()
+        self.filter: bool = filter
+
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None
         self.final_library: Library = None
@@ -63,7 +65,7 @@ class CobblersWorkshop():
         reaction_name: str = self.reaction_names[0]
         current_step = 1
         cobbler_bench = CobblerBench(self.product, reactants, reaction_name, self.output_dir, self.smarts_handler,
-                                     self.id, self.num_steps, current_step)
+                                     self.id, self.num_steps, current_step, self.filter)
         self.final_library = cobbler_bench.find_analogues_first_step()
 
     def get_final_library_two_steps(self):

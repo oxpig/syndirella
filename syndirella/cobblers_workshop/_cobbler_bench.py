@@ -23,7 +23,7 @@ class CobblerBench:
     It is given a step.
     """
     def __init__(self, product: str, reactants: Tuple[str], reaction_name: str, output_dir: str,
-                 smarts_handler: SMARTSHandler, ID: str, num_steps: int, current_step:int):
+                 smarts_handler: SMARTSHandler, ID: str, num_steps: int, current_step: int, filter: bool):
         self.product: Chem.Mol = Chem.MolFromSmiles(product)
         self.reactants: List[Chem.Mol] = [Chem.MolFromSmiles(reactant) for reactant in reactants]
         self.reaction_name: str = reaction_name
@@ -32,6 +32,8 @@ class CobblerBench:
         self.ID: str = ID
         self.num_steps: int = num_steps
         self.current_step: int = current_step
+        self.filter: bool = filter
+
         self.reaction: Reaction = None
         self.library = None
 
@@ -56,7 +58,7 @@ class CobblerBench:
         # Find reaction atoms for all reactants
         self.reaction.find_reaction_atoms_for_all_reactants()
         # Find the analogues of reactants
-        self.library = Library(self.reaction, self.output_dir, self.ID, self.num_steps, self.current_step)
+        self.library = Library(self.reaction, self.output_dir, self.ID, self.num_steps, self.current_step, self.filter)
         self.library.create_library()
         return self.library
 
