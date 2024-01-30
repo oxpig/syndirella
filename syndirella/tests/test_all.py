@@ -1,4 +1,4 @@
-#!venv/bin/python python
+#!/usr/bin/env python3
 """
 syndirella.tests.test_all.py
 
@@ -32,7 +32,12 @@ class TestWarrenOneStep(unittest.TestCase):
         self.products = None
 
         # need to set variables for Fragmenstein
-        self.fragments = None
+        self.template = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/one_step_warren_A71EV2A/fragments/x0310_template.pdb'
+        self.hits = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/one_step_warren_A71EV2A/fragments/clean_hits.sdf'
+        self.hits_names = ['x0566_0A']
+        self.n_cores = 8
+        self.timeout = 240
+        self.batch_num = 3
 
     def test_CobblersWorkshop(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
@@ -41,12 +46,12 @@ class TestWarrenOneStep(unittest.TestCase):
         self.final_library.save()
         self.assertIsNotNone(self.final_library)
 
-    def test_Slipper(self):
-        # load final library
+    def test_SlipperPlacement(self):
         self.final_library = Library.load(self.output_dir)
-        self.slipper = Slipper(self.final_library)
+        self.slipper = Slipper(self.final_library, self.template, self.hits, self.hits_names, self.batch_num)
         self.products = self.slipper.get_products()
-        self.assertIsNotNone(self.products)
+        self.placements = self.slipper.place_products()
+        self.assertIsNotNone(self.placements)
 
 class TestSyndirellaOneStep(unittest.TestCase):
     def setUp(self):

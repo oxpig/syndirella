@@ -21,6 +21,5 @@ def main():
     # init configures the parser, calling it executes it
     SyndirellaParser()()
 
-
 if __name__ == '__main__':
     main()

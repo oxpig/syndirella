@@ -6,7 +6,6 @@ from rdkit import Chem
 from .._cli_defaults import cli_default_settings
 from .base import set_verbose
 from ..smarts import SMARTSHandler
-from ..cobblers_workshop import CobblerBench
 from typing import List, Any, Dict
 import pandas as pd
 from rdkit.Chem import PandasTools
@@ -20,7 +19,6 @@ class SyndirellaParserPipeline:
         :param parser:
         :return:
         """
-        ## Examples from Fragmenstein:
         parser.add_argument('-i', '--input', type=str,
                         help=('Path to the input CSV file. The expected CSV structure is:\n'
                               'product (str) - SMILES of product\n'
@@ -32,53 +30,10 @@ class SyndirellaParserPipeline:
         parser.add_argument('-o', '--output', help='Output folder',
                             default=cli_default_settings['output'])
         parser.add_argument('-b', '--batch_size', help='Batch size')
-        parser.add_argument('-r', '--ranking', help='Ranking method',
-                            default=cli_default_settings['ranking'])
-        parser.add_argument('-c', '--cutoff', help='Joining cutoff',
-                            default=cli_default_settings['cutoff'],
-                            type=float)
-        parser.add_argument('-q', '--quick',
-                            help='Quick reanimation',
-                            default=cli_default_settings['quick'],
-                            type=bool)
-        parser.add_argument('-d', '--sw_dist',
-                            help='SmallWorld distance',
-                            default=cli_default_settings['sw_dist'],
-                            type=int)
-        parser.add_argument('-l', '--sw_length', help='SmallWorld length',
-                            default=cli_default_settings['sw_length'],
-                            type=int)
-        parser.add_argument('-b', '--sw_databases', help='SmallWorld databases. Accepts multiple',
-                            nargs='+',
-                            default=cli_default_settings['sw_databases'])
-        parser.add_argument('-s', '--suffix',
-                            help='Suffix for output files',
-                            default=cli_default_settings['suffix'])
-        parser.add_argument('--workfolder',
-                            help='Location to put the temp files',
-                            default=cli_default_settings['workfolder'])
-        parser.add_argument('--victor',
-                            help='Which victor to use: Victor, OpenVictor or Wictor',
-                            default='Victor')
         parser.add_argument('-n', '--n_cores', help='Number of cores',
                             default=cli_default_settings['n_cores'],
                             type=int)
-        parser.add_argument('-m', '--combination_size', help='Number of hits to combine in one step',
-                            default=2,
-                            type=int)
-        parser.add_argument('-k', '--top_mergers', help='Max number of mergers to followup up on',
-                            default=cli_default_settings['top_mergers'],
-                            type=int)
-        parser.add_argument('-e', '--timeout', help='Timeout for each merger',
-                            default=cli_default_settings['timeout'],
-                            type=int)
-        parser.add_argument('-x', '--max_tasks', help='Max number of combinations to try in a batch',
-                            default=cli_default_settings['max_tasks'],
-                            type=int)
-        parser.add_argument('-z', '--blacklist', help='Blacklist file',
-                            default=cli_default_settings['blacklist'])
-        parser.add_argument('-j', '--weights', help='JSON weights file', default=cli_default_settings['weights'])
-        parser.add_argument('-v', '--verbose', action="count", help='verbose')
+
         parser.set_defaults(func=self.pipeline)
         return parser
 

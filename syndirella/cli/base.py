@@ -63,8 +63,8 @@ def set_verbose(count):
 def _add_common(parser: argparse.ArgumentParser, **settings):
     if settings.get('verbose', True):
         parser.add_argument('-v', '--verbose', action="count", help='verbose')
-    if settings.get('hits', False):
-        parser.add_argument('-i', '--hits', nargs='+', required=True, help='hit mol files')
+    if settings.get('hits_path', False):
+        parser.add_argument('-i', '--hits_path', nargs='+', required=True, help='hit mol files')
     if settings.get('output', False):
         parser.add_argument('-o', '--output', default='.', help='output root folder')
     if settings.get('name', False):
