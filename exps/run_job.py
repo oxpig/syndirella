@@ -29,7 +29,7 @@ def main():
     reactants = [('OB(O)c1cccc2cc[nH]c12', 'Brc1ccccn1')]
     reaction_names = ['Sp2-sp2_Suzuki_coupling']
     num_steps = 1
-    output_dir: str = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/dundee_noclust' #settings['output']
+    output_dir: str = '/exps/painsA_noclust'  #settings['output']
     filter: bool = True #settings['dundee']
     cluster: bool = False #settings['kclust']
     template = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/fragments/x0310_template.pdb' #settings['template']
