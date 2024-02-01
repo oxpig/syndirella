@@ -36,7 +36,7 @@ def main():
     template = settings['template']
     hits = settings['hits']
     hits_names = ['x0566_0A']
-    batch_num = 10
+    batch_num = 1000
     final_products_library_csv_path = settings['products']
     final_products = pd.read_csv(final_products_library_csv_path, index_col=0)
 
