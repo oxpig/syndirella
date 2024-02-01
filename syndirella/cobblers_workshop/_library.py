@@ -83,6 +83,8 @@ class Library:
                                      f"{analogue_prefix}_mol": analogues_mols,
                                      f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
                                      f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern})
+        if self.filter:
+            analogues_df['is_PAINS_A'] = False
         return analogues_df, (f"{analogue_prefix}_{self.reaction.reaction_name}", f"{other_reactant_prefix}_{self.reaction.reaction_name}")
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:

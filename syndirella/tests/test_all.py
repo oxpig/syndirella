@@ -39,6 +39,22 @@ class TestWarrenOneStep(unittest.TestCase):
         self.timeout = 240
         self.batch_num = 3
 
+        self.atom_ids_expansion: dict = {0: True,
+                                         1: True,
+                                         2: True,
+                                         3: None,
+                                         4: None,
+                                         5: False,
+                                         6: False,
+                                         7: None,
+                                         8: None,
+                                         9: None,
+                                         10: None,
+                                         11: None,
+                                         12: None,
+                                         13: None,
+                                         14: True}
+
     def test_CobblersWorkshop(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.database_search)
@@ -52,6 +68,13 @@ class TestWarrenOneStep(unittest.TestCase):
         self.products = self.slipper.get_products()
         self.placements = self.slipper.place_products()
         self.assertIsNotNone(self.placements)
+
+    def test_AtomIDExpansionLabeling(self):
+        self.final_library = Library.load(self.output_dir)
+        self.slipper = Slipper(self.final_library, self.template, self.hits, self.hits_names, self.batch_num,
+                               False, self.atom_ids_expansion)
+        self.products = self.slipper.get_products()
+        self.assertIsNotNone(self.products)
 
 class TestSyndirellaOneStep(unittest.TestCase):
     def setUp(self):
