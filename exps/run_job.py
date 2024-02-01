@@ -43,6 +43,7 @@ def main():
     # Run placement
     final_library = Library.load(output_dir)
     slipper = Slipper(final_library, template, hits, hits_names, batch_num, False)
+    slipper.output_dir = output_dir
     slipper.final_products_csv_path = final_products_library_csv_path
     slipper.products = final_products
     placements = slipper.place_products()
