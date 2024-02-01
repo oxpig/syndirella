@@ -1,5 +1,3 @@
-#! bin/bash
-
 # For scripts required see: https://gist.github.com/matteoferla/e0496d5766c12a0ae1738b943b41a536
 # A few things don't work in CentOS 7 due to GNU lib C (glibc) 2.17, so it has to be run in a Singularity container
 
