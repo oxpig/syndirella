@@ -7,9 +7,8 @@ This module contains the SlipperSynthesizer class.
 from typing import (List, Dict, Tuple)
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
-from rdkit.Chem import AllChem
-from rdkit import DataStructs
 from syndirella.cobblers_workshop._library import Library
+from syndirella.slipper.slipper_synthesizer._label import Labeler
 import pandas as pd
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 import os
@@ -23,13 +22,15 @@ class SlipperSynthesizer:
     This is supposed to be instantiated for each step in the route.
     """
 
-    def __init__(self, library: Library):
+    def __init__(self, library: Library, cluster: bool, atom_ids_expansion: dict):
         self.library = library
+        self.cluster = cluster
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
         self.reactant_combinations: pd.DataFrame = None
         self.final_products_csv_path: str = None
+        self.atom_ids_expansion: dict = atom_ids_expansion
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -121,6 +122,8 @@ class SlipperSynthesizer:
         """
         This function is used to filter the analogues dataframes by length. Need to make sure the final combination 
         is less than 10,000.
+
+        If longer than 10,000 will cluster analogues and sample on diversity.
         """
         max_allowed_size = 10000
         lengths: List[int] = [len(df) for df in self.analogues_dataframes_to_react.values()]
@@ -130,24 +133,57 @@ class SlipperSynthesizer:
         max_length_each = int(max_allowed_size ** 0.5)  # Taking the square root will give an approximation
         if lengths[0] > max_length_each and lengths[1] <= max_length_each:
             # Cut the first dataframe
-            print(f"Too many analogues for r{list(self.analogues_dataframes_to_react.keys())[0]}.")
-            print(f"Cutting {lengths[0] - max_length_each} analogues from "
-                  f"r{list(self.analogues_dataframes_to_react.keys())[0]} dataframe.")
-            self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]] = \
-            self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]].head(max_length_each)
+            analogue_prefix = list(self.analogues_dataframes_to_react.keys())[0]
+            print(f"Too many analogues for r{analogue_prefix}.")
+            analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
+            if self.cluster:
+                shortened_analogue_df = self.cluster_analogues(analogue_df, max_length_each, analogue_prefix)
+            else:
+                shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
+            self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
         elif lengths[1] > max_length_each and lengths[0] <= max_length_each:
             # Cut the second dataframe
-            print(f"Too many analogues for r{list(self.analogues_dataframes_to_react.keys())[1]}.")
-            print(f"Cutting {lengths[1] - max_length_each} analogues from "
-                  f"r{list(self.analogues_dataframes_to_react.keys())[1]}")
-            self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[1]] = \
-            self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[1]].head(max_length_each)
+            analogue_prefix = list(self.analogues_dataframes_to_react.keys())[1]
+            print(f"Too many analogues for r{analogue_prefix}.")
+            analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
+            if self.cluster:
+                shortened_analogue_df = self.cluster_analogues(analogue_df, max_length_each, analogue_prefix)
+            else:
+                shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
+            self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
         else:
             # Cut both dataframes to max_length_each
             print(f"Too many analogues for both reactants.")
-            print(f"Cutting {lengths[0] - max_length_each} analogues from both reactants.")
             for key in self.analogues_dataframes_to_react.keys():
-                self.analogues_dataframes_to_react[key] = self.analogues_dataframes_to_react[key].head(max_length_each)
+                if self.cluster:
+                    self.analogues_dataframes_to_react[key] = self.cluster_analogues(
+                        self.analogues_dataframes_to_react[key],
+                        max_length_each, key)
+                else:
+                    self.analogues_dataframes_to_react[key] = self.cut_analogues(
+                        self.analogues_dataframes_to_react[key],
+                        max_length_each, key)
+
+    def cut_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
+        """
+        This function is used to cut the analogues dataframes to max_length_each by just taking the head.
+        """
+        print(f"Cutting {len(df) - max_length_each} analogues from "
+              f"r{analogue_prefix} dataframe.")
+        return df.head(max_length_each)
+
+    def cluster_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
+        """
+        This function is used to cluster the analogues dataframes to max_length_each by k-means clustering.
+        The number of clusters is the number max length each. Might be too much...
+        """
+        print(f"K-means clustering and sampling {len(df) - max_length_each} analogues from "
+              f"r{analogue_prefix} dataframe.")
+        # cluster
+        df = self.cluster_analogues_on_fingerprint(df)
+        # sample
+        df = self.sample_analogues(df, max_length_each)
+        return df
 
     def combine_analogues(self):
         """
@@ -307,7 +343,8 @@ class SlipperSynthesizer:
         """
         This function is used to save the products dataframe as a .csv file.
         """
-        csv_name = f"{self.library.id}_{self.library.reaction.reaction_name}_products_{self.library.current_step}of{self.library.num_steps}.csv"
+        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
             print("Since these products are not the final products they will be saved in the /extra folder. \n")
             print("Saving products to {self.library.output_dir}/extra/{csv_name} \n")
@@ -319,6 +356,12 @@ class SlipperSynthesizer:
             os.makedirs(f"{self.library.output_dir}/", exist_ok=True)
             self.products.to_csv(self.final_products_csv_path)
 
+    def label_products(self):
+        """
+        This function makes a new instance of the Labeler class and calls the label_products function.
+        """
+        labeler = Labeler(self.products, self.atom_ids_expansion, self.library)
+        self.products = labeler.label_products()
 
 
 

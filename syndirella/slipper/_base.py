@@ -16,9 +16,11 @@ class Slipper:
     """
     This class is instantiated to represent all products for a route.
     """
-    def __init__(self, final_library: Library, template: str, hits: str, hits_names: List[str], batch_num: int):
+    def __init__(self, final_library: Library, template: str, hits: str, hits_names: List[str], batch_num: int,
+                 cluster: bool):
         self.products: pd.DataFrame = None
         self.final_library: Library = final_library
+        self.cluster: bool = cluster
         self.output_dir: str = final_library.output_dir
         self.final_products_csv_path: str = None
         # need Fragmenstein information
@@ -26,6 +28,7 @@ class Slipper:
         self.hits: str = hits # path to .sdf or .mol file
         self.hits_names: List[str] = hits_names # name of fragments
         self.batch_num: int = batch_num
+        self.atom_ids_expansion: dict = None
         self.placements: pd.DataFrame = None
         self.n_cores: int = 8
         self.timeout: int = 240
@@ -35,8 +38,10 @@ class Slipper:
         """
         Main entry to the Slipper class. This function is used to get the products from the final library.
         """
-        slipper_synth = SlipperSynthesizer(self.final_library)
+        assert self.atom_ids_expansion is not None, "Atom ids expansion must be set before getting products."
+        slipper_synth = SlipperSynthesizer(self.final_library, self.cluster, self.atom_ids_expansion)
         self.products: pd.DataFrame = slipper_synth.get_products()
+        slipper_synth.label_products()
         slipper_synth.save_products()
         self.final_products_csv_path: str = slipper_synth.final_products_csv_path
         return self.products

@@ -4,21 +4,24 @@ Run the job with different variable changes.
 """
 import sys
 import os
+
+import pandas as pd
+
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 import argparse
 from syndirella.cobblers_workshop._base import CobblersWorkshop
+from syndirella.cobblers_workshop._library import Library
 from syndirella.slipper._base import Slipper
 from typing import (List, Dict, Tuple, Union, Any)
 
 def config_parser():
     parser = argparse.ArgumentParser(description="Run the job with different variable changes.")
-    parser.add_argument('--dundee', action='store_true', help="Run pipeline with dundee filtering.")
-    parser.add_argument('--kclust', action='store_true', help="Run pipeline with k-means clustering.")
     parser.add_argument('--output', type=str, help="Output directory for the pipeline.")
     parser.add_argument('--template', type=str, help="Absolute path to template for placements.")
     parser.add_argument('--hits', type=str, help="Absolute path to hits for placements. Can be either"
                                                  " .sdf or .mol.")
+    parser.add_argument('--products', type=str, help="Absolute path to products for placements.")
     return parser
 
 def main():
@@ -29,21 +32,19 @@ def main():
     reactants = [('OB(O)c1cccc2cc[nH]c12', 'Brc1ccccn1')]
     reaction_names = ['Sp2-sp2_Suzuki_coupling']
     num_steps = 1
-    output_dir: str = '/exps/painsA_noclust'  #settings['output']
-    filter: bool = True #settings['dundee']
-    cluster: bool = False #settings['kclust']
-    template = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/fragments/x0310_template.pdb' #settings['template']
-    hits = '/Users/kate_fieseler/PycharmProjects/syndirella/exps/fragments/clean_hits.sdf' #settings['hits']
+    output_dir: str = settings['output']
+    template = settings['template']
+    hits = settings['hits']
     hits_names = ['x0566_0A']
-    batch_num = 3
+    batch_num = 10
+    final_products_library_csv_path = settings['products']
+    final_products = pd.read_csv(final_products_library_csv_path, index_col=0)
 
-    # Run the pipeline
-    cobblers_workshop = CobblersWorkshop(product, reactants, reaction_names, num_steps,
-                                         output_dir, filter)
-    final_library = cobblers_workshop.get_final_library()
-    final_library.save()
-    slipper = Slipper(final_library, template, hits, hits_names, batch_num)
-    products = slipper.get_products()
+    # Run placement
+    final_library = Library.load(output_dir)
+    slipper = Slipper(final_library, template, hits, hits_names, batch_num, False)
+    slipper.final_products_csv_path = final_products_library_csv_path
+    slipper.products = final_products
     placements = slipper.place_products()
     slipper.clean_up_placements()
 
