@@ -27,15 +27,24 @@ echo "Running script ${0} as $USER in $HOST which runs $PRETTY_NAME"
 source /data/xchem-fragalysis/kfieseler/.bashrc
 conda activate fragmenstein
 
-cd /data/xchem-fragalysis/kfieseler/repos/elaborate
+cd /data/xchem-fragalysis/kfieseler/syndirella
 
 pwd;
 export HOME_DIR="/data/xchem-fragalysis/kfieseler/syndirella/exps/original";
+export TEMPLATE="/data/xchem-fragalysis/kfieseler/syndirella/exps/fragments/x0310_template.pdb";
+export HITS="/data/xchem-fragalysis/kfieseler/syndirella/exps/fragments/clean_hits.sdf";
+export PRODUCTS="/data/xchem-fragalysis/kfieseler/syndirella/exps/original/KFKUHRDIQZWKPK-UHFFFAOYSA-N_Sp2-sp2_Suzuki_coupling_products_1of1_no_non_mcs_match.csv";
 
 echo "Running syndirella pipeline"
 echo "HOME_DIR: $HOME_DIR"
+echo "TEMPLATE: $TEMPLATE"
+echo "HITS: $HITS"
+echo "PRODUCTS: $PRODUCTS"
 
 nice -19 python exps/run_job.py \
---output $HOME_DIR;
+--output $HOME_DIR \
+--template $TEMPLATE \
+--hits $HITS \
+--products $PRODUCTS;
 
 echo 'COMPLETE'
