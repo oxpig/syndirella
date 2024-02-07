@@ -176,7 +176,6 @@ class SlipperSynthesizer:
                 self.analogues_dataframes_to_react[key] = self.cut_analogues(
                     self.analogues_dataframes_to_react[key],
                     max_length_each, key)
-
     def cut_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
         """
         This function is used to cut the analogues dataframes to max_length_each by just taking the head.

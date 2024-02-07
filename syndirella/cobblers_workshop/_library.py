@@ -86,7 +86,6 @@ class Library:
             self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
-
         # get lead time from analogues
         if analogues_full is not None:
             lead_times = [analogues_full[analogue] for analogue in analogues]
@@ -116,7 +115,6 @@ class Library:
         assert len(matching) == len(analogues_mols), "Problem with finding matches."
         assert len(num) == len(analogues_mols), "Problem with finding number of matches."
         return matching, num
-
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:
         """

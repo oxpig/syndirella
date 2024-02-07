@@ -31,7 +31,6 @@ class CobblersWorkshop():
         self.smarts_handler = SMARTSHandler()
         self.filter: bool = filter
         self.atoms_ids_expansion: dict = atoms_ids_expansion # should only be internal step
-
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None
         self.final_library: Library = None
