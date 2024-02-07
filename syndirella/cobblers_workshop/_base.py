@@ -20,7 +20,8 @@ class CobblersWorkshop():
     This is the CobblersWorkshop class. It represents a full route.
     """
     def __init__(self, product: str, reactants: List[Tuple], reaction_names: List[str],
-                 num_steps: int, output_dir: str, filter: bool):
+                 num_steps: int, output_dir: str, filter: bool,
+                 atoms_ids_expansion: dict = None):
         self.product: str = product
         self.id: str = self.generate_inchi_ID()
         self.reactants: List[Tuple[str]] = reactants
@@ -29,7 +30,7 @@ class CobblersWorkshop():
         self.output_dir: str = output_dir
         self.smarts_handler = SMARTSHandler()
         self.filter: bool = filter
-
+        self.atoms_ids_expansion: dict = atoms_ids_expansion # should only be internal step
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None
         self.final_library: Library = None
@@ -78,14 +79,15 @@ class CobblersWorkshop():
         reaction_name1 = self.reaction_names[0]
         reaction_name2 = self.reaction_names[1]
         current_step = 1
+        # TODO: I have to find the product of the first step.... Can't just use the final product
         cobbler_bench1 = CobblerBench(self.product, reactants1, reaction_name1, self.output_dir, self.smarts_handler,
-                                      self.id, self.num_steps, current_step)
+                                      self.id, self.num_steps, current_step, self.filter)
         self.first_library = cobbler_bench1.find_analogues_first_step()
-        first_slipper = Slipper(self.first_library)
+        first_slipper = Slipper(self.first_library, atoms_ids_expansion=self.atoms_ids_expansion)
         first_slipper.get_products()
 
         current_step = 2
         cobbler_bench2 = CobblerBench(self.product, reactants2, reaction_name2, self.output_dir, self.smarts_handler,
-                                      self.id, self.num_steps, current_step)
+                                      self.id, self.num_steps, current_step, self.filter)
         self.final_library = cobbler_bench2.find_analogues_first_step()
 

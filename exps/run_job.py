@@ -10,7 +10,7 @@ import pandas as pd
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 import argparse
-from syndirella.cobblers_workshop._base import CobblersWorkshop
+
 from syndirella.cobblers_workshop._library import Library
 from syndirella.slipper._base import Slipper
 from typing import (List, Dict, Tuple, Union, Any)
@@ -36,7 +36,7 @@ def main():
     template = settings['template']
     hits = settings['hits']
     hits_names = ['x0566_0A']
-    batch_num = 1000
+    batch_num = 10000
     final_products_library_csv_path = settings['products']
     final_products = pd.read_csv(final_products_library_csv_path, index_col=0)
 

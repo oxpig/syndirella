@@ -22,9 +22,9 @@ class SlipperSynthesizer:
     This is supposed to be instantiated for each step in the route.
     """
 
-    def __init__(self, library: Library, cluster: bool, atom_ids_expansion: dict):
+    def __init__(self, library: Library,
+                 atom_ids_expansion: dict = None):
         self.library = library
-        self.cluster = cluster
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
@@ -87,7 +87,9 @@ class SlipperSynthesizer:
 
     def filter_analogues(self):
         """
-        This function is used to go through the analogue dataframes, passing them to filter_analogues_on_smarts.
+        This function is used to go through the analogue dataframes, passing them to filter_analogues_on_smarts and
+        also ordering by metrics.
+        Finally it filters the analogues by number, making sure there aren't too many for an obscene number of products.
         """
         for key, value in self.library.analogues_dataframes.items():
             reactant_prefix = key
@@ -95,9 +97,32 @@ class SlipperSynthesizer:
             analogue_columns: Tuple[str, str] = value[1]
             self.analogue_columns = [column for column in analogue_columns]
             df = self.filter_analogues_on_smarts(df, analogue_columns, reactant_prefix)
+            df = self.order_analogues(df, reactant_prefix)
             self.analogues_dataframes_to_react[key] = df
         # Filters analogue df by size, shortens if necessary
         self.filter_analogues_by_size()
+
+    def order_analogues(self, df: pd.DataFrame, reactant_prefix: str) -> pd.DataFrame:
+        """
+        This function is used to order the analogues dataframes by num atom diff to base compound,
+        number of reactant matches found, and lead time.
+        """
+        print(f"Ordering analogues of r{reactant_prefix} before finding products...")
+        # Add num_atom_diff to base reactant, which is the first reactant
+        base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
+        df[f'{reactant_prefix}_num_atom_diff'] = (
+            df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff(base_reactant, x)))
+        # get columns to sort by
+        ordered_columns = [f'{reactant_prefix}_lead_time', f'{reactant_prefix}_num_atom_diff', 'num_matches']
+        matching_columns = []
+        # Iterate over each substring in the order of preference
+        for substring in ordered_columns:
+            # Find and append columns that contain the current substring
+            matching_columns.extend([col for col in df.columns if substring in col])
+        # sort column order
+        df = df.sort_values(by=matching_columns, ascending=[True, True, True])
+        df.reset_index(drop=True, inplace=True)
+        return df
 
     def filter_analogues_on_smarts(self, df: pd.DataFrame, analogue_columns: Tuple[str, str], reactant_prefix: str) \
             -> pd.DataFrame:
@@ -111,7 +136,6 @@ class SlipperSynthesizer:
         df = df[~(df[analogue_columns[0]] & df[analogue_columns[1]])]
         # only keep rows with original analogue_prefix true
         orig_r_column = [col for col in analogue_columns if reactant_prefix in col][0]
-        df = df[df[orig_r_column]]
         df.reset_index(drop=True, inplace=True)
         num_filtered = len(orig_df) - len(df)
         percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
@@ -136,40 +160,28 @@ class SlipperSynthesizer:
             analogue_prefix = list(self.analogues_dataframes_to_react.keys())[0]
             print(f"Too many analogues for r{analogue_prefix}.")
             analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
-            if self.cluster:
-                shortened_analogue_df = self.cluster_analogues(analogue_df, max_length_each, analogue_prefix)
-            else:
-                shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
+            shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
             self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
         elif lengths[1] > max_length_each and lengths[0] <= max_length_each:
             # Cut the second dataframe
             analogue_prefix = list(self.analogues_dataframes_to_react.keys())[1]
             print(f"Too many analogues for r{analogue_prefix}.")
             analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
-            if self.cluster:
-                shortened_analogue_df = self.cluster_analogues(analogue_df, max_length_each, analogue_prefix)
-            else:
-                shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
+            shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
             self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
         else:
             # Cut both dataframes to max_length_each
             print(f"Too many analogues for both reactants.")
             for key in self.analogues_dataframes_to_react.keys():
-                if self.cluster:
-                    self.analogues_dataframes_to_react[key] = self.cluster_analogues(
-                        self.analogues_dataframes_to_react[key],
-                        max_length_each, key)
-                else:
-                    self.analogues_dataframes_to_react[key] = self.cut_analogues(
-                        self.analogues_dataframes_to_react[key],
-                        max_length_each, key)
-
+                self.analogues_dataframes_to_react[key] = self.cut_analogues(
+                    self.analogues_dataframes_to_react[key],
+                    max_length_each, key)
     def cut_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
         """
         This function is used to cut the analogues dataframes to max_length_each by just taking the head.
         """
         print(f"Cutting {len(df) - max_length_each} analogues from "
-              f"r{analogue_prefix} dataframe.")
+              f"{analogue_prefix} dataframe.")
         return df.head(max_length_each)
 
     def cluster_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
@@ -212,6 +224,9 @@ class SlipperSynthesizer:
         """
         # Apply reaction to reactant combinations
         products: pd.DataFrame = self.reactant_combinations.apply(self.apply_reaction, axis=1)
+        # Explode dataframe in case of multiple products
+        products = products.explode('smiles').reset_index(drop=True)
+        products = products.explode('num_atom_diff').reset_index(drop=True)
         # Filter products
         products = self.filter_products(products)
         # Add metadata
@@ -230,25 +245,28 @@ class SlipperSynthesizer:
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
-        products = reaction.RunReactants((r1, r2))[0]
-        #TODO: Change this to keep all products but add flag attribute.
+        products = reaction.RunReactants((r1, r2))
         if len(products) > 1: # should only return 1 product, if more than 1 then there are selectivity issues
-            print(f"More than one product found at {row.name}. Skipping...")
+            print(f"Found multiple products at {row.name}. Flagging...")
             row['flag'] = 'one_of_multiple_products'
-            row['smiles'] = None
-            row['num_atom_diff'] = None
+            if all([self.can_be_sanitized(product[0]) for product in products]):
+                row['smiles'] = [Chem.MolToSmiles(product[0]) for product in products]
+                row['num_atom_diff'] = [self.calc_num_atom_diff(self.library.reaction.product, product[0]) for product in products]
+            return row
         if len(products) == 0:
             print("No products found.")
             row['flag'] = None
             row['smiles'] = None
             row['num_atom_diff'] = None
+            return row
         product = products[0]
         if self.can_be_sanitized(product):
-            num_atom_diff = self.calc_num_atom_diff(product)
+            base = self.library.reaction.product
+            num_atom_diff = self.calc_num_atom_diff(base, product)
             row['flag'] = None
             row['smiles'] = Chem.MolToSmiles(product)
             row['num_atom_diff'] = num_atom_diff
-        return row
+            return row
 
     def can_be_sanitized(self, mol):
         try:
@@ -257,14 +275,11 @@ class SlipperSynthesizer:
         except:
             return False
 
-    def calc_num_atom_diff(self, product: Chem.Mol):
+    def calc_num_atom_diff(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
-        This function is used to calculate the number of atoms added to the product from the reactants but only for
-        final step in the route.
+        This function is used to calculate the number of atoms added to another compound compared to the base compound.
         """
-        if self.library.num_steps != self.library.current_step:
-            return None
-        mcs = rdFMCS.FindMCS([self.library.reaction.product, product])
+        mcs = rdFMCS.FindMCS([base, product])
         mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
         mcs_atoms = mcs_mol.GetNumAtoms()
         new_mol_atoms = product.GetNumAtoms()

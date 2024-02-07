@@ -32,16 +32,16 @@ class Postera(DatabaseSearch):
         """
         smiles = Chem.MolToSmiles(reactant)
         if self.search_type == "superstructure":
-            hits: List[str] = self.perform_superstructure_search(smiles)
+            hits: Dict[str, float] = self.perform_superstructure_search('OB(O)c1cccc2cc[nH]c12')
         elif self.search_type == "ring_replace":
-            hits: List[str] = self.perform_ring_replace_search(smiles)
+            hits: Dict[str, float] = self.perform_ring_replace_search(smiles)
         else:
             raise ValueError("Error, library_type must be either 'superstructure' or 'ring_replace'.")
-        filtered_hits: List[str] = self.filter_out_hits(hits, reactant)
+        filtered_hits: Dict[str, float] = self.filter_out_hits(hits, reactant)
         print(f'Found {len(filtered_hits)} hits_path for {smiles}')
         return hits
 
-    def filter_out_hits(self, hits: List[str], reactant: Chem.Mol) -> List[str]:
+    def filter_out_hits(self, hits: Dict[str, float], reactant: Chem.Mol) -> Dict[str, float]:
         """
         This function is used to filter out hits_path that have
             chirality specification
@@ -49,31 +49,57 @@ class Postera(DatabaseSearch):
             non-abundant isotopes
             original reactant
         """
-        hits_mols = [Chem.MolFromSmiles(hit) for hit in hits]
+        hits_mols: List[Chem.Mo] = [Chem.MolFromSmiles(hit) for hit in hits.keys()]
         filtered_mols = list(OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
             mol, 2)), mol) for mol in hits_mols).values())
-        filtered_hits = [Chem.MolToSmiles(mol) for mol in filtered_mols]
-        filtered_hits = [hit for hit in filtered_hits if "@" not in hit] # remove chirality specification
-        filtered_hits = [hit for hit in filtered_hits if not ('15' in hit) or ('13' in hit)] # TODO: Test if this works
+        filtered_hits: List[Chem.Mol] = self.simple_filters(filtered_mols)
         # Remove original reactant if is in the list of hits_path
         r_smiles = Chem.MolToSmiles(reactant)
         if r_smiles in filtered_hits: filtered_hits.remove(r_smiles)
+        # only get entries in hits that are in filtered_hits
+        filtered_hits = {hit: hits[hit] for hit in hits if hit in filtered_hits}
+        return filtered_hits
+
+    def simple_filters(self, hits: List[Chem.Mol]) -> List[Chem.Mol]:
+        """
+        This function is used to filter out hits_path based on validity, isotopes, chirality.
+        """
+        filtered_hits = [Chem.MolToSmiles(mol) for mol in hits]
+        filtered_hits = [hit for hit in filtered_hits if "@" not in hit]  # remove chirality specification
+        filtered_hits = [hit for hit in filtered_hits if not ('15' in hit) or ('13' in hit)]  # TODO: Test if this works
         return filtered_hits
 
     def perform_superstructure_search(self, smiles: str, max_pages: int = 10) -> List[str]:
         """
         This function is used to perform the Postera superstructure search.
         """
-        print(f"Running superstructure search for {smiles}")
+        print(f"Running superstructure search for {smiles}. Only searching for building blocks.")
         superstructure_hits = self.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
             data={
                 'smiles': smiles,
-                # You could pass in more filters here
+                "entryType": "building_block",
+                "withPurchaseInfo": True,
+                "vendors": ["enamine_bb", "mcule", "mcule_ultimate"]
             },
             max_pages=max_pages,
         )
-        return [r["smiles"] for r in superstructure_hits]
+        hits_info: Dict[str, List] = self.structure_output(superstructure_hits)
+        return hits_info
+
+    def structure_output(self, hits: List[Dict]) -> Dict[str, List]:
+        """
+        Formats output where key is the smiles and value is the lead time. Could add other purchase info if interested.
+        """
+        hits_info: Dict[str, List] = {}
+        for hit in hits:
+            if hit['smiles'] not in hits_info:
+                hits_info[hit['smiles']] = []
+            # get minimum lead time possible
+            lead_time = min([entry['purchaseInfo']['bbLeadTimeWeeks'] for entry in hit['catalogEntries']])
+            hits_info[hit['smiles']] = lead_time
+            # could do price but seems like too much faff
+        return hits_info
 
     def get_search_results(self, url: str, data: Dict[str, Any],
                            max_pages: int = 5, page: int = 1) -> List[Dict]:

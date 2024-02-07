@@ -54,18 +54,22 @@ class Library:
         # search for analogues csv if already created. Perform for all reactants.
         reactant_analogues_path: str = self.check_analogues_csv_exists(analogue_prefix, reactant)
         if reactant_analogues_path is not None:
-            analogues: List[str] = self.load_library(reactant_analogues_path, analogue_prefix)
+            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path, analogue_prefix)
+            analogues: List[str] = list(analogues_full.keys())
         else: # perform database search
             postera_search = Postera(self.reaction, self.output_dir, search_type="superstructure")
-            analogues: List[str] = postera_search.perform_database_search(reactant)
+            # returns a dictionary of analogues where values = min lead time found
+            analogues_full: Dict[str, float] = postera_search.perform_database_search(reactant)
+            analogues: List[str] = list(analogues_full.keys())
         processed_analogues_df, analogue_columns = (
-            self.process_analogues(analogues, reactant_smarts, analogue_prefix))
+            self.process_analogues(analogues, reactant_smarts, analogue_prefix, analogues_full))
         processed_analogues_df: pd.DataFrame
         analogue_columns: Tuple[str, str]
         self.save_library(processed_analogues_df, analogue_prefix)
         return processed_analogues_df, analogue_columns
 
-    def process_analogues(self, analogues: List[str], reactant_smarts: str, analogue_prefix: str) -> pd.DataFrame:
+    def process_analogues(self, analogues: List[str], reactant_smarts: str, analogue_prefix: str,
+                          analogues_full: Dict[str, float] = None) -> pd.DataFrame:
         """
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
@@ -73,19 +77,44 @@ class Library:
         analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
         reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(reactant_smarts)
         analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
-        contains_smarts_pattern: List[bool] = \
-            [bool(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
+        contains_smarts_pattern, num_matches = self.check_analogue_contains_smarts_pattern(analogues_mols,
+                                                                                           reactant_smarts_mol)
+        contains_smarts_pattern: List[bool]
+        num_matches: List[int]
+
         contains_other_reactant_smarts_pattern, other_reactant_prefix = (
             self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
-        analogues_df = pd.DataFrame({f"{analogue_prefix}_smiles": analogues,
-                                     f"{analogue_prefix}_mol": analogues_mols,
-                                     f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
-                                     f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern})
+        # get lead time from analogues
+        if analogues_full is not None:
+            lead_times = [analogues_full[analogue] for analogue in analogues]
+            assert len(lead_times) == len(analogues), "Problem with finding lead times."
+
+        analogues_df = (
+            pd.DataFrame({f"{analogue_prefix}_smiles": analogues,
+                          f"{analogue_prefix}_mol": analogues_mols,
+                          f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
+                          f"{analogue_prefix}_{self.reaction.reaction_name}_num_matches": num_matches,
+                          f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern,
+                          f"{analogue_prefix}_lead_time": lead_times}))
+
         if self.filter:
             analogues_df['is_PAINS_A'] = False
-        return analogues_df, (f"{analogue_prefix}_{self.reaction.reaction_name}", f"{other_reactant_prefix}_{self.reaction.reaction_name}")
+        return analogues_df, (f"{analogue_prefix}_{self.reaction.reaction_name}",
+                              f"{other_reactant_prefix}_{self.reaction.reaction_name}")
+
+    def check_analogue_contains_smarts_pattern(self, analogues_mols: List[Chem.Mol], reactant_smarts_mol: Chem.Mol):
+        """
+        This function is used to check if the analogues contains the original reactant. Will return
+        dictionary of boolean values and the number of matches.
+        """
+        print('Checking if analogues contain SMARTS pattern of original reactant...')
+        matching = [bool(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
+        num = [len(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
+        assert len(matching) == len(analogues_mols), "Problem with finding matches."
+        assert len(num) == len(analogues_mols), "Problem with finding number of matches."
+        return matching, num
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:
         """
@@ -195,21 +224,24 @@ class Library:
         print(f"Saving {analogue_prefix} analogue library to {self.output_dir}/extra/{csv_name} \n")
         df.to_csv(f"{self.output_dir}/extra/{csv_name}")
 
-    def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> List[str]:
+    def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> Dict[str, float]:
         """
-        This function is used to load the analogue library from a .csv file.
+        This function is used to load the analogue library from a .csv file. Returns a dictionary of the smiles as keys
+        and the lead time (if found) as float. Otherwise return lead time as None.
         """
         df = pd.read_csv(reactant_analogues_path)
         # find column with analogue smiles
         try:
             analogues = df["smiles"].tolist()
-            return analogues
+            analogues_full = {analog: None for analog in analogues}
+            return analogues_full
         except KeyError:
             print(f"No 'smiles' column found in {reactant_analogues_path}. "
                   f"Looking for {analogue_prefix}_smiles column.")
         try:
-            analogues = df[f"{analogue_prefix}_smiles"].tolist()
-            return analogues
+            analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
+            analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
+            return analogues_full
         except KeyError:
             print(f"No {analogue_prefix}_smiles column found in {reactant_analogues_path}. Stopping...")
 
