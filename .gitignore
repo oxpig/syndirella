@@ -14,5 +14,6 @@ output
 iris/
 /exps/original/
 
-
+#mac os files
+*.DS_Store
 
