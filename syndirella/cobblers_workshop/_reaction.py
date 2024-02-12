@@ -7,8 +7,8 @@ This module contains the Reaction class. One instance of this object is used to 
 
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
-from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
-from syndirella.constants import DUMMY_SYMBOL
+from typing import (List, Dict, Tuple)
+from syndirella.constants.constants import DUMMY_SYMBOL
 from syndirella.smarts import SMARTSHandler
 from syndirella.error import ReactionError
 

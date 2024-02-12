@@ -1,0 +1,52 @@
+{
+  "Sp2-sp2_Suzuki_coupling": {
+    "boronate_ester": {
+      "to_add": "[#6]-[#6]1(-[#6])-[#8]-[#5]-[#8]-[#6]-1(-[#6])-[#6]",
+      "to_replace": "[#6X3:2]-[#5](-[#8])(-[#8])",
+      "connecting_atom_id": 5,
+      "reaction_change": "Sp2-sp2_Suzuki_coupling"
+    },
+    "bromine_halogen": {
+      "to_add": "[#35]",
+      "to_replace": "[#9,#17,#53]",
+      "connecting_atom_id": 0,
+      "reaction_change": "Sp2-sp2_Suzuki_coupling"
+    }
+  },
+  "Sp3-sp2_Suzuki_coupling": {
+    "boronate_ester": {
+      "to_add": "[#6]-[#6]1(-[#6])-[#8]-[#5]-[#8]-[#6]-1(-[#6])-[#6]",
+      "to_replace": "[#6X3:2]-[#5](-[#8])(-[#8])",
+      "connecting_atom_id": 5,
+      "reaction_change": "Sp3-sp2_Suzuki_coupling"
+    },
+    "bromine_halogen": {
+      "to_add": "[#35]",
+      "to_replace": "[#9,#17,#53]",
+      "connecting_atom_id": 0,
+      "reaction_change": "Sp3-sp2_Suzuki_coupling"
+    }
+  },
+  "Amide_schotten-baumann": {
+    "carboxylic_acid": {
+      "to_add": "[#6]-[#6](=[#8])-[#17]",
+      "to_replace": "[#6]-[#6](=[#8])-[#8](-[#1])",
+      "connecting_atom_id": 0,
+      "reaction_change": "Amidation"
+    }
+  },
+  "Amide_Schotten-Baumann_with_amine": {
+    "carboxylic_acid": {
+      "to_add": "[#6]-[#6](=[#8])-[#17]",
+      "to_replace": "[#6]-[#6](=[#8])-[#8](-[#1])",
+      "connecting_atom_id": 0,
+      "reaction_change": "Amidation"
+    }
+  },
+  "Sulfonamide_Schotten-Baumann_with_amine_(intermolecular)": {
+    "sulfonyl": {
+      "SMARTS": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9]",
+      "connecting_atom": "[#6,#7]"
+    }
+  }
+}
