@@ -14,6 +14,7 @@ import json
 from collections import OrderedDict
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
+from syndirella.cobblers_workshop._fairy import Fairy
 
 class Postera(DatabaseSearch):
     """
@@ -25,21 +26,23 @@ class Postera(DatabaseSearch):
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.search_type = search_type
+        self.fairy = Fairy(reaction.reaction_name)
 
     def perform_database_search(self, reactant: Chem.Mol):
         """
         This function is used to perform the Postera search using the database_search_function.
         """
-        smiles = Chem.MolToSmiles(reactant)
-        if self.search_type == "superstructure":
-            hits: Dict[str, float] = self.perform_superstructure_search('OB(O)c1cccc2cc[nH]c12')
-        elif self.search_type == "ring_replace":
-            hits: Dict[str, float] = self.perform_ring_replace_search(smiles)
-        else:
-            raise ValueError("Error, library_type must be either 'superstructure' or 'ring_replace'.")
-        filtered_hits: Dict[str, float] = self.filter_out_hits(hits, reactant)
+        # 1. Get additional similar reactant if reaction is one with additional reactants
+        reactants: List[str] = self.fairy.find(reactant)
+        # 2. Perform the search for all
+        hits_all: Dict[str, float] = {}
+        for smiles in reactants:
+            if self.search_type == "superstructure":
+                hits: Dict[str, float] = self.perform_superstructure_search(smiles)
+                hits_all.update(hits)
+        filtered_hits: Dict[str, float] = self.fairy.filter(hits_all)
         print(f'Found {len(filtered_hits)} hits_path for {smiles}')
-        return hits
+        return filtered_hits
 
     def filter_out_hits(self, hits: Dict[str, float], reactant: Chem.Mol) -> Dict[str, float]:
         """
@@ -49,7 +52,7 @@ class Postera(DatabaseSearch):
             non-abundant isotopes
             original reactant
         """
-        hits_mols: List[Chem.Mo] = [Chem.MolFromSmiles(hit) for hit in hits.keys()]
+        hits_mols: List[Chem.Mol] = [Chem.MolFromSmiles(hit) for hit in hits.keys()]
         filtered_mols = list(OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
             mol, 2)), mol) for mol in hits_mols).values())
         filtered_hits: List[Chem.Mol] = self.simple_filters(filtered_mols)
@@ -74,6 +77,7 @@ class Postera(DatabaseSearch):
         This function is used to perform the Postera superstructure search.
         """
         print(f"Running superstructure search for {smiles}. Only searching for building blocks.")
+        assert type(smiles) == str, "Smiles must be a string."
         superstructure_hits = self.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
             data={
@@ -154,12 +158,6 @@ class Postera(DatabaseSearch):
         except requests.exceptions.RequestException as err:
             print(f"Error: {err}")
         return resp_json
-
-    def perform_ring_replace_search(self):
-        """
-        This function is used to perform a ring replacement search.
-        """
-        return NotImplementedError()
 
     def make_query(self):
         """

@@ -20,6 +20,20 @@ from syndirella.slipper.slipper_synthesizer._base import SlipperSynthesizer
 from syndirella.slipper._base import Slipper
 import pickle
 
+class TestFairyFilters(unittest.TestCase):
+    def setUp(self):
+        self.reactants = [('COC(=O)NCCB(O)O', 'Cn1nccc1I')]
+        self.product = 'COC(=O)NCCc1ccnn1C'
+        self.reaction_names = ['Sp3-sp2_Suzuki_coupling']
+        self.num_steps = 1
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/fairy_filters'
+        self.filter = False
+
+    def test_get_additional_reactants(self):
+        cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
+                                             self.output_dir, self.filter)
+        final_library = cobblers_workshop.get_final_library()
+        self.assertIsNotNone(final_library)
 
 class TestReactantsFiltering(unittest.TestCase):
     def setUp(self):

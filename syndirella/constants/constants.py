@@ -1,5 +1,3 @@
-import json
-
 DUMMY_SYMBOL = "*"
 POSITIONAL_MAPPING_MAX_DIST= 1.5
 PHARMACOPHORE_FAMILES_TO_KEEP = ('Donor', 'Acceptor', 'Aromatic', 'Hydrophobe')  #('Donor', 'Acceptor', 'NegIonizable', 'PosIonizable', 'ZnBinder', 'Aromatic', 'Hydrophobe', 'LumpedHydrophobe')

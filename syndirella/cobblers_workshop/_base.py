@@ -13,6 +13,7 @@ from syndirella.smarts import SMARTSHandler
 from rdkit import Chem
 from rdkit.Chem import rdinchi
 from syndirella.slipper._base import Slipper
+import traceback
 
 
 class CobblersWorkshop():
@@ -47,15 +48,22 @@ class CobblersWorkshop():
         """
         This function is used to get the final library of products. It is the main function that is called.
         """
-        if self.num_steps == 1:
-            print(f"There is 1 step in this route using {self.reaction_names[0]}")
-            self.get_final_library_one_step()
-        if self.num_steps == 2:
-            print(f"There are 2 steps in this route using {self.reaction_names[0]} then {self.reaction_names[1]}")
-            self.get_final_library_two_steps()
-        if self.num_steps > 2:
-            raise NotImplementedError("Routes with more than 2 steps are not yet implemented.")
-        return self.final_library
+        # overall try except block for whole elaboration pipeline
+        try:
+            if self.num_steps == 1:
+                print(f"There is 1 step in this route using {self.reaction_names[0]}")
+                self.get_final_library_one_step()
+            if self.num_steps == 2:
+                print(f"There are 2 steps in this route using {self.reaction_names[0]} then {self.reaction_names[1]}")
+                self.get_final_library_two_steps()
+            if self.num_steps > 2:
+                raise NotImplementedError("Routes with more than 2 steps are not yet implemented.")
+            return self.final_library
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(f"An error occurred in the route elaboration: {e}")
+            print(tb)
+            return None
 
     def get_final_library_one_step(self):
         """

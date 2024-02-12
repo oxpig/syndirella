@@ -28,5 +28,7 @@ syndirella --help
 
 ## Features
 
-Database search with Postera's Manifold
+
+
+
 
