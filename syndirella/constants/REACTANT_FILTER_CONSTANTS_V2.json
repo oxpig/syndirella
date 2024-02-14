@@ -1,9 +1,9 @@
 {
   "Sp2-sp2_Suzuki_coupling": {
-    "[#6X3:2]-[#5](-[#8])(-[#8])": {
+    "[#5](-[#8])(-[#8])": {
       "name": "add_boronate_ester",
       "to_add": "[#6]-[#6]1(-[#6])-[#8]-[#5]-[#8]-[#6]-1(-[#6])-[#6]",
-      "connecting_atom_id": 5
+      "connecting_atom_id": 4
     },
     "[#9,#17,#53]": {
       "name": "add_bromine",
@@ -12,10 +12,10 @@
     }
   },
   "Sp3-sp2_Suzuki_coupling": {
-    "[#6X3:2]-[#5](-[#8])(-[#8])": {
+    "[#5](-[#8])(-[#8])": {
       "name": "add_boronate_ester",
       "to_add": "[#6]-[#6]1(-[#6])-[#8]-[#5]-[#8]-[#6]-1(-[#6])-[#6]",
-      "connecting_atom_id": 5
+      "connecting_atom_id": 4
     },
     "[#9,#17,#53]": {
       "name": "add_bromine",

@@ -35,13 +35,13 @@ class Postera(DatabaseSearch):
         # 1. Get additional similar reactant if reaction is one with additional reactants
         reactants: List[str] = self.fairy.find(reactant)
         # 2. Perform the search for all
-        hits_all: Dict[str, float] = {}
+        hits_all: List[Tuple[str, float]] = []
         for smiles in reactants:
             if self.search_type == "superstructure":
-                hits: Dict[str, float] = self.perform_superstructure_search(smiles)
-                hits_all.update(hits)
+                hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles)
+                print(f'Found {len(hits)} for {smiles} before filtering.')
+                hits_all.extend(hits)
         filtered_hits: Dict[str, float] = self.fairy.filter(hits_all)
-        print(f'Found {len(filtered_hits)} hits_path for {smiles}')
         return filtered_hits
 
     def filter_out_hits(self, hits: Dict[str, float], reactant: Chem.Mol) -> Dict[str, float]:
@@ -72,7 +72,7 @@ class Postera(DatabaseSearch):
         filtered_hits = [hit for hit in filtered_hits if not ('15' in hit) or ('13' in hit)]  # TODO: Test if this works
         return filtered_hits
 
-    def perform_superstructure_search(self, smiles: str, max_pages: int = 10) -> List[str]:
+    def perform_superstructure_search(self, smiles: str, max_pages: int = 10) -> List[Tuple[str, float]]:
         """
         This function is used to perform the Postera superstructure search.
         """
@@ -88,20 +88,18 @@ class Postera(DatabaseSearch):
             },
             max_pages=max_pages,
         )
-        hits_info: Dict[str, List] = self.structure_output(superstructure_hits)
+        hits_info: List[Tuple[str, float]] = self.structure_output(superstructure_hits)
         return hits_info
 
-    def structure_output(self, hits: List[Dict]) -> Dict[str, List]:
+    def structure_output(self, hits: List[Dict]) -> List[Tuple[str, float]]:
         """
         Formats output where key is the smiles and value is the lead time. Could add other purchase info if interested.
         """
-        hits_info: Dict[str, List] = {}
+        hits_info: List[Tuple[str, float]] = []
         for hit in hits:
-            if hit['smiles'] not in hits_info:
-                hits_info[hit['smiles']] = []
             # get minimum lead time possible
             lead_time = min([entry['purchaseInfo']['bbLeadTimeWeeks'] for entry in hit['catalogEntries']])
-            hits_info[hit['smiles']] = lead_time
+            hits_info.append((hit['smiles'], lead_time))
             # could do price but seems like too much faff
         return hits_info
 

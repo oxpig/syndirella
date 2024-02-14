@@ -7,9 +7,12 @@ reactants based on simple filters.
 """
 from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple, Optional)
 from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
 from syndirella._cli_defaults import cli_default_settings
-from syndirella.cobblers_workshop._reaction import Reaction
+from rdkit.Chem import rdMolDescriptors
+from rdkit import DataStructs
 
 class Fairy:
     def __init__(self, reaction_name: str):
@@ -86,18 +89,52 @@ class Fairy:
         # TODO: Could add functionality to check that the similar reactant was changed at correct point
         # Convert the similar reactant to smiles
         similar_reactant = Chem.MolToSmiles(similar_reactant[0])
+        # need to do validity check
         return similar_reactant
 
-    def filter(self, hits: Dict[str, float]) -> Dict[str, float]:
+    def filter(self, hits: List[Tuple[str, float]]) -> Dict[str, float]:
         """
         Main entry to class to filter out reactants.
         """
         # Convert hits to mols
-        mols = [Chem.MolFromSmiles(smile) for smile in hits.keys()]
+        mols = [Chem.MolFromSmiles(info[0]) for info in hits]
+        print(f'Found {len(mols)} before filtering.')
         # Do simple filters
         mols = self.simple_filters(mols)
+        # Print the difference
+        self.print_diff(hits, mols, "simple filters")
         # Return dictionary
+        return self._format_for_output(mols, hits)
         return {Chem.MolToSmiles(mol): hits[Chem.MolToSmiles(mol)] for mol in mols}
+
+    def _format_for_output(self, mols: List[Chem.Mol], hits: List[Tuple[str, float]]) -> Dict[
+        str, float]:
+        """
+        Formats the output of the filtered mols to a dictionary where the key is the SMILES of the molecule in the
+        mols list, and the value is the float value that is paired with that SMILES in the hits tuple list.
+        Comparison is done by Tanimoto similarity.
+
+        Args:
+        - mols: List of RDKit Mol objects.
+        - hits: List of tuples, where each tuple contains a SMILES string and a float value.
+
+        Returns:
+        - A dictionary with SMILES strings as keys and float values as values.
+        """
+        hits_info: Dict[str, float] = {}
+        # Precompute fingerprints for the hits for efficiency
+        hits_fps = [(Chem.MolFromSmiles(smiles), score) for smiles, score in hits]
+        hits_fps = [(AllChem.GetMorganFingerprintAsBitVect(mol, 2), score) for mol, score in hits_fps if
+                    mol is not None]
+        for mol in mols:
+            mol_fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2)
+            for hit_fp, value in hits_fps:
+                similarity = TanimotoSimilarity(mol_fp, hit_fp)
+                if similarity == 1.0:
+                    mol_smiles = Chem.MolToSmiles(mol)
+                    hits_info[mol_smiles] = value
+                    break  # Assuming only one match is needed, break after the first match is found
+        return hits_info
 
     def simple_filters(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
         """
@@ -106,15 +143,43 @@ class Fairy:
             repeat mols
             non-abundant isotopes
         """
-        # Remove mols with chirality specification
-        mols = [mol for mol in mols if not mol.HasProp('_ChiralityPossible')]
-        # Remove repeat mols
-        mols = list(set(mols))
+        # Remove mols with chirality specification, CHI_UNSPECIFIED is the non-chiral specification
+        mols = [mol for mol in mols if all(atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_UNSPECIFIED
+                                           for atom in mol.GetAtoms())]
+        # Remove repeat SMILES
+        mols = self._remove_repeat_smiles(mols)
         # Remove non-abundant isotopes
-        mols = [mol for mol in mols if not any(atom.GetIsotope() not in [0, 12, 13, 14, 15] for atom in mol.GetAtoms())]
+        mols = self._remove_non_abundant_isotopes(mols)
         return mols
 
-    def print_diff(self, mols: List[Chem.Mol], valid_mols: List[Chem.Mol], name: str) -> None:
+    def _remove_repeat_smiles(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
+        """
+        Converts mols to fingerprints, checks for Tanimoto similarity of 1, and removes repeats.
+        """
+        unique_mols = []
+        fingerprints = [rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048) for mol in mols]
+        seen = set()  # To keep track of indices of molecules that are duplicates
+        for i, fp1 in enumerate(fingerprints):
+            if i not in seen:
+                unique_mols.append(mols[i])
+                for j, fp2 in enumerate(fingerprints[i + 1:], start=i + 1):
+                    similarity = DataStructs.FingerprintSimilarity(fp1, fp2)
+                    if similarity == 1:
+                        seen.add(j)
+        return unique_mols
+
+    def _remove_non_abundant_isotopes(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
+        """
+        This function is used to remove mols that have non-abundant isotopes.
+        """
+        mols = [mol for mol in mols if
+                not any((atom.GetIsotope() not in [0, 12] and atom.GetAtomicNum() == 6) or
+                        (atom.GetIsotope() not in [0, 14] and atom.GetAtomicNum() == 7) or
+                        (atom.GetIsotope() not in [0, 1] and atom.GetAtomicNum() == 1)
+                        for atom in mol.GetAtoms())]
+        return mols
+
+    def print_diff(self, mols: List[Chem.Mol], valid_mols: List[Chem.Mol], desc: str) -> None:
         """
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
@@ -123,5 +188,5 @@ class Fairy:
                                               "the original list of molecules.")
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
-        print(f'Removed {num_filtered} invalid molecules ({percent_diff}%) that did not have {name} substructure.')
+        print(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
 

@@ -74,7 +74,8 @@ class Library:
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
         """
-        analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
+        if self.filter:
+            analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
         reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(reactant_smarts)
         analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
         contains_smarts_pattern, num_matches = self.check_analogue_contains_smarts_pattern(analogues_mols,
@@ -121,12 +122,8 @@ class Library:
         This function is used to filter out analogues.
         """
         mols: List[Chem.Mol] = [Chem.MolFromSmiles(mol) for mol in analogues]
-        passing_mols: List[Chem.Mol] = self.check_for_validity(mols)
+        passing_mols: List[Chem.Mol] = self.filter_on_substructure_filters(mols)
         self.print_diff(mols, passing_mols, analogue_prefix)
-        if self.filter:
-            mols = passing_mols
-            passing_mols: List[Chem.Mol] = self.filter_on_substructure_filters(mols)
-            self.print_diff(mols, passing_mols, analogue_prefix)
         filtered_analogues: List[str] = [Chem.MolToSmiles(mol) for mol in passing_mols]
         return filtered_analogues
 
@@ -140,15 +137,6 @@ class Library:
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
         print(f'Removed {num_filtered} invalid molecules ({percent_diff}%) of {analogue_prefix} analogues.')
-
-    def check_for_validity(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
-        """
-        This function is used to check if the molecules are valid.
-        """
-        valid_mols: List[Chem.Mol] = list(
-            OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
-                mol, 2)), mol) for mol in mols).values())
-        return valid_mols
 
     def filter_on_substructure_filters(self, mols: List[Chem.Mol], ) -> List[str]:
         """
@@ -222,7 +210,7 @@ class Library:
         os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
         csv_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.csv"
         print(f"Saving {analogue_prefix} analogue library to {self.output_dir}/extra/{csv_name} \n")
-        df.to_csv(f"{self.output_dir}/extra/{csv_name}")
+        df.to_csv(f"{self.output_dir}/extra/{csv_name}", index=False)
 
     def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> Dict[str, float]:
         """

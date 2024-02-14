@@ -29,11 +29,26 @@ class TestFairyFilters(unittest.TestCase):
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/fairy_filters'
         self.filter = False
 
+        # need to set variables for Fragmenstein
+        self.template = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/one_step_warren_A71EV2A/fragments/x0310_template.pdb'
+        self.hits = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/one_step_warren_A71EV2A/fragments/clean_hits.sdf'
+        self.hits_names = ['x0566_0A']
+        self.batch_num = 3
+
     def test_get_additional_reactants(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.filter)
         final_library = cobblers_workshop.get_final_library()
         self.assertIsNotNone(final_library)
+
+    def test_all_the_way(self):
+        cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
+                                             self.output_dir, self.filter)
+        final_library = cobblers_workshop.get_final_library()
+        slipper = Slipper(final_library)
+        products = slipper.get_products()
+        placements = slipper.place_products()
+        self.assertIsNotNone(placements)
 
 class TestReactantsFiltering(unittest.TestCase):
     def setUp(self):
