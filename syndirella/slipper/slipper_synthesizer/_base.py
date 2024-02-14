@@ -7,6 +7,10 @@ This module contains the SlipperSynthesizer class.
 from typing import (List, Dict, Tuple)
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
+from rdkit.Chem import AllChem
+from rdkit import DataStructs
+from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
+from rdkit.Chem.Fingerprints import FingerprintMols
 from syndirella.cobblers_workshop._library import Library
 from syndirella.slipper.slipper_synthesizer._label import Labeler
 import pandas as pd
@@ -176,6 +180,7 @@ class SlipperSynthesizer:
                 self.analogues_dataframes_to_react[key] = self.cut_analogues(
                     self.analogues_dataframes_to_react[key],
                     max_length_each, key)
+
     def cut_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
         """
         This function is used to cut the analogues dataframes to max_length_each by just taking the head.
@@ -231,9 +236,9 @@ class SlipperSynthesizer:
         products = self.filter_products(products)
         # Add metadata
         products = self.add_metadata(products)
-        # Enumerate stereoisomers
+        # Enumerate stereoisomers.
         all_products = self.enumerate_stereoisomers(products)
-        print(f"Found {len(all_products)} products.")
+        print(f"Found {len(set(list(all_products['name'])))} unique products.")
         return all_products
 
     def apply_reaction(self, row) -> pd.Series:
@@ -300,30 +305,98 @@ class SlipperSynthesizer:
         products.reset_index(drop=True, inplace=True)
         return products
 
+    def calculate_fingerprints(self, products):
+        """Calculate RDKit fingerprints for each molecule."""
+        products['mol'] = products['smiles'].apply(lambda x: Chem.MolFromSmiles(x) if pd.notnull(x) else None)
+        products['fp'] = products['mol'].apply(
+            lambda x: AllChem.GetMorganFingerprintAsBitVect(x, 2, nBits=1024) if x is not None else None)
+        return products
+
+    def find_similarity_groups(self, products: pd.DataFrame) -> (pd.DataFrame, int):
+        if 'group_id' not in products.columns:
+            products['group_id'] = -1  # Initialize all to -1 to indicate no group yet
+        fps = products['fp'].tolist()
+        n = len(fps)
+        # Calculate the fingerprint for the library's reaction product
+        product_fp = AllChem.GetMorganFingerprintAsBitVect(self.library.reaction.product, 2, nBits=1024)
+        groups = {}
+        existing_group_ids = set(products['group_id'])
+        group_id = max(existing_group_ids) + 1 if existing_group_ids else 0
+        base_group_id = -1  # Initialize with a value to indicate not found
+        for i in range(n):
+            if fps[i] is None:
+                continue
+            # Check similarity with the reaction product
+            similarity_to_product = DataStructs.FingerprintSimilarity(fps[i], product_fp)
+            if similarity_to_product == 1:
+                # This is a match; assign it to a group with the reaction product
+                if base_group_id == -1:  # If not already assigned
+                    while group_id in existing_group_ids:
+                        group_id += 1
+                    base_group_id = group_id
+                    existing_group_ids.add(group_id)
+                    group_id += 1
+                groups[i] = base_group_id
+            for j in range(i + 1, n):
+                if fps[j] is None:
+                    continue
+                similarity = DataStructs.FingerprintSimilarity(fps[i], fps[j])
+                if similarity == 1:
+                    if i not in groups and j not in groups:
+                        while group_id in existing_group_ids:
+                            group_id += 1
+                        groups[i] = groups[j] = group_id
+                        existing_group_ids.add(group_id)
+                        group_id += 1
+                    elif i in groups and j not in groups:
+                        groups[j] = groups[i]
+                    elif i not in groups and j in groups:
+                        groups[i] = groups[j]
+        # Assign group IDs to products based on similarity groups
+        for idx, group_id in groups.items():
+            products.at[idx, 'group_id'] = group_id
+        # For rows without a group, assign a new unique group ID
+        ungrouped_indices = products[products['group_id'] == -1].index
+        for idx in ungrouped_indices:
+            while group_id in existing_group_ids:
+                group_id += 1
+            products.at[idx, 'group_id'] = group_id
+            existing_group_ids.add(group_id)
+            group_id += 1
+        return products, base_group_id
+
+    def assign_names_based_on_groups(self, products: pd.DataFrame, library_id: str, base_group_id: int) -> pd.DataFrame:
+        """Assign names to products based on their group ID, ensuring duplicates have the same name."""
+        base_name = f"{library_id}-base"
+        unique_groups = products['group_id'].unique()
+        # Assign names based on group ID
+        for group in unique_groups:
+            if group == -1:  # Handle molecules without a group
+                continue
+            if group == base_group_id:
+                products.loc[products['group_id'] == group, 'name'] = base_name
+                continue
+            group_members = products[products['group_id'] == group]
+            if not group_members.empty:
+                first_name = group_members.iloc[0]['name'] if pd.notnull(
+                    group_members.iloc[0]['name']) else f"{library_id}-{int(group)}"
+                products.loc[products['group_id'] == group, 'name'] = first_name
+        return products
+
+    # Mock-up of how you'd use these functions
     def add_metadata(self, products: pd.DataFrame) -> pd.DataFrame:
-        """
-        This function is used to add metadata to the products dataframe.
-        """
-        products['name'] = products.apply(self.create_name, axis=1)
+        products['name'] = None  # Add a name column
+        products = self.calculate_fingerprints(products)
+        products, base_group_id = self.find_similarity_groups(products)
+        products = self.assign_names_based_on_groups(products, self.library.id, base_group_id)
+        # Add other metadata
         products['reaction'] = self.library.reaction.reaction_name
         products['step'] = self.library.current_step
         products['total_steps'] = self.library.num_steps
-        products['base_compound'] = f"{self.library.id}_base"
+        products['base_compound'] = f"{self.library.id}-base"
+        # Optional: Remove temporary columns if desired
+        products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         return products
-
-    def create_name(self, row):
-        """
-        This function is used to create a name for the product. Does not create a unique name for non final step
-        products.
-        """
-        if row['smiles'] is None or self.library.num_steps != self.library.current_step:
-            return None
-        else:
-            if row['num_atom_diff'] == 0:
-                name = f"{self.library.id}-base"
-            else:
-                name = f"{self.library.id}-{row.name}"
-        return name
 
     def enumerate_stereoisomers(self, products: pd.DataFrame) -> pd.DataFrame:
         """
@@ -364,12 +437,12 @@ class SlipperSynthesizer:
             print("Since these products are not the final products they will be saved in the /extra folder. \n")
             print("Saving products to {self.library.output_dir}/extra/{csv_name} \n")
             os.makedirs(f"{self.library.output_dir}/extra/", exist_ok=True)
-            self.products.to_csv(f"{self.library.output_dir}/extra/{csv_name}")
+            self.products.to_csv(f"{self.library.output_dir}/extra/{csv_name}", index=False)
         else:
             self.final_products_csv_path: str = f"{self.library.output_dir}/{csv_name}"
             print(f"Saving final products to {self.final_products_csv_path} \n")
             os.makedirs(f"{self.library.output_dir}/", exist_ok=True)
-            self.products.to_csv(self.final_products_csv_path)
+            self.products.to_csv(self.final_products_csv_path, index=False)
 
     def label_products(self):
         """

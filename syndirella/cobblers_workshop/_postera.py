@@ -11,10 +11,8 @@ from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple,
 from rdkit import Chem
 import requests
 import json
-from collections import OrderedDict
-from rdkit import DataStructs
-from rdkit.Chem import AllChem
 from syndirella.cobblers_workshop._fairy import Fairy
+
 
 class Postera(DatabaseSearch):
     """
@@ -44,42 +42,17 @@ class Postera(DatabaseSearch):
         filtered_hits: Dict[str, float] = self.fairy.filter(hits_all)
         return filtered_hits
 
-    def filter_out_hits(self, hits: Dict[str, float], reactant: Chem.Mol) -> Dict[str, float]:
-        """
-        This function is used to filter out hits_path that have
-            chirality specification
-            repeat hits_path
-            non-abundant isotopes
-            original reactant
-        """
-        hits_mols: List[Chem.Mol] = [Chem.MolFromSmiles(hit) for hit in hits.keys()]
-        filtered_mols = list(OrderedDict((DataStructs.BitVectToText(AllChem.GetMorganFingerprintAsBitVect(
-            mol, 2)), mol) for mol in hits_mols).values())
-        filtered_hits: List[Chem.Mol] = self.simple_filters(filtered_mols)
-        # Remove original reactant if is in the list of hits_path
-        r_smiles = Chem.MolToSmiles(reactant)
-        if r_smiles in filtered_hits: filtered_hits.remove(r_smiles)
-        # only get entries in hits that are in filtered_hits
-        filtered_hits = {hit: hits[hit] for hit in hits if hit in filtered_hits}
-        return filtered_hits
-
-    def simple_filters(self, hits: List[Chem.Mol]) -> List[Chem.Mol]:
-        """
-        This function is used to filter out hits_path based on validity, isotopes, chirality.
-        """
-        filtered_hits = [Chem.MolToSmiles(mol) for mol in hits]
-        filtered_hits = [hit for hit in filtered_hits if "@" not in hit]  # remove chirality specification
-        filtered_hits = [hit for hit in filtered_hits if not ('15' in hit) or ('13' in hit)]  # TODO: Test if this works
-        return filtered_hits
-
-    def perform_superstructure_search(self, smiles: str, max_pages: int = 10) -> List[Tuple[str, float]]:
+    def perform_superstructure_search(self,
+                                      smiles: str,
+                                      max_pages: int = 10) -> List[Tuple[str, float]]:
         """
         This function is used to perform the Postera superstructure search.
         """
         print(f"Running superstructure search for {smiles}. Only searching for building blocks.")
         assert type(smiles) == str, "Smiles must be a string."
-        superstructure_hits = self.get_search_results(
+        superstructure_hits: List[Dict] = Postera.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
+            api_key=self.api_key,
             data={
                 'smiles': smiles,
                 "entryType": "building_block",
@@ -89,6 +62,8 @@ class Postera(DatabaseSearch):
             max_pages=max_pages,
         )
         hits_info: List[Tuple[str, float]] = self.structure_output(superstructure_hits)
+        # add query smiles just in case it's not returned
+        hits_info.append((smiles, 0))
         return hits_info
 
     def structure_output(self, hits: List[Dict]) -> List[Tuple[str, float]]:
@@ -103,43 +78,17 @@ class Postera(DatabaseSearch):
             # could do price but seems like too much faff
         return hits_info
 
-    def get_search_results(self, url: str, data: Dict[str, Any],
-                           max_pages: int = 5, page: int = 1) -> List[Dict]:
-        """
-        Recursively get all pages for the endpoint until reach null next page or
-        the max_pages threshold.
-        """
-        # List where we will gather up all the hits_path.
-        all_hits = []
-        data = {
-            **data,
-            'page': page,
-        }
-        response = self.get_resp_json(url, data)
-        if response is None:
-            return all_hits
-        else:
-            all_hits.extend(response.get('results', []))
-        # Grab more hits_path if there is a next page supplied.
-        next_page = response.get('nextPage', None)
-        if next_page is not None and next_page < max_pages:
-            next_hits = self.get_search_results(
-                url,
-                data,
-                max_pages,
-                next_page
-            )
-            all_hits.extend(next_hits)
-        return all_hits
-
-    def get_resp_json(self, url: str, data: Dict = None) -> Optional[Dict]:
+    @staticmethod
+    def get_resp_json(url: str,
+                      api_key: str,
+                      data: Dict = None) -> Optional[Dict]:
         """
         Directly get the response json from a request.
         """
         response = requests.post(
             url,
             headers={
-                'X-API-KEY': self.api_key,
+                'X-API-KEY': api_key,
                 'Content-Type': 'application/json',
             },
             data=json.dumps(data),
@@ -156,6 +105,42 @@ class Postera(DatabaseSearch):
         except requests.exceptions.RequestException as err:
             print(f"Error: {err}")
         return resp_json
+
+    @staticmethod
+    def get_search_results(url: str,
+                           api_key: str,
+                           data: Dict[str, Any],
+                           max_pages: int = 5,
+                           page: int = 1) -> List[Dict]:
+        """
+        Recursively get all pages for the endpoint until reach null next page or
+        the max_pages threshold.
+        """
+        # List where we will gather up all the hits_path.
+        all_hits = []
+        data = {
+            **data,
+            'page': page,
+        }
+        response = Postera.get_resp_json(url, api_key, data)
+        if response is None:
+            return all_hits
+        elif response.get('results') is not None:
+            all_hits.extend(response.get('results', []))
+        elif response.get('routes') is not None:
+            all_hits.extend(response.get('routes', []))
+        # Grab more hits_path if there is a next page supplied.
+        next_page = response.get('nextPage', None)
+        if next_page is not None and next_page < max_pages:
+            next_hits = Postera.get_search_results(
+                url,
+                api_key,
+                data,
+                max_pages,
+                next_page
+            )
+            all_hits.extend(next_hits)
+        return all_hits
 
     def make_query(self):
         """
