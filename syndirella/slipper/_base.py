@@ -18,11 +18,11 @@ class Slipper:
     This class is instantiated to represent all products for a route.
     """
     def __init__(self, final_library: Library,
-                 atoms_ids_expansion: dict = None,
                  template: str = None,
                  hits: str = None,
                  hits_names: List[str] = None,
-                 batch_num: int = None):
+                 batch_num: int = None,
+                 atoms_ids_expansion: dict = None):
         self.products: pd.DataFrame = None
         self.final_library: Library = final_library
         self.output_dir: str = final_library.output_dir

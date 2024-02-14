@@ -11,14 +11,18 @@ import unittest
 import pandas as pd
 
 from syndirella.cobblers_workshop._base import CobblersWorkshop
-from syndirella.cobblers_workshop._cobbler_bench import CobblerBench
-from ..smarts import SMARTSHandler
-from ..cobblers_workshop._reaction import Reaction
+from syndirella.cobbler.base import Cobbler
 from ..cobblers_workshop._library import Library
-from rdkit import Chem
-from syndirella.slipper.slipper_synthesizer._base import SlipperSynthesizer
 from syndirella.slipper._base import Slipper
 import pickle
+
+class TestFromInputBase(unittest.TestCase):
+    def setUp(self):
+        self.base = 'COC(=O)NCCc1ccnn1C'
+
+    def test_from_input(self):
+        cobbler = Cobbler(self.base)
+        cobbler.get_routes()
 
 class TestFairyFilters(unittest.TestCase):
     def setUp(self):
@@ -45,7 +49,7 @@ class TestFairyFilters(unittest.TestCase):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.filter)
         final_library = cobblers_workshop.get_final_library()
-        slipper = Slipper(final_library)
+        slipper = Slipper(final_library, self.template, self.hits, self.hits_names, self.batch_num)
         products = slipper.get_products()
         placements = slipper.place_products()
         self.assertIsNotNone(placements)

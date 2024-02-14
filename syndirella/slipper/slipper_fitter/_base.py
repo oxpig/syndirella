@@ -11,12 +11,22 @@ from fragmenstein.laboratory.validator import place_input_validator
 from rdkit import Chem
 import os, logging
 
+
 class SlipperFitter:
     """
     This class is instantiated to place all the products in the template using hits_path
     """
-    def __init__(self, final_products: pd.DataFrame, template_path: str, hits_path: str, hits_names: List[str],
-                 n_cores: int, timeout: int, batch_num: int, output_dir: str, final_products_csv_path: str):
+
+    def __init__(self,
+                 final_products: pd.DataFrame,
+                 template_path: str,
+                 hits_path: str,
+                 hits_names: List[str],
+                 n_cores: int,
+                 timeout: int,
+                 batch_num: int,
+                 output_dir: str,
+                 final_products_csv_path: str):
         self.final_products: pd.DataFrame = final_products
         self.template_path: str = template_path
         self.hits_path: str = hits_path
@@ -48,12 +58,8 @@ class SlipperFitter:
         """
         This function is used to prepare the inputs for Fragmenstein.
         """
-        input_df: pd.DataFrame = self.final_products.copy(deep=True)
-        # place number in batch
-        if self.batch_num > 0:
-            print(f'Only placing the top {self.batch_num} products.')
-            input_df = input_df.iloc[:self.batch_num]
-        input_df = input_df[['name', 'smiles']]
+        # input_df is a copy of final_products but removing duplicates of names and other metadata from synthesizer step
+        input_df: pd.DataFrame = self._prepare_input_df()
         input_df = self.add_hits(input_df)
         # add typing to columns
         input_df = input_df.astype({'name': str, 'smiles': str})
@@ -61,6 +67,34 @@ class SlipperFitter:
         if input_df.duplicated(subset='name').any():
             raise ValueError('There are duplicates of names in the product dataframe to place.')
         return input_df
+
+    def _prepare_input_df(self) -> pd.DataFrame:
+        """
+        Creates the input dataframe for the placements. Will remove duplicates of names and other metadata from
+        synthesizer step.
+        """
+        input_df: pd.DataFrame = self.final_products.copy(deep=True)
+        # drop duplicates of names
+        input_df = input_df.drop_duplicates(subset='name')
+        self._print_diff(self.final_products, input_df)
+        # drop columns that are not needed
+        input_df = input_df[['name', 'smiles']]
+        # place number in batch
+        if self.batch_num > 0:
+            print(f'Only placing the top {self.batch_num} products.')
+            input_df = input_df.iloc[:self.batch_num]
+        return input_df
+
+    def _print_diff(self, orig_df: pd.DataFrame, input_df: pd.DataFrame):
+        """
+        This function is used to print the difference between the original number of analogues and the number of
+        valid analogues.
+        """
+        assert len(input_df) <= len(orig_df), ("Problem with finding unique analogues. There are more than were in "
+                                               "the original list of analogues")
+        num_filtered = len(orig_df) - len(input_df)
+        percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
+        print(f'Placing {len(input_df)} ({percent_diff}%) unique analogues out of {len(orig_df)} analogues.')
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -105,13 +139,13 @@ class SlipperFitter:
         self.output_path: str = os.path.join(self.output_dir, 'output')
         os.makedirs(self.output_path, exist_ok=True)
         Wictor.work_path = self.output_path
-        os.chdir(self.output_dir) # this does the trick
+        os.chdir(self.output_dir)  # this does the trick
         Wictor.monster_throw_on_discard = True  # stop this merger if a fragment cannot be used.
         Wictor.monster_joining_cutoff = 5  # Å
         Wictor.quick_reanimation = False  # for the impatient
         Wictor.error_to_catch = Exception  # stop the whole laboratory otherwise
         Wictor.enable_stdout(logging.CRITICAL)
-        #Wictor.enable_logfile(os.path.join(self.output_path, f'fragmenstein.log'), logging.ERROR)
+        # Wictor.enable_logfile(os.path.join(self.output_path, f'fragmenstein.log'), logging.ERROR)
         Laboratory.Victor = Wictor
 
     def edit_placements(self):
@@ -123,8 +157,13 @@ class SlipperFitter:
                             (self.placements.outcome == 'acceptable'), 'outcome'] = 'weak'
         self.placements['unminimized_mol'] = self.placements.unminimized_mol.fillna(Chem.Mol())
         self.fix_intxns()
-        percent_success = (self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
-        print(f'{self.placements.outcome.value_counts()["acceptable"]} ({percent_success}%) successful placements '
+        if self.placements.outcome.value_counts().get('acceptable') is None:
+            num_success = 0
+            percent_success = 0
+        else:
+            num_success = self.placements.outcome.value_counts()['acceptable']
+            percent_success = (self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
+        print(f'{num_success} ({percent_success}%) successful placements '
               f'where ∆∆G < 0 and RMSD < 2 Å.')
 
     def fix_intxns(self):
@@ -156,5 +195,3 @@ class SlipperFitter:
         # get final name same as final products csv
         merged_placements_path = self.final_products_csv_path.split('.')[0] + '_placements.csv'
         self.merged_placements.to_csv(merged_placements_path)
-
-
