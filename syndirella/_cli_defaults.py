@@ -12,8 +12,11 @@ cli_default_settings = dict(
     rxn_smarts_path=os.environ.get('SYNDIRELLA_RXN_SMARTS_PATH',
                                    "/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/"
                                    "constants/RXN_SMARTS_CONSTANTS.json"),
-    reactant_filters_path=os.environ.get('SYNDIRELLA_REACTANT_FILTER_PATH',
+    reactant_filters_path=os.environ.get('SYNDIRELLA_REACTANT_FILTERS_PATH',
                                          "/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/"
                                          "constants/REACTANT_FILTER_CONSTANTS_V2.json"),
-    supressed_exceptions=(Exception,),
+    additional_rxn_options_path=os.environ.get('SYNDIRELLA_ADDITIONAL_RXN_OPTIONS_PATH',
+                                               "/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/"
+                                               "constants/ADDITIONAL_RXN_OPTIONS.json"),
+    supressed_exceptions=(Exception,)
 )

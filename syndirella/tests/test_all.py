@@ -18,10 +18,11 @@ import pickle
 
 class TestFromInputBase(unittest.TestCase):
     def setUp(self):
-        self.base = 'COC(=O)NCCc1ccnn1C'
+        self.base = 'N#CC(=Cc1sc(N2CCOCC2)nc1-c1ccccc1)C(=O)NC1CCCCC1'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/test_output'
 
     def test_from_input(self):
-        cobbler = Cobbler(self.base)
+        cobbler = Cobbler(self.base, self.output_dir)
         cobbler.get_routes()
 
 class TestFairyFilters(unittest.TestCase):

@@ -20,8 +20,13 @@ class CobblersWorkshop():
     """
     This is the CobblersWorkshop class. It represents a full route.
     """
-    def __init__(self, product: str, reactants: List[Tuple], reaction_names: List[str],
-                 num_steps: int, output_dir: str, filter: bool,
+    def __init__(self,
+                 product: str,
+                 reactants: List[Tuple],
+                 reaction_names: List[str],
+                 num_steps: int,
+                 output_dir: str,
+                 filter: bool,
                  atoms_ids_expansion: dict = None):
         self.product: str = product
         self.id: str = self.generate_inchi_ID()

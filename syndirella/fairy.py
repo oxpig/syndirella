@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop._fairy.py
+syndirella.cobblers_workshop.fairy.py
 
 This class 'Fairy' is used to provide reactants that offer additional similar cheaper reactants or filter out
 reactants based on simple filters.
@@ -15,14 +15,17 @@ from rdkit.Chem import rdMolDescriptors
 from rdkit import DataStructs
 
 class Fairy:
-    def __init__(self, reaction_name: str):
+    def __init__(self):
         with open(cli_default_settings['reactant_filters_path']) as f:
             # the reactant_filters has structure of
             # {'filter_name': 'filter_smarts'}
             self.reactant_filters: Dict[str, str] = json.load(f)
-        self.reaction_name = reaction_name
+        with open(cli_default_settings['additional_rxn_options_path']) as f:
+            # the additional_rxn_options has structure of
+            # {'reaction_name': 'additional_reaction_name'}
+            self.additional_rxn_options: Dict[str, str] = json.load(f)
 
-    def find(self, reactant: Chem.Mol) -> List[str]:
+    def find(self, reactant: Chem.Mol, reaction_name: str) -> List[str]:
         """
         This function is used to find additional similar reactants that are cheaper as defined in the
         self.reactant_filters.
@@ -30,8 +33,8 @@ class Fairy:
         orig_reactant: str = Chem.MolToSmiles(reactant)
         try:
             # Attempt to get the reactant filters using the reaction name
-            reactant_filters: Dict[str, Any] = self.reactant_filters[self.reaction_name]
-            print(f"Reaction name '{self.reaction_name}' found in reactant filters. Getting cheaper reactants...")
+            reactant_filters: Dict[str, Any] = self.reactant_filters[reaction_name]
+            print(f"Reaction name '{reaction_name}' found in reactant filters. Getting cheaper reactants...")
             # get similar reactant
             similar_reactant: str = self._get_similar_reactant(reactant, reactant_filters)
         except KeyError:
@@ -189,4 +192,50 @@ class Fairy:
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
         print(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
+
+    def get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
+        """
+        This function returns the final routes to elaborate on. It is called by Cobbler class.
+        """
+        # check what reactions are in it
+        reaction_names = [[reaction['name'].replace(" ","_") for reaction in route] for route in routes]
+        # get first route
+        first_route_names = reaction_names[0]
+        if len(first_route_names) == 1:
+            print(f"The route found is {len(first_route_names)} step. The forward synthesis is:")
+            print(f"{first_route_names[::-1]}") # reverse the order to make it forward synthesis
+        else:
+            print(f"The first route found is {len(first_route_names)} steps. The forward synthesis is:")
+            print(f"{first_route_names[::-1]}") # reverse the order to make it forward synthesis
+        final_routes: List[List[Dict]] = self.get_additional_routes(first_route_names, routes)
+        return final_routes
+
+    def get_additional_routes(self, first_route_names: List[str], routes: List[List[Dict]]) -> List[List[Dict]]:
+        """
+        This function is used to get additional routes if specified in fairy filters.
+        """
+        additional_route = None
+        # look at each reaction in the first route
+        for reaction_name in first_route_names:
+            # get additional reactions if specified in fairy filters
+            if reaction_name in self.additional_rxn_options:
+                additional_reaction_name = self.additional_rxn_options[reaction_name]
+                print(f"Additional reaction for '{reaction_name}' found in fairy filters. "
+                      f"Getting additional routes containing '{additional_reaction_name}'...")
+                # just get the first additional route
+                additional_route: List[List[Dict]] = self.get_additional_route(additional_reaction_name, routes)
+        final_route: List[List[Dict]] = [routes[0]]
+        assert final_route != additional_route, "The first route and the additional route are the same."
+        if additional_route is not None:
+            final_route.append(additional_route)
+        return final_route
+
+    def get_additional_route(self, additional_reaction_name: str, routes: List[List[Dict]]) -> List[List[Dict]]:
+        """
+        This function is used to get additional routes containing the additional reaction name.
+        """
+        # get additional route that is not the first one containing the additional reaction name
+        additional_routes = [route for route in routes if
+                             any(additional_reaction_name in reaction['name'] for reaction in route)]
+        return additional_routes[0] # return the first additional route
 
