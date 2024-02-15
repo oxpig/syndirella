@@ -7,11 +7,11 @@ This module contains the functionality for a Postera search.
 from ._database_search import DatabaseSearch
 from ._reaction import Reaction
 import os
-from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple, Optional)
+from typing import (Any, List, Dict, Tuple, Optional)
 from rdkit import Chem
 import requests
 import json
-from syndirella.cobblers_workshop._fairy import Fairy
+from syndirella.fairy import Fairy
 
 
 class Postera(DatabaseSearch):
@@ -24,14 +24,14 @@ class Postera(DatabaseSearch):
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.search_type = search_type
-        self.fairy = Fairy(reaction.reaction_name)
+        self.fairy = Fairy()
 
     def perform_database_search(self, reactant: Chem.Mol):
         """
         This function is used to perform the Postera search using the database_search_function.
         """
         # 1. Get additional similar reactant if reaction is one with additional reactants
-        reactants: List[str] = self.fairy.find(reactant)
+        reactants: List[str] = self.fairy.find(reactant, self.reaction.reaction_name)
         # 2. Perform the search for all
         hits_all: List[Tuple[str, float]] = []
         for smiles in reactants:
