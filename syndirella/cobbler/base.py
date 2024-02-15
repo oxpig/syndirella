@@ -65,7 +65,7 @@ class Cobbler:
 
     def _get_final_routes(self, routes: List[Dict]) -> List[Dict]:
         """
-        This function is used to get the passing routes, which are routes that contain all reactions we have encoded.
+        This function is used to get the final routes, which are routes that contain all reactions we have encoded.
         Then the final routes is either the first 1 or other specified by the fairy filters.
         """
         passing_routes = []
