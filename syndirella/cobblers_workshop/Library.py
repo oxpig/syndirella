@@ -1,19 +1,17 @@
 #!venv/bin/env python3
 """
-syndirella.cobblers_workshop._library.py
+syndirella.cobblers_workshop.Library.py
 
 This module contains the Library class. This class contains information about the analogue library. It will create the
 analogue library from the Reaction object. It will also store the analogue library as a .csv file.
 """
 
 import pandas as pd
-from rdkit import Chem
 from rdkit.Chem.FilterCatalog import *
-from ._reaction import Reaction
-from ._postera import Postera
+from .Reaction import Reaction
+from syndirella.Postera import Postera
 from typing import (List, Dict, Tuple)
 import os
-from collections import OrderedDict
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 import glob

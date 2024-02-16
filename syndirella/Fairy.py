@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop.fairy.py
+syndirella.cobblers_workshop.Fairy.py
 
 This class 'Fairy' is used to provide reactants that offer additional similar cheaper reactants or filter out
 reactants based on simple filters.
@@ -31,6 +31,7 @@ class Fairy:
         self.reactant_filters.
         """
         orig_reactant: str = Chem.MolToSmiles(reactant)
+        similar_reactant: str = None
         try:
             # Attempt to get the reactant filters using the reaction name
             reactant_filters: Dict[str, Any] = self.reactant_filters[reaction_name]

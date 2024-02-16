@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-smarts.py
+SMARTSHandler.py
 
 This module contains the SMARTSHandler class. This class contains information about the reaction SMARTS.
 """

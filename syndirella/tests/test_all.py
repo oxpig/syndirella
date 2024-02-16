@@ -10,11 +10,23 @@ import unittest
 
 import pandas as pd
 
-from syndirella.cobblers_workshop._base import CobblersWorkshop
-from syndirella.cobbler.base import Cobbler
-from ..cobblers_workshop._library import Library
-from syndirella.slipper._base import Slipper
-import pickle
+from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from syndirella.Cobbler import Cobbler
+from ..cobblers_workshop.Library import Library
+from syndirella.slipper.Slipper import Slipper
+from syndirella.pipeline import run_pipeline
+
+class TestPipeline(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/test.csv'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/syndirella'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
+                              'x0310_template.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/clean_hits.sdf'
+        self.batch_num = 3
+
+    def test_pipeline(self):
+        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num)
 
 class TestFromInputBase(unittest.TestCase):
     def setUp(self):

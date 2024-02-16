@@ -1,6 +1,6 @@
 #!venv/bin/env python3
 """
-slipper_fitter/_base.py
+slipper_fitter/CobblersWorkshop.py
 
 This module contains the SlipperFitter class.
 """
@@ -162,7 +162,8 @@ class SlipperFitter:
             percent_success = 0
         else:
             num_success = self.placements.outcome.value_counts()['acceptable']
-            percent_success = (self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
+            percent_success = round((self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
+                                    , 2)
         print(f'{num_success} ({percent_success}%) successful placements '
               f'where ∆∆G < 0 and RMSD < 2 Å.')
 

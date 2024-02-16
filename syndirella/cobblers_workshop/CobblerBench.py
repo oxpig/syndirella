@@ -1,6 +1,6 @@
 #!venv/bin/env python3
 """
-syndirella._cobbler_bench.py
+syndirella.CobblerBench.py
 
 This module contains the CobblerBench class. One instance is made for each step.
 """
@@ -10,10 +10,10 @@ from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from ._reaction import Reaction
-from ._library import Library
+from .Reaction import Reaction
+from .Library import Library
 from ..error import ReactionError
-from ..smarts import SMARTSHandler
+from ..SMARTSHandler import SMARTSHandler
 
 class CobblerBench:
     """
