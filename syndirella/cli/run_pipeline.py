@@ -5,7 +5,7 @@ from functools import partial
 from rdkit import Chem
 from .._cli_defaults import cli_default_settings
 from .base import set_verbose
-from ..smarts import SMARTSHandler
+from ..SMARTSHandler import SMARTSHandler
 from typing import List, Any, Dict
 import pandas as pd
 from rdkit.Chem import PandasTools

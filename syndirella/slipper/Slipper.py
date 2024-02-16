@@ -1,23 +1,24 @@
 #!venv/bin/env python3
 """
-syndirella.slipper._base.py
+syndirella.slipper.Slipper.py
 
 This module contains the Slipper class. A slipper in this metaphor is the set of molecules that is the
 product of a reaction.
 """
-from typing import (List, Dict, Tuple, Union, Optional)
+from typing import (List)
 import pandas as pd
-from syndirella.slipper.slipper_synthesizer._base import SlipperSynthesizer
-from syndirella.cobblers_workshop._library import Library
-from syndirella.slipper.slipper_fitter._base import SlipperFitter
-from syndirella.slipper._placement_data import get_placement_data, get_delta_delta_G, get_bound_unbound, make_success_csv_row
+from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
+from syndirella.cobblers_workshop.Library import Library
+from syndirella.slipper.SlipperFitter import SlipperFitter
+from syndirella.slipper._placement_data import get_placement_data
 import os, shutil
 
 class Slipper:
     """
     This class is instantiated to represent all products for a route.
     """
-    def __init__(self, final_library: Library,
+    def __init__(self,
+                 final_library: Library,
                  template: str = None,
                  hits: str = None,
                  hits_names: List[str] = None,

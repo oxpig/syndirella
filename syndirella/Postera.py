@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-_postera.py
+Postera.py
 
 This module contains the functionality for a Postera search.
 """
-from ._database_search import DatabaseSearch
-from ._reaction import Reaction
+from syndirella.DatabaseSearch import DatabaseSearch
+from syndirella.cobblers_workshop.Reaction import Reaction
 import os
 from typing import (Any, List, Dict, Tuple, Optional)
 from rdkit import Chem
 import requests
 import json
-from syndirella.fairy import Fairy
+from syndirella.Fairy import Fairy
 
 
 class Postera(DatabaseSearch):

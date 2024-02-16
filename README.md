@@ -28,6 +28,10 @@ syndirella --help
 
 ## Features
 
+## Important Notes
+- If you change the `RXN_SMARTS_CONSTANTS.json` file you will need to recompile all outputs for your library and products <br />
+to accurately reflect the changes.
+
 
 
 

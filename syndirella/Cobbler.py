@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-syndirella.cobbler.base.py
+syndirella.cobbler.Cobbler.py
 
 This module contains the Cobbler class. It is used to perform retrosynthetic analysis of the base compound. It handles
 Poster searches, including multiple elaboration searches.
 """
 import os
-from typing import (List, Dict, Tuple, Union, Optional)
-from syndirella.cobblers_workshop._base import CobblersWorkshop
-from syndirella.cobblers_workshop._postera import Postera
-from syndirella.smarts import SMARTSHandler
-from syndirella.fairy import Fairy
+from typing import (List, Dict)
+from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from syndirella.Postera import Postera
+from syndirella.SMARTSHandler import SMARTSHandler
+from syndirella.Fairy import Fairy
 
 class Cobbler:
     """
@@ -125,3 +125,9 @@ class Cobbler:
             print(f"{reaction} <- {reactants[i]}")
         print('Final product:', product)
 
+    def save(self):
+        """
+        Pickle cobbler object, so it can be read later.
+        """
+        # TODO: Finish this function
+        pass

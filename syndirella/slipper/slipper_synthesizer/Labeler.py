@@ -1,6 +1,6 @@
 #!venv/bin/env python3
 """
-slipper_synthesizer/_label.py
+slipper_synthesizer/Labeler.py
 
 This module contains a helper module for the SlipperSynthesizer class to label the products based on labeled atom ids
 to expand or not expand.
@@ -11,7 +11,7 @@ from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple, Union, Optional)
 import pandas as pd
 from rdkit.Chem.Draw import rdMolDraw2D
-from syndirella.cobblers_workshop._library import Library
+from syndirella.cobblers_workshop.Library import Library
 import time
 
 class Labeler:

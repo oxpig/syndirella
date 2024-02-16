@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop._base.py
+syndirella.cobblers_workshop.CobblersWorkshop.py
 
 This module contains the CobblersWorkshop class. One instance of this object is used to describe a full route.
 """
 
-from ._cobbler_bench import CobblerBench
-from ._database_search import DatabaseSearch
-from typing import (List, Dict, Tuple, Union, Optional)
-from syndirella.cobblers_workshop._library import Library
-from syndirella.smarts import SMARTSHandler
+from .CobblerBench import CobblerBench
+from typing import (List, Tuple)
+from syndirella.cobblers_workshop.Library import Library
+from syndirella.SMARTSHandler import SMARTSHandler
 from rdkit import Chem
 from rdkit.Chem import rdinchi
-from syndirella.slipper._base import Slipper
+from syndirella.slipper.Slipper import Slipper
 import traceback
 
 

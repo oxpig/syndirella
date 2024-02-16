@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop._reaction.py
+syndirella.cobblers_workshop.Reaction.py
 
 This module contains the Reaction class. One instance of this object is used to describe a single reaction.
 """
@@ -9,7 +9,7 @@ from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple)
 from syndirella.constants.constants import DUMMY_SYMBOL
-from syndirella.smarts import SMARTSHandler
+from syndirella.SMARTSHandler import SMARTSHandler
 from syndirella.error import ReactionError
 
 class Reaction():

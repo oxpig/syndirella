@@ -1,6 +1,6 @@
 #!venv/bin/env python3
 """
-slipper_synthesizer/_base.py
+slipper_synthesizer/CobblersWorkshop.py
 
 This module contains the SlipperSynthesizer class.
 """
@@ -11,8 +11,8 @@ from rdkit.Chem import AllChem
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit.Chem.Fingerprints import FingerprintMols
-from syndirella.cobblers_workshop._library import Library
-from syndirella.slipper.slipper_synthesizer._label import Labeler
+from syndirella.cobblers_workshop.Library import Library
+from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
 import pandas as pd
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 import os
@@ -111,7 +111,7 @@ class SlipperSynthesizer:
         This function is used to order the analogues dataframes by num atom diff to base compound,
         number of reactant matches found, and lead time.
         """
-        print(f"Ordering analogues of r{reactant_prefix} before finding products...")
+        print(f"Ordering analogues of {reactant_prefix} before finding products...")
         # Add num_atom_diff to base reactant, which is the first reactant
         base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
         df[f'{reactant_prefix}_num_atom_diff'] = (
@@ -140,6 +140,7 @@ class SlipperSynthesizer:
         df = df[~(df[analogue_columns[0]] & df[analogue_columns[1]])]
         # only keep rows with original analogue_prefix true
         orig_r_column = [col for col in analogue_columns if reactant_prefix in col][0]
+        df = df[df[orig_r_column]]
         df.reset_index(drop=True, inplace=True)
         num_filtered = len(orig_df) - len(df)
         percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
@@ -162,7 +163,7 @@ class SlipperSynthesizer:
         if lengths[0] > max_length_each and lengths[1] <= max_length_each:
             # Cut the first dataframe
             analogue_prefix = list(self.analogues_dataframes_to_react.keys())[0]
-            print(f"Too many analogues for r{analogue_prefix}.")
+            print(f"Too many analogues for {analogue_prefix}.")
             analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
             shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
             self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
@@ -251,20 +252,27 @@ class SlipperSynthesizer:
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
         products = reaction.RunReactants((r1, r2))
-        if len(products) > 1: # should only return 1 product, if more than 1 then there are selectivity issues
-            print(f"Found multiple products at {row.name}. Flagging...")
-            row['flag'] = 'one_of_multiple_products'
-            if all([self.can_be_sanitized(product[0]) for product in products]):
-                row['smiles'] = [Chem.MolToSmiles(product[0]) for product in products]
-                row['num_atom_diff'] = [self.calc_num_atom_diff(self.library.reaction.product, product[0]) for product in products]
-            return row
         if len(products) == 0:
             print("No products found.")
             row['flag'] = None
             row['smiles'] = None
             row['num_atom_diff'] = None
             return row
-        product = products[0]
+        elif len(products) > 1 or len(products[0]) > 1: # should only return 1 product, if more than 1 then there are selectivity issues
+            # check if all products can be sanitized, only keep the ones that can
+            row_smiles = []
+            row_num_atom_diff = []
+            for product in products:
+                if self.can_be_sanitized(product[0]): # only keep products that can be sanitized
+                    row_smiles.append(Chem.MolToSmiles(product[0]))
+                    row_num_atom_diff.append(self.calc_num_atom_diff(self.library.reaction.product, product[0]))
+            if len(row_smiles) > 1: # if more than 1 product can be sanitized then flag
+                print(f"Found multiple products at {row.name}. Flagging...")
+                row['flag'] = 'one_of_multiple_products'
+            row['smiles'] = row_smiles
+            row['num_atom_diff'] = row_num_atom_diff
+            return row
+        product = products[0][0]
         if self.can_be_sanitized(product):
             base = self.library.reaction.product
             num_atom_diff = self.calc_num_atom_diff(base, product)
@@ -273,7 +281,8 @@ class SlipperSynthesizer:
             row['num_atom_diff'] = num_atom_diff
             return row
 
-    def can_be_sanitized(self, mol):
+    def can_be_sanitized(self, mol: Chem.Mol):
+        assert type(mol) == Chem.Mol, f"Expected a Chem.Mol object, got {type(mol)}."  # Make sure it's a Chem.Mol object
         try:
             Chem.SanitizeMol(mol)
             return True
@@ -296,7 +305,7 @@ class SlipperSynthesizer:
         This function is used to filter the products dataframe to remove any rows with None values. Also
         removes duplicates.
         """
-        products.dropna(subset=['smiles'], inplace=True, axis=0)
+        #TODO: Check this out, it's bugged
         products.dropna(inplace=True, axis=1, how='all')
         products.drop_duplicates(inplace=True, ignore_index=True)
         # reorder by num_atom_diff if calculated
@@ -402,8 +411,10 @@ class SlipperSynthesizer:
         """
         This function is used to enumerate the stereoisomers of the products.
         """
+        print("Enumerating stereoisomers...")
         new_rows = []
         for index, row in products.iterrows():
+            # TODO: There are floats in this row??
             stereoisomers = self.find_stereoisomers(row['smiles'])
             for i, iso in enumerate(stereoisomers):
                 new_row = row.copy()

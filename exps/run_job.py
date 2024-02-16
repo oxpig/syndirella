@@ -11,8 +11,8 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 import argparse
 
-from syndirella.cobblers_workshop._library import Library
-from syndirella.slipper._base import Slipper
+from syndirella.cobblers_workshop.Library import Library
+from syndirella.slipper.Slipper import Slipper
 from typing import (List, Dict, Tuple, Union, Any)
 
 def config_parser():
