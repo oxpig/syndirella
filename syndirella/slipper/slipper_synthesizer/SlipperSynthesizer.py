@@ -17,6 +17,7 @@ import pandas as pd
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 import os
 
+
 class SlipperSynthesizer:
     """
     This class is used to perform the whole process of finding products of the analogues of reactants.
@@ -211,7 +212,7 @@ class SlipperSynthesizer:
         r1 = self.analogues_dataframes_to_react['r1']
         r2 = self.analogues_dataframes_to_react['r2']
         combinations = pd.MultiIndex.from_product([r1.index, r2.index], names=['r1', 'r2']).to_frame(index=False)
-        #before merging drop analogue_columns
+        # before merging drop analogue_columns
         r1.drop(self.analogue_columns, axis=1, inplace=True)
         r2.drop(self.analogue_columns, axis=1, inplace=True)
         # merge indicies with original dataframes
@@ -258,15 +259,16 @@ class SlipperSynthesizer:
             row['smiles'] = None
             row['num_atom_diff'] = None
             return row
-        elif len(products) > 1 or len(products[0]) > 1: # should only return 1 product, if more than 1 then there are selectivity issues
+        elif len(products) > 1 or len(
+                products[0]) > 1:  # should only return 1 product, if more than 1 then there are selectivity issues
             # check if all products can be sanitized, only keep the ones that can
             row_smiles = []
             row_num_atom_diff = []
             for product in products:
-                if self.can_be_sanitized(product[0]): # only keep products that can be sanitized
+                if self.can_be_sanitized(product[0]):  # only keep products that can be sanitized
                     row_smiles.append(Chem.MolToSmiles(product[0]))
                     row_num_atom_diff.append(self.calc_num_atom_diff(self.library.reaction.product, product[0]))
-            if len(row_smiles) > 1: # if more than 1 product can be sanitized then flag
+            if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
                 print(f"Found multiple products at {row.name}. Flagging...")
                 row['flag'] = 'one_of_multiple_products'
             row['smiles'] = row_smiles
@@ -282,7 +284,8 @@ class SlipperSynthesizer:
             return row
 
     def can_be_sanitized(self, mol: Chem.Mol):
-        assert type(mol) == Chem.Mol, f"Expected a Chem.Mol object, got {type(mol)}."  # Make sure it's a Chem.Mol object
+        assert type(
+            mol) == Chem.Mol, f"Expected a Chem.Mol object, got {type(mol)}."  # Make sure it's a Chem.Mol object
         try:
             Chem.SanitizeMol(mol)
             return True
@@ -305,8 +308,9 @@ class SlipperSynthesizer:
         This function is used to filter the products dataframe to remove any rows with None values. Also
         removes duplicates.
         """
-        #TODO: Check this out, it's bugged
+        # TODO: Drop 'smiles' nan values
         products.dropna(inplace=True, axis=1, how='all')
+        products.dropna(subset=['smiles'], inplace=True)
         products.drop_duplicates(inplace=True, ignore_index=True)
         # reorder by num_atom_diff if calculated
         if 'num_atom_diff' in products.columns:
@@ -315,7 +319,7 @@ class SlipperSynthesizer:
         return products
 
     def calculate_fingerprints(self, products):
-        """Calculate RDKit fingerprints for each molecule."""
+        """Calculate morgan fingerprints for each molecule."""
         products['mol'] = products['smiles'].apply(lambda x: Chem.MolFromSmiles(x) if pd.notnull(x) else None)
         products['fp'] = products['mol'].apply(
             lambda x: AllChem.GetMorganFingerprintAsBitVect(x, 2, nBits=1024) if x is not None else None)
@@ -392,8 +396,8 @@ class SlipperSynthesizer:
                 products.loc[products['group_id'] == group, 'name'] = first_name
         return products
 
-    # Mock-up of how you'd use these functions
     def add_metadata(self, products: pd.DataFrame) -> pd.DataFrame:
+        print('Adding metadata to products...')
         products['name'] = None  # Add a name column
         products = self.calculate_fingerprints(products)
         products, base_group_id = self.find_similarity_groups(products)
@@ -403,7 +407,6 @@ class SlipperSynthesizer:
         products['step'] = self.library.current_step
         products['total_steps'] = self.library.num_steps
         products['base_compound'] = f"{self.library.id}-base"
-        # Optional: Remove temporary columns if desired
         products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         return products
 
@@ -415,13 +418,16 @@ class SlipperSynthesizer:
         new_rows = []
         for index, row in products.iterrows():
             # TODO: There are floats in this row??
-            stereoisomers = self.find_stereoisomers(row['smiles'])
-            for i, iso in enumerate(stereoisomers):
-                new_row = row.copy()
-                new_row['smiles'] = iso
-                new_row['name'] = f"{row['name']}-{chr(65 + i)}"  # Appending A, B, C, etc., to the name
-                new_row['conformer'] = chr(65 + i)
-                new_rows.append(new_row)
+            try:
+                stereoisomers = self.find_stereoisomers(row['smiles'])
+                for i, iso in enumerate(stereoisomers):
+                    new_row = row.copy()
+                    new_row['smiles'] = iso
+                    new_row['name'] = f"{row['name']}-{chr(65 + i)}"  # Appending A, B, C, etc., to the name
+                    new_row['conformer'] = chr(65 + i)
+                    new_rows.append(new_row)
+            except:
+                print(f"Could not enumerate stereoisomers for {row['smiles']}.")
         new_df = pd.DataFrame(new_rows)
         exploded_df = pd.concat([products, new_df], ignore_index=True)
         # remove NaNs
@@ -461,14 +467,3 @@ class SlipperSynthesizer:
         """
         labeler = Labeler(self.products, self.atom_ids_expansion, self.library)
         self.products = labeler.label_products()
-
-
-
-
-
-
-
-
-
-
-

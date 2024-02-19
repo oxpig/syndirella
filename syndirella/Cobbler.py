@@ -124,6 +124,7 @@ class Cobbler:
             print('Step', i+1)
             print(f"{reaction} <- {reactants[i]}")
         print('Final product:', product)
+        print()
 
     def save(self):
         """

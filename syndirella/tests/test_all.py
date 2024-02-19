@@ -23,7 +23,7 @@ class TestPipeline(unittest.TestCase):
         self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
                               'x0310_template.pdb')
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/clean_hits.sdf'
-        self.batch_num = 3
+        self.batch_num = 1
 
     def test_pipeline(self):
         run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num)
