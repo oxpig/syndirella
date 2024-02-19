@@ -28,7 +28,7 @@ class CobblersWorkshop():
                  filter: bool,
                  atoms_ids_expansion: dict = None):
         self.product: str = product
-        self.id: str = self.generate_inchi_ID()
+        self.id: str = CobblersWorkshop.generate_inchi_ID(self.product)
         self.reactants: List[Tuple[str]] = reactants
         self.reaction_names: List[str] = reaction_names
         self.num_steps: int = num_steps
@@ -39,14 +39,6 @@ class CobblersWorkshop():
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None
         self.final_library: Library = None
-
-    def generate_inchi_ID(self) -> str:
-        """
-        This function is used to generate a unique id for the route just using the product.
-        """
-        ID = rdinchi.MolToInchi(Chem.MolFromSmiles(self.product))
-        id = rdinchi.InchiToInchiKey(ID[0])
-        return id
 
     def get_final_library(self):
         """
@@ -102,4 +94,15 @@ class CobblersWorkshop():
         cobbler_bench2 = CobblerBench(self.product, reactants2, reaction_name2, self.output_dir, self.smarts_handler,
                                       self.id, self.num_steps, current_step, self.filter)
         self.final_library = cobbler_bench2.find_analogues_first_step()
+
+    @staticmethod
+    def generate_inchi_ID(smiles: str) -> str:
+        """
+        This function is used to generate a unique id for the route just using the product.
+        """
+        # assert that you can make a mol out of smiles
+        assert Chem.MolFromSmiles(smiles), f"Could not create a molecule from the smiles {smiles}."
+        ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
+        id = rdinchi.InchiToInchiKey(ID[0])
+        return id
 

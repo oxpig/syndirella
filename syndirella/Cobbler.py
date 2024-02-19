@@ -118,7 +118,6 @@ class Cobbler:
         """
         This function is used to print the route.
         """
-        print()
         print('Syndirella 👑 will elaborate the following route:')
         for i, reaction in enumerate(reaction_names):
             print('Step', i+1)

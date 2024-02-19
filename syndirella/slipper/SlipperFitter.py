@@ -76,13 +76,13 @@ class SlipperFitter:
         input_df: pd.DataFrame = self.final_products.copy(deep=True)
         # drop duplicates of names
         input_df = input_df.drop_duplicates(subset='name')
-        self._print_diff(self.final_products, input_df)
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
         # place number in batch
         if self.batch_num > 0:
             print(f'Only placing the top {self.batch_num} products.')
             input_df = input_df.iloc[:self.batch_num]
+        self._print_diff(self.final_products, input_df)
         return input_df
 
     def _print_diff(self, orig_df: pd.DataFrame, input_df: pd.DataFrame):
@@ -92,9 +92,9 @@ class SlipperFitter:
         """
         assert len(input_df) <= len(orig_df), ("Problem with finding unique analogues. There are more than were in "
                                                "the original list of analogues")
-        num_filtered = len(orig_df) - len(input_df)
-        percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
-        print(f'Placing {len(input_df)} ({percent_diff}%) unique analogues out of {len(orig_df)} analogues.')
+        num_placed = len(input_df)
+        percent = round(((len(input_df) / len(orig_df)) * 100), 2)
+        print(f'Placing {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -176,15 +176,15 @@ class SlipperFitter:
         """
         This function merges the fragmenstein output with products csv.
         """
-        # merge on name
-        merged_placements = pd.merge(self.final_products, self.placements, on='name', how='left')
         # Define the columns to drop
-        columns_to_drop = ['smiles_y', 'binary_hits', 'mode', 'runtime', 'disregarded', 'unmin_binary', 'min_binary',
+        columns_to_drop = ['smiles', 'binary_hits', 'mode', 'runtime', 'disregarded', 'unmin_binary', 'min_binary',
                            'hit_binaries', 'unminimized_mol', 'minimized_mol', 'hit_mols', 'hit_names']
         # Filter out the columns that do not exist in merged_placements
-        columns_to_drop = [col for col in columns_to_drop if col in merged_placements.columns]
+        columns_to_drop = [col for col in columns_to_drop if col in self.placements.columns]
         # Drop the columns if they exist
-        merged_placements = merged_placements.drop(columns=columns_to_drop)
+        self.placements = self.placements.drop(columns=columns_to_drop)
+        # merge on name
+        merged_placements = pd.merge(self.final_products, self.placements, on='name', how='left')
         return merged_placements
 
     def save_placements(self):

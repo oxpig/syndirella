@@ -16,6 +16,7 @@ from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
 import pandas as pd
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 import os
+import shortuuid
 
 
 class SlipperSynthesizer:
@@ -27,15 +28,19 @@ class SlipperSynthesizer:
     This is supposed to be instantiated for each step in the route.
     """
 
-    def __init__(self, library: Library,
+    def __init__(self,
+                 library: Library,
+                 output_dir: str,
                  atom_ids_expansion: dict = None):
         self.library = library
+        self.output_dir = output_dir
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
         self.reactant_combinations: pd.DataFrame = None
         self.final_products_csv_path: str = None
         self.atom_ids_expansion: dict = atom_ids_expansion
+        self.uuid = shortuuid.ShortUUID().random(length=6)
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -61,13 +66,13 @@ class SlipperSynthesizer:
         csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
-            csv_path = os.path.join(self.library.output_dir, 'extra', csv_name)
+            csv_path = os.path.join(self.output_dir, 'extra', csv_name)
             if os.path.exists(csv_path):
                 print(f"Products already exist at {csv_path}. "
                       f"Loading from file...")
                 return True
         else:
-            final_csv_path = os.path.join(self.library.output_dir, csv_name)
+            final_csv_path = os.path.join(self.output_dir, csv_name)
             if os.path.exists(final_csv_path):
                 print(f"Products already exist at {final_csv_path}. "
                       f"Loading from file...")
@@ -81,9 +86,9 @@ class SlipperSynthesizer:
         csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
-            self.products = pd.read_csv(f"{self.library.output_dir}/extra/{csv_name}")
+            self.products = pd.read_csv(f"{self.output_dir}/extra/{csv_name}")
         else:
-            self.products = pd.read_csv(f"{self.library.output_dir}/{csv_name}")
+            self.products = pd.read_csv(f"{self.output_dir}/{csv_name}")
         # Check if any 'Unnamed' columns and remove them
         unnamed_columns = [col for col in self.products.columns if 'Unnamed' in col]
         if len(unnamed_columns) > 0:
@@ -308,9 +313,7 @@ class SlipperSynthesizer:
         This function is used to filter the products dataframe to remove any rows with None values. Also
         removes duplicates.
         """
-        # TODO: Drop 'smiles' nan values
-        products.dropna(inplace=True, axis=1, how='all')
-        products.dropna(subset=['smiles'], inplace=True)
+        products.dropna(subset=['smiles'], inplace=True, axis=0, how='any')
         products.drop_duplicates(inplace=True, ignore_index=True)
         # reorder by num_atom_diff if calculated
         if 'num_atom_diff' in products.columns:
@@ -380,7 +383,7 @@ class SlipperSynthesizer:
 
     def assign_names_based_on_groups(self, products: pd.DataFrame, library_id: str, base_group_id: int) -> pd.DataFrame:
         """Assign names to products based on their group ID, ensuring duplicates have the same name."""
-        base_name = f"{library_id}-base"
+        base_name = f"{library_id}-{self.uuid}-base"
         unique_groups = products['group_id'].unique()
         # Assign names based on group ID
         for group in unique_groups:
@@ -391,8 +394,9 @@ class SlipperSynthesizer:
                 continue
             group_members = products[products['group_id'] == group]
             if not group_members.empty:
-                first_name = group_members.iloc[0]['name'] if pd.notnull(
-                    group_members.iloc[0]['name']) else f"{library_id}-{int(group)}"
+                first_name = group_members.iloc[0]['name'] \
+                    if pd.notnull(group_members.iloc[0]['name']) \
+                    else f"{library_id}-{self.uuid}-{int(group)}"
                 products.loc[products['group_id'] == group, 'name'] = first_name
         return products
 
@@ -407,6 +411,7 @@ class SlipperSynthesizer:
         products['step'] = self.library.current_step
         products['total_steps'] = self.library.num_steps
         products['base_compound'] = f"{self.library.id}-base"
+        products['uuid'] = self.uuid
         products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         return products
 
@@ -417,7 +422,6 @@ class SlipperSynthesizer:
         print("Enumerating stereoisomers...")
         new_rows = []
         for index, row in products.iterrows():
-            # TODO: There are floats in this row??
             try:
                 stereoisomers = self.find_stereoisomers(row['smiles'])
                 for i, iso in enumerate(stereoisomers):
@@ -452,13 +456,13 @@ class SlipperSynthesizer:
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
             print("Since these products are not the final products they will be saved in the /extra folder. \n")
-            print("Saving products to {self.library.output_dir}/extra/{csv_name} \n")
-            os.makedirs(f"{self.library.output_dir}/extra/", exist_ok=True)
-            self.products.to_csv(f"{self.library.output_dir}/extra/{csv_name}", index=False)
+            print(f"Saving products to {self.output_dir}/extra/{csv_name} \n")
+            os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
+            self.products.to_csv(f"{self.output_dir}/extra/{csv_name}", index=False)
         else:
-            self.final_products_csv_path: str = f"{self.library.output_dir}/{csv_name}"
+            self.final_products_csv_path: str = f"{self.output_dir}/{csv_name}"
             print(f"Saving final products to {self.final_products_csv_path} \n")
-            os.makedirs(f"{self.library.output_dir}/", exist_ok=True)
+            os.makedirs(f"{self.output_dir}/", exist_ok=True)
             self.products.to_csv(self.final_products_csv_path, index=False)
 
     def label_products(self):
