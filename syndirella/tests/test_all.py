@@ -24,9 +24,11 @@ class TestPipelineMultipleRxns(unittest.TestCase):
                               'x0310_template.pdb')
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/clean_hits.sdf'
         self.batch_num = 1
+        self.additional_info = ['compound_set']
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num)
+        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
+                     self.additional_info)
 
 class TestPipeline(unittest.TestCase):
     def setUp(self):

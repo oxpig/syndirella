@@ -26,7 +26,8 @@ class CobblersWorkshop():
                  num_steps: int,
                  output_dir: str,
                  filter: bool,
-                 atoms_ids_expansion: dict = None):
+                 atoms_ids_expansion: dict = None,
+                 additional_info: List[str] = []):
         self.product: str = product
         self.id: str = CobblersWorkshop.generate_inchi_ID(self.product)
         self.reactants: List[Tuple[str]] = reactants
@@ -39,6 +40,7 @@ class CobblersWorkshop():
         self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
         self.first_library: Library = None
         self.final_library: Library = None
+        self.additional_info: List[str] = additional_info
 
     def get_final_library(self):
         """
@@ -69,8 +71,16 @@ class CobblersWorkshop():
         reactants: Tuple[str] = self.reactants[0]
         reaction_name: str = self.reaction_names[0]
         current_step = 1
-        cobbler_bench = CobblerBench(self.product, reactants, reaction_name, self.output_dir, self.smarts_handler,
-                                     self.id, self.num_steps, current_step, self.filter)
+        cobbler_bench = CobblerBench(self.product,
+                                     reactants,
+                                     reaction_name,
+                                     self.output_dir,
+                                     self.smarts_handler,
+                                     self.id,
+                                     self.num_steps,
+                                     current_step,
+                                     self.filter,
+                                     self.additional_info)
         self.final_library = cobbler_bench.find_analogues_first_step()
 
     def get_final_library_two_steps(self):
@@ -83,11 +93,20 @@ class CobblersWorkshop():
         reaction_name1 = self.reaction_names[0]
         reaction_name2 = self.reaction_names[1]
         current_step = 1
-        # TODO: I have to find the product of the first step.... Can't just use the final product
-        cobbler_bench1 = CobblerBench(self.product, reactants1, reaction_name1, self.output_dir, self.smarts_handler,
-                                      self.id, self.num_steps, current_step, self.filter)
+        cobbler_bench1 = CobblerBench(self.product,
+                                      reactants1,
+                                      reaction_name1,
+                                      self.output_dir,
+                                      self.smarts_handler,
+                                      self.id,
+                                      self.num_steps,
+                                      current_step,
+                                      self.filter,
+                                      self.additional_info)
         self.first_library = cobbler_bench1.find_analogues_first_step()
-        first_slipper = Slipper(self.first_library, atoms_ids_expansion=self.atoms_ids_expansion)
+        first_slipper = Slipper(self.first_library,
+                                atoms_ids_expansion=self.atoms_ids_expansion,
+                                additional_info=self.additional_info)
         first_slipper.get_products()
 
         current_step = 2
