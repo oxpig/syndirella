@@ -16,6 +16,12 @@ from ..cobblers_workshop.Library import Library
 from syndirella.slipper.Slipper import Slipper
 from syndirella.pipeline import run_pipeline
 
+class TestInputCSV(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/test.csv'
+
+
+
 class TestPipelineMultipleRxns(unittest.TestCase):
     def setUp(self):
         self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_multi_rxn/test.csv'
