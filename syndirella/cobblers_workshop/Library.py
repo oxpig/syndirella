@@ -10,6 +10,7 @@ import pandas as pd
 from rdkit.Chem.FilterCatalog import *
 from .Reaction import Reaction
 from syndirella.Postera import Postera
+import syndirella
 from typing import (List, Dict, Tuple)
 import os
 from rdkit import DataStructs
@@ -25,8 +26,9 @@ class Library:
     """
     def __init__(self, reaction: Reaction, output_dir: str, id: str, num_steps: int, current_step: int, filter: bool):
         self.reaction: Reaction = reaction
-        self.output_dir: str = output_dir
         self.id: str = id
+        self.output_dir: str = f"{output_dir}/{self.id}"
+        self.extra_dir_path: str = f"{self.output_dir}/extra"
         self.num_steps: int = num_steps
         self.current_step: int = current_step
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
@@ -176,11 +178,11 @@ class Library:
         if self.current_step == 2 and self.num_steps == 2:
             csv_path: str = self.find_products_csv_name(reactant)
             return csv_path
-        os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
+        os.makedirs(self.extra_dir_path, exist_ok=True)
         csv_name = (f"{self.id}_{self.reaction.reaction_name}_"
                     f"{analogue_prefix}_{self.current_step}of{self.num_steps}.csv")
-        if os.path.exists(f"{self.output_dir}/extra/{csv_name}"):
-            return f"{self.output_dir}/extra/{csv_name}"
+        if os.path.exists(f"{self.extra_dir_path}/{csv_name}"):
+            return f"{self.extra_dir_path}/{csv_name}"
         else:
             return None
 
@@ -189,7 +191,7 @@ class Library:
         This function is used to find the name of the products .csv file by comparing the reactant to the product with
         bit vector similarity.
         """
-        product_csvs: List[str] = glob.glob(f"{self.output_dir}/extra/"
+        product_csvs: List[str] = glob.glob(f"{self.extra_dir_path}/"
                                             f"{self.id}_*products*.csv")
         for i, path in enumerate(product_csvs):
             df = pd.read_csv(path)
@@ -203,12 +205,12 @@ class Library:
 
     def save_library(self, df: pd.DataFrame, analogue_prefix: str):
         """
-        This function is used to save the analogue library as a .csv file in output_dir/extra/.
+        This function is used to save the analogue library as a .csv file in self.extra_dir_path
         """
-        os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
+        os.makedirs(f"{self.extra_dir_path}", exist_ok=True)
         csv_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.csv"
-        print(f"Saving {analogue_prefix} analogue library to {self.output_dir}/extra/{csv_name} \n")
-        df.to_csv(f"{self.output_dir}/extra/{csv_name}", index=False)
+        print(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{csv_name} \n")
+        df.to_csv(f"{self.extra_dir_path}/{csv_name}", index=False)
 
     def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> Dict[str, float]:
         """
@@ -233,20 +235,27 @@ class Library:
 
     def save(self):
         """
-        This function saves the library object in the self.output_dir.
+        This function saves the library object in the self.extra_output_dir_path.
         """
-        with open(f"{self.output_dir}/extra/{self.id}_library.pkl", "wb") as f:
+        with open(f"{self.extra_dir_path}/{self.id}_library.pkl", "wb") as f:
             pickle.dump(self, f)
 
     @staticmethod
-    def load(output_dir: str):
+    def load(output_dir: str, product: str) -> 'Library':
         """
-        This function loads the library object from the self.output_dir.
+        This function loads the library object. Will have to load all library objects
         """
-        # get .pkl in output_dir, should be only one
-        library_pkls: List[str] = glob.glob(f"{output_dir}/extra/*library*.pkl")
-        assert len(library_pkls) == 1, "More than one library .pkl file found."
+        # TODO: Change this to load all library objects, but check that it contains the specific variable you want
+        # get all .pkl in output_dir.
+        library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
+        # get id from product SMILES
+        id = syndirella.cobblers_workshop.CobblersWorkshop.generate_inchi_ID(product)
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)
-        return library
+            if library.id == id and library.num_steps == library.current_step: # return the final library
+                print(f"Loaded {library.id} final library.")
+                return library
+        # if not found, return None
+        print(f"Could not load {id} final library.")
+        return None
 

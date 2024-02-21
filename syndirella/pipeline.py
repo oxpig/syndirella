@@ -8,6 +8,7 @@ import os
 from typing import List
 import pandas as pd
 from rdkit import Chem
+import datetime
 
 from syndirella.Cobbler import Cobbler
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
@@ -27,12 +28,12 @@ def _assert_csv(csv_path: str) -> str:
     return csv_path
 
 def _elaborate_compound(smiles: str,
-                        compound_set: str,
                         hits: str,
                         template_path: str,
                         hits_path: str,
                         batch_num: int,
-                        output_dir: str):
+                        output_dir: str,
+                        additional_info: List[str] = []):
     """
     This function is used to elaborate a single compound.
     """
@@ -40,8 +41,11 @@ def _elaborate_compound(smiles: str,
     assert mol, f"Could not create a molecule from the smiles {smiles}."
     # convert hits to a list
     hits = hits.split()
+    # get additional info in the correct format
     # create the cobbler
-    cobbler = Cobbler(base_compound=smiles, output_dir=output_dir)
+    cobbler = Cobbler(base_compound=smiles,
+                      output_dir=output_dir,
+                      additional_info=additional_info)
     # get the cobbler workshops
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
     for workshop in cobbler_workshops:
@@ -53,27 +57,33 @@ def _elaborate_compound(smiles: str,
                           batch_num)
         slipper.get_products()
         slipper.place_products()
-    print(f"Elaborated compound {smiles}.")
+    print(f"Finished elaborating compound {smiles} at {datetime.datetime.now()}.")
     print()
 
 def run_pipeline(csv_path: str,
                  output_dir: str,
                  template_path: str,
                  hits_path: str,
-                 batch_num: int):
+                 batch_num: int,
+                 additional_columns: List[str] = []
+                 ):
     """
     Run the whole syndirella pipeline! 👑
     """
     csv_path = _assert_csv(csv_path)
     df = pd.read_csv(csv_path)
+    # assert that the df contains additional_columns
+    for col in additional_columns:
+        assert col in df.columns, f"The csv must contain the column {col}."
     for index, row in df.iterrows():
+        # TODO: finish this function
         _elaborate_compound(row['smiles'],
-                            row['compound_set'],
                             row['hits'],
                             template_path,
                             hits_path,
                             batch_num,
-                            output_dir)
+                            output_dir,
+                            additional_info=additional_info)
     print("Pipeline complete.")
 
 
