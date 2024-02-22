@@ -19,6 +19,7 @@ class CobblersWorkshop():
     """
     This is the CobblersWorkshop class. It represents a full route.
     """
+
     def __init__(self,
                  product: str,
                  reactants: List[Tuple],
@@ -26,8 +27,7 @@ class CobblersWorkshop():
                  num_steps: int,
                  output_dir: str,
                  filter: bool,
-                 atoms_ids_expansion: dict = None,
-                 additional_info: List[str] = []):
+                 atoms_ids_expansion: dict = None):
         self.product: str = product
         self.id: str = CobblersWorkshop.generate_inchi_ID(self.product)
         self.reactants: List[Tuple[str]] = reactants
@@ -36,26 +36,38 @@ class CobblersWorkshop():
         self.output_dir: str = output_dir
         self.smarts_handler = SMARTSHandler()
         self.filter: bool = filter
-        self.atoms_ids_expansion: dict = atoms_ids_expansion # should only be internal step
-        self.cobbler_benches: List[CobblerBench] = None # is this actually useful?
+        self.atoms_ids_expansion: dict = atoms_ids_expansion  # should only be internal step
+        self.cobbler_benches: List[CobblerBench] = []  # To store instances for each step
         self.first_library: Library = None
         self.final_library: Library = None
-        self.additional_info: List[str] = additional_info
 
     def get_final_library(self):
         """
-        This function is used to get the final library of products. It is the main function that is called.
+        This function is used to get the final library of products. It dynamically handles any number of steps.
         """
-        # overall try except block for whole elaboration pipeline
         try:
-            if self.num_steps == 1:
-                print(f"There is 1 step in this route using {self.reaction_names[0]}")
-                self.get_final_library_one_step()
-            if self.num_steps == 2:
-                print(f"There are 2 steps in this route using {self.reaction_names[0]} then {self.reaction_names[1]}")
-                self.get_final_library_two_steps()
-            if self.num_steps > 2:
-                raise NotImplementedError("Routes with more than 2 steps are not yet implemented.")
+            current_library = None
+            for step in range(self.num_steps):
+                print(f"Step {step + 1} in this route using {self.reaction_names[step]}")
+                reactants = self.reactants[step]
+                reaction_name = self.reaction_names[step]
+                cobbler_bench = CobblerBench(self.product,
+                                             reactants,
+                                             reaction_name,
+                                             self.output_dir,
+                                             self.smarts_handler,
+                                             self.id,
+                                             self.num_steps,
+                                             step + 1,
+                                             self.filter)
+                self.cobbler_benches.append(cobbler_bench)
+                current_library = cobbler_bench.find_analogues()
+                if step+1 < self.num_steps: # you're not at the last step
+                    slipper = Slipper(current_library,
+                                      atoms_ids_expansion=self.atoms_ids_expansion)
+                    slipper.get_products()
+                # Update the final library at each step
+                self.final_library = current_library
             return self.final_library
         except Exception as e:
             tb = traceback.format_exc()
@@ -63,65 +75,14 @@ class CobblersWorkshop():
             print(tb)
             return None
 
-    def get_final_library_one_step(self):
-        """
-        This function is used to get the final library of products for a one step route.
-        """
-        # Need to convert to a single step
-        reactants: Tuple[str] = self.reactants[0]
-        reaction_name: str = self.reaction_names[0]
-        current_step = 1
-        cobbler_bench = CobblerBench(self.product,
-                                     reactants,
-                                     reaction_name,
-                                     self.output_dir,
-                                     self.smarts_handler,
-                                     self.id,
-                                     self.num_steps,
-                                     current_step,
-                                     self.filter,
-                                     self.additional_info)
-        self.final_library = cobbler_bench.find_analogues_first_step()
-
-    def get_final_library_two_steps(self):
-        """
-        This function is used to get the final library of products for a two step route.
-        """
-        # Need to convert to a two-step
-        reactants1 = self.reactants[0]
-        reactants2 = self.reactants[1]
-        reaction_name1 = self.reaction_names[0]
-        reaction_name2 = self.reaction_names[1]
-        current_step = 1
-        cobbler_bench1 = CobblerBench(self.product,
-                                      reactants1,
-                                      reaction_name1,
-                                      self.output_dir,
-                                      self.smarts_handler,
-                                      self.id,
-                                      self.num_steps,
-                                      current_step,
-                                      self.filter,
-                                      self.additional_info)
-        self.first_library = cobbler_bench1.find_analogues_first_step()
-        first_slipper = Slipper(self.first_library,
-                                atoms_ids_expansion=self.atoms_ids_expansion,
-                                additional_info=self.additional_info)
-        first_slipper.get_products()
-
-        current_step = 2
-        cobbler_bench2 = CobblerBench(self.product, reactants2, reaction_name2, self.output_dir, self.smarts_handler,
-                                      self.id, self.num_steps, current_step, self.filter)
-        self.final_library = cobbler_bench2.find_analogues_first_step()
-
     @staticmethod
     def generate_inchi_ID(smiles: str) -> str:
         """
         This function is used to generate a unique id for the route just using the product.
         """
-        # assert that you can make a mol out of smiles
         assert Chem.MolFromSmiles(smiles), f"Could not create a molecule from the smiles {smiles}."
         ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
         id = rdinchi.InchiToInchiKey(ID[0])
         return id
+
 

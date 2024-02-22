@@ -18,8 +18,18 @@ from syndirella.pipeline import run_pipeline
 
 class TestInputCSV(unittest.TestCase):
     def setUp(self):
-        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/test.csv'
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template.csv'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_input2/'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
+                              'x0310_template.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/clean_hits.sdf'
+        self.batch_num = 1
+        self.additional_info = ['compound_set']
+        self.manual_routes = True
 
+    def test_pipeline(self):
+        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
+                     self.additional_info, self.manual_routes)
 
 
 class TestPipelineMultipleRxns(unittest.TestCase):
