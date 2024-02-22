@@ -31,7 +31,8 @@ class SlipperSynthesizer:
     def __init__(self,
                  library: Library,
                  output_dir: str,
-                 atom_ids_expansion: dict = None):
+                 atom_ids_expansion: dict = None,
+                 additional_info: dict = None):
         self.library = library
         self.output_dir = output_dir
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
@@ -41,6 +42,7 @@ class SlipperSynthesizer:
         self.final_products_csv_path: str = None
         self.atom_ids_expansion: dict = atom_ids_expansion
         self.uuid = shortuuid.ShortUUID().random(length=6)
+        self.additional_info = additional_info
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -58,6 +60,20 @@ class SlipperSynthesizer:
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
         return self.products
+
+    # def _filter_out_repeats(self, df: pd.DataFrame, analogue_columns: Tuple[str, str], reactant_prefix: str) \
+    #         -> pd.DataFrame:
+    #     """
+    #     This function is used to filter out repeats from the analogues dataframes.
+    #     """
+    #     print(f"Filtering repeats from {reactant_prefix} dataframe...")
+    #     orig_df = df.copy()
+    #     # filter out repeats
+    #     df = df.drop_duplicates(subset=analogue_columns)
+    #     num_filtered = len(orig_df) - len(df)
+    #     percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
+    #     print(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
+    #     return df
 
     def check_product_csv_exists(self):
         """
@@ -99,6 +115,7 @@ class SlipperSynthesizer:
         """
         This function is used to go through the analogue dataframes, passing them to filter_analogues_on_smarts and
         also ordering by metrics.
+
         Finally it filters the analogues by number, making sure there aren't too many for an obscene number of products.
         """
         for key, value in self.library.analogues_dataframes.items():
@@ -107,6 +124,7 @@ class SlipperSynthesizer:
             analogue_columns: Tuple[str, str] = value[1]
             self.analogue_columns = [column for column in analogue_columns]
             df = self.filter_analogues_on_smarts(df, analogue_columns, reactant_prefix)
+            #df = self._filter_out_repeats(df, analogue_columns, reactant_prefix)
             df = self.order_analogues(df, reactant_prefix)
             self.analogues_dataframes_to_react[key] = df
         # Filters analogue df by size, shortens if necessary
@@ -152,6 +170,7 @@ class SlipperSynthesizer:
         percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
         print(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
         return df
+
 
     def filter_analogues_by_size(self):
         """
@@ -236,9 +255,14 @@ class SlipperSynthesizer:
         """
         # Apply reaction to reactant combinations
         products: pd.DataFrame = self.reactant_combinations.apply(self.apply_reaction, axis=1)
-        # Explode dataframe in case of multiple products
-        products = products.explode('smiles').reset_index(drop=True)
-        products = products.explode('num_atom_diff').reset_index(drop=True)
+        try:
+            products = products.explode('combined').reset_index(drop=True)
+            # Attempt to split the 'combined' column
+            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'], index=products.index)
+            products[['smiles', 'num_atom_diff']] = new_columns
+            products.drop('combined', axis=1, inplace=True)
+        except ValueError as e:
+            print(f"Error: {e}")
         # Filter products
         products = self.filter_products(products)
         # Add metadata
@@ -247,6 +271,7 @@ class SlipperSynthesizer:
         all_products = self.enumerate_stereoisomers(products)
         print(f"Found {len(set(list(all_products['name'])))} unique products.")
         return all_products
+
 
     def apply_reaction(self, row) -> pd.Series:
         """
@@ -261,8 +286,9 @@ class SlipperSynthesizer:
         if len(products) == 0:
             print("No products found.")
             row['flag'] = None
-            row['smiles'] = None
-            row['num_atom_diff'] = None
+            row['combined'] = [(None, None)]
+            # row['smiles'] = None
+            # row['num_atom_diff'] = None
             return row
         elif len(products) > 1 or len(
                 products[0]) > 1:  # should only return 1 product, if more than 1 then there are selectivity issues
@@ -276,16 +302,18 @@ class SlipperSynthesizer:
             if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
                 print(f"Found multiple products at {row.name}. Flagging...")
                 row['flag'] = 'one_of_multiple_products'
-            row['smiles'] = row_smiles
-            row['num_atom_diff'] = row_num_atom_diff
+            row['combined'] = list(zip(row_smiles, row_num_atom_diff))
+            # row['smiles'] = row_smiles
+            # row['num_atom_diff'] = row_num_atom_diff
             return row
         product = products[0][0]
         if self.can_be_sanitized(product):
             base = self.library.reaction.product
             num_atom_diff = self.calc_num_atom_diff(base, product)
             row['flag'] = None
-            row['smiles'] = Chem.MolToSmiles(product)
-            row['num_atom_diff'] = num_atom_diff
+            row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+            # row['smiles'] = Chem.MolToSmiles(product)
+            # row['num_atom_diff'] = num_atom_diff
             return row
 
     def can_be_sanitized(self, mol: Chem.Mol):
@@ -412,6 +440,10 @@ class SlipperSynthesizer:
         products['total_steps'] = self.library.num_steps
         products['base_compound'] = f"{self.library.id}-base"
         products['uuid'] = self.uuid
+        # Add additional info
+        if self.additional_info:
+            for key, value in self.additional_info.items():
+                products[key] = value
         products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         return products
 
@@ -428,16 +460,15 @@ class SlipperSynthesizer:
                     new_row = row.copy()
                     new_row['smiles'] = iso
                     new_row['name'] = f"{row['name']}-{chr(65 + i)}"  # Appending A, B, C, etc., to the name
-                    new_row['conformer'] = chr(65 + i)
+                    new_row['stereoisomer'] = chr(65 + i)
                     new_rows.append(new_row)
             except:
                 print(f"Could not enumerate stereoisomers for {row['smiles']}.")
         new_df = pd.DataFrame(new_rows)
-        exploded_df = pd.concat([products, new_df], ignore_index=True)
         # remove NaNs
-        exploded_df = exploded_df.dropna()
-        exploded_df.reset_index(drop=True, inplace=True)
-        return exploded_df
+        new_df = new_df.dropna(subset=['smiles'])
+        new_df.reset_index(drop=True, inplace=True)
+        return new_df
 
     def find_stereoisomers(self, smiles: str) -> list():
         # This function should return a list of stereoisomers for the given SMILES string.

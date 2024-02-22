@@ -33,7 +33,6 @@ class CobblerBench:
         self.num_steps: int = num_steps
         self.current_step: int = current_step
         self.filter: bool = filter
-
         self.reaction: Reaction = None
         self.library = None
 
@@ -45,12 +44,15 @@ class CobblerBench:
             raise ReactionError("Reaction name not found in SMARTS handler.")
         if len(self.reactants) != 2:
             raise ReactionError("This function is only for bimolecular reactions.")
-        reaction = Reaction(self.product, self.reactants, self.reaction_name, self.smarts_handler)
+        reaction = Reaction(self.product,
+                            self.reactants,
+                            self.reaction_name,
+                            self.smarts_handler)
         return reaction
 
-    def find_analogues_first_step(self):
+    def find_analogues(self):
         """
-        This function is used to find the final library of a single step or the first step of a multi step route.
+        This function is used to find analogues of any step along the route.
         """
         self.reaction = self.check_reaction()
         # Find attachment ids for all reactants
@@ -58,14 +60,11 @@ class CobblerBench:
         # Find reaction atoms for all reactants
         self.reaction.find_reaction_atoms_for_all_reactants()
         # Find the analogues of reactants
-        self.library = Library(self.reaction, self.output_dir, self.id, self.num_steps, self.current_step, self.filter)
+        self.library = Library(self.reaction,
+                               self.output_dir,
+                               self.id,
+                               self.num_steps,
+                               self.current_step,
+                               self.filter)
         self.library.create_library()
         return self.library
-
-    def find_analogues_multi_step(self):
-        """
-        This function is used to find the analogues of reactants using postera.
-        """
-        pass
-
-

@@ -8,15 +8,19 @@ analogue library from the Reaction object. It will also store the analogue libra
 
 import pandas as pd
 from rdkit.Chem.FilterCatalog import *
-from .Reaction import Reaction
-from syndirella.Postera import Postera
-import syndirella
+
 from typing import (List, Dict, Tuple)
 import os
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 import glob
 import pickle
+
+from .Reaction import Reaction
+from syndirella.Postera import Postera
+import syndirella
+from syndirella.Fairy import Fairy
+
 
 class Library:
     """
@@ -52,9 +56,10 @@ class Library:
 
     def process_reactant(self, reactant: Chem.Mol, reactant_smarts: str, analogue_prefix: str) -> pd.DataFrame:
         # search for analogues csv if already created. Perform for all reactants.
-        reactant_analogues_path: str = self.check_analogues_csv_exists(analogue_prefix, reactant)
+        reactant_analogues_path, internal_step = self.check_analogues_csv_exists(analogue_prefix, reactant)
         if reactant_analogues_path is not None:
-            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path, analogue_prefix)
+            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path, analogue_prefix,
+                                                                 internal_step)
             analogues: List[str] = list(analogues_full.keys())
         else: # perform database search
             postera_search = Postera(self.reaction, self.output_dir, search_type="superstructure")
@@ -74,10 +79,13 @@ class Library:
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
         """
+        analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
+        analogues_mols: List[Chem.Mol] = Fairy.remove_repeat_mols(analogues_mols)
+        self.print_diff(analogues, analogues_mols, analogue_prefix)
         if self.filter:
             analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
         reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(reactant_smarts)
-        analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
+
         contains_smarts_pattern, num_matches = self.check_analogue_contains_smarts_pattern(analogues_mols,
                                                                                            reactant_smarts_mol)
         contains_smarts_pattern: List[bool]
@@ -87,7 +95,9 @@ class Library:
             self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
+
         # get lead time from analogues
+        analogues = [Chem.MolToSmiles(analogue) for analogue in analogues_mols]
         if analogues_full is not None:
             lead_times = [analogues_full[analogue] for analogue in analogues]
             assert len(lead_times) == len(analogues), "Problem with finding lead times."
@@ -136,7 +146,7 @@ class Library:
                                               "the original list of molecules.")
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
-        print(f'Removed {num_filtered} invalid molecules ({percent_diff}%) of {analogue_prefix} analogues.')
+        print(f'Removed {num_filtered} invalid or repeated molecules ({percent_diff}%) of {analogue_prefix} analogues.')
 
     def filter_on_substructure_filters(self, mols: List[Chem.Mol], ) -> List[str]:
         """
@@ -171,20 +181,23 @@ class Library:
         """
         return NotImplementedError()
 
-    def check_analogues_csv_exists(self, analogue_prefix: str, reactant: Chem.Mol) -> str:
+    def check_analogues_csv_exists(self, analogue_prefix: str, reactant: Chem.Mol) -> str and bool:
         """
         This function is used to check if the analogue library has already been created and saved as a .csv file.
         """
-        if self.current_step == 2 and self.num_steps == 2:
+        internal_step = False
+        if self.current_step != 1 and self.current_step == self.num_steps:
+            print('Since this is the final step, looking for the products .csv from first step...')
             csv_path: str = self.find_products_csv_name(reactant)
-            return csv_path
+            internal_step = True
+            return csv_path, internal_step
         os.makedirs(self.extra_dir_path, exist_ok=True)
         csv_name = (f"{self.id}_{self.reaction.reaction_name}_"
                     f"{analogue_prefix}_{self.current_step}of{self.num_steps}.csv")
         if os.path.exists(f"{self.extra_dir_path}/{csv_name}"):
-            return f"{self.extra_dir_path}/{csv_name}"
+            return f"{self.extra_dir_path}/{csv_name}", internal_step
         else:
-            return None
+            return None, None
 
     def find_products_csv_name(self, reactant: Chem.Mol) -> str:
         """
@@ -192,16 +205,23 @@ class Library:
         bit vector similarity.
         """
         product_csvs: List[str] = glob.glob(f"{self.extra_dir_path}/"
-                                            f"{self.id}_*products*.csv")
+                                            f"{self.id}_*products_{self.current_step-1}of"
+                                            f"{self.num_steps}.csv")
         for i, path in enumerate(product_csvs):
+            # Find if the reactant is the same as the product
             df = pd.read_csv(path)
-            product = df["smiles"].tolist()[0]
-            product_mol = Chem.MolFromSmiles(product)
-            similarity_score = DataStructs.FingerprintSimilarity(
-                AllChem.GetMorganFingerprintAsBitVect(reactant, 2),
-                AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
-            if similarity_score == 1:
-                return path
+            # Iterate through the top 100 products
+            for product in df["smiles"][:100]:
+                product_mol = Chem.MolFromSmiles(product)
+                # Calculate similarity score
+                similarity_score = DataStructs.FingerprintSimilarity(
+                    AllChem.GetMorganFingerprintAsBitVect(reactant, 2),
+                    AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
+                # If a perfect match is found, return the path
+                if similarity_score == 1:
+                    print(f"Found {path} as the products .csv from first step.")
+                    return path
+        return None
 
     def save_library(self, df: pd.DataFrame, analogue_prefix: str):
         """
@@ -212,26 +232,25 @@ class Library:
         print(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{csv_name} \n")
         df.to_csv(f"{self.extra_dir_path}/{csv_name}", index=False)
 
-    def load_library(self, reactant_analogues_path: str, analogue_prefix: str) -> Dict[str, float]:
+    def load_library(self, reactant_analogues_path: str, analogue_prefix: str, internal_step: bool) -> Dict[str, float]:
         """
         This function is used to load the analogue library from a .csv file. Returns a dictionary of the smiles as keys
         and the lead time (if found) as float. Otherwise return lead time as None.
         """
-        df = pd.read_csv(reactant_analogues_path)
-        # find column with analogue smiles
         try:
-            analogues = df["smiles"].tolist()
-            analogues_full = {analog: None for analog in analogues}
-            return analogues_full
+            # find column with analogue smiles
+            df = pd.read_csv(reactant_analogues_path)
+            if not internal_step:
+                analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
+                analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
+                return analogues_full
+            if internal_step:
+                analogues = df["smiles"].tolist()
+                analogues_full = {analog: None for analog in analogues}
+                return analogues_full
         except KeyError:
-            print(f"No 'smiles' column found in {reactant_analogues_path}. "
-                  f"Looking for {analogue_prefix}_smiles column.")
-        try:
-            analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
-            analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
-            return analogues_full
-        except KeyError:
-            print(f"No {analogue_prefix}_smiles column found in {reactant_analogues_path}. Stopping...")
+            print(f"Could not find analogue column in already existing product.csv at {reactant_analogues_path}. "
+                  f"Stopping...")
 
     def save(self):
         """

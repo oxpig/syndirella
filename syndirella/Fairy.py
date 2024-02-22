@@ -151,12 +151,13 @@ class Fairy:
         mols = [mol for mol in mols if all(atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_UNSPECIFIED
                                            for atom in mol.GetAtoms())]
         # Remove repeat SMILES
-        mols = self._remove_repeat_smiles(mols)
+        mols = Fairy.remove_repeat_mols(mols)
         # Remove non-abundant isotopes
-        mols = self._remove_non_abundant_isotopes(mols)
+        mols = Fairy._remove_non_abundant_isotopes(mols)
         return mols
 
-    def _remove_repeat_smiles(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
+    @staticmethod
+    def remove_repeat_mols(mols: List[Chem.Mol]) -> List[Chem.Mol]:
         """
         Converts mols to fingerprints, checks for Tanimoto similarity of 1, and removes repeats.
         """
@@ -172,7 +173,8 @@ class Fairy:
                         seen.add(j)
         return unique_mols
 
-    def _remove_non_abundant_isotopes(self, mols: List[Chem.Mol]) -> List[Chem.Mol]:
+    @staticmethod
+    def _remove_non_abundant_isotopes(mols: List[Chem.Mol]) -> List[Chem.Mol]:
         """
         This function is used to remove mols that have non-abundant isotopes.
         """

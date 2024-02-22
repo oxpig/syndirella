@@ -23,7 +23,8 @@ class Slipper:
                  hits: str = None,
                  hits_names: List[str] = None,
                  batch_num: int = None,
-                 atoms_ids_expansion: dict = None):
+                 atoms_ids_expansion: dict = None,
+                 additional_info: dict = None):
         self.products: pd.DataFrame = None
         self.final_library: Library = final_library
         self.output_dir: str = final_library.output_dir
@@ -38,6 +39,7 @@ class Slipper:
         self.n_cores: int = 8
         self.timeout: int = 240
         self.output_path: str = None
+        self.additional_info: dict = additional_info
 
     def get_products(self):
         """
@@ -45,7 +47,8 @@ class Slipper:
         """
         slipper_synth = SlipperSynthesizer(self.final_library,
                                            self.output_dir,
-                                           self.atoms_ids_expansion)
+                                           self.atoms_ids_expansion,
+                                           self.additional_info)
         self.products: pd.DataFrame = slipper_synth.get_products()
         if self.atoms_ids_expansion is not None:
             slipper_synth.label_products()
