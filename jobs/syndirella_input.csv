@@ -1,0 +1,5 @@
+﻿smiles,reactants,reaction_names,num_steps,hits,compound_set
+CC1(c2cc(NC(=O)CC#N)[nH]n2)CC1,"[('N#CCC(=O)Cl', 'CC1(c2cc(N)[nH]n2)CC1')]",['Amide Schotten-Baumann with amine'],1,x0556_0A x0310_0A,kate_manual
+C=CCCCCC(=O)Nc1[nH]nc(C)c1-c1ccccc1,"[('Cc1n[nH]c(N)c1Cl', 'C=CCCCCC(=O)O'), ('CC1(C)OB(c2ccccc2)OC1(C)C', 'C=CCCCCC(=O)Nc1[nH]nc(C)c1Cl')]","['Sp2-sp2 Suzuki coupling', 'Amidation']",2,x0556_0A x0310_0A,kate_manual
+CCCc1cccc(-c2cccc3cc[nH]c23)n1,"[('OB(O)c1cccc2cc[nH]c12', 'Ic1cccc(I)n1'), ('Ic1cccc(-c2cccc3cc[nH]c23)n1', 'CCCB(O)O')]","['Sp2-sp2_Suzuki_coupling', 'Sp3-sp2_Suzuki_coupling']",2,x0566_0A x0554_0A,kate_manual
+COC(=O)NCCc1ccnn1C,"[('COC(=O)NCCB(O)O', 'Cn1nccc1I')]",['Sp3-sp2_Suzuki_coupling'],1,x0566_0A x0451_0A,kate_manual

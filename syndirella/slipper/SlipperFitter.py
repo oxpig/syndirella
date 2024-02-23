@@ -10,6 +10,7 @@ import pandas as pd
 from fragmenstein.laboratory.validator import place_input_validator
 from rdkit import Chem
 import os, logging
+import time
 
 
 class SlipperFitter:
@@ -120,6 +121,7 @@ class SlipperFitter:
         """
         This function places products using Fragmenstein.
         """
+        start_time = time.time()  # Start timing
         # set up Wictor
         self.setup_Fragmenstein()
         # Get pdbblock from template_path
@@ -128,6 +130,9 @@ class SlipperFitter:
         lab = Laboratory(pdbblock=pdbblock, covalent_resi=None, run_plip=False)
         placements: pd.DataFrame = lab.place(place_input_validator(self.input_df), n_cores=self.n_cores,
                                              timeout=self.timeout)
+        end_time = time.time()  # End timing
+        elapsed_time = end_time - start_time  # Calculate elapsed time
+        print(f"Placing {len(self.input_df)} run time: {elapsed_time:.2f} seconds")  # Print the elapsed time
         return placements
 
     def setup_Fragmenstein(self):
