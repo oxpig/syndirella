@@ -151,26 +151,34 @@ def run_pipeline(csv_path: str,
         print("Running the full auto pipeline.")
         for index, row in df.iterrows():  # could make this a parallel for loop
             # TODO: finish this function
-            _elaborate_compound_full_auto(product=row['smiles'],
-                                          hits=row['hits'],
-                                          template_path=template_path,
-                                          hits_path=hits_path,
-                                          batch_num=batch_num,
-                                          output_dir=output_dir,
-                                          additional_info=additional_info)
+            try:
+                _elaborate_compound_full_auto(product=row['smiles'],
+                                              hits=row['hits'],
+                                              template_path=template_path,
+                                              hits_path=hits_path,
+                                              batch_num=batch_num,
+                                              output_dir=output_dir,
+                                              additional_info=additional_info)
+            except Exception as e:
+                print(f"Error elaborating compound {row['smiles']}. Error: {e}")
+                continue
     else:
         print("Running the pipeline with manual routes.")
         _assert_manual_df(df)
         for index, row in df.iterrows():
-            _elaborate_compound_with_manual_routes(product=row['smiles'],
-                                                   reactants=ast.literal_eval(row['reactants']),
-                                                   reaction_names=ast.literal_eval(row['reaction_names']),
-                                                   num_steps=row['num_steps'],
-                                                   hits=row['hits'],
-                                                   template_path=template_path,
-                                                   hits_path=hits_path,
-                                                   batch_num=batch_num,
-                                                   output_dir=output_dir,
-                                                   additional_info=additional_info)
+            try:
+                _elaborate_compound_with_manual_routes(product=row['smiles'],
+                                                       reactants=ast.literal_eval(row['reactants']),
+                                                       reaction_names=ast.literal_eval(row['reaction_names']),
+                                                       num_steps=row['num_steps'],
+                                                       hits=row['hits'],
+                                                       template_path=template_path,
+                                                       hits_path=hits_path,
+                                                       batch_num=batch_num,
+                                                       output_dir=output_dir,
+                                                       additional_info=additional_info)
+            except Exception as e:
+                print(f"Error elaborating compound {row['smiles']}. Error: {e}")
+                continue
 
     print("Pipeline complete.")
