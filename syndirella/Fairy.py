@@ -25,6 +25,15 @@ class Fairy:
             # {'reaction_name': 'additional_reaction_name'}
             self.additional_rxn_options: Dict[str, str] = json.load(f)
 
+    def do_i_need_alterative_route(self, reaction_names: List[str]) -> bool:
+        """
+        This function is used to check if the reaction names need an alternative route.
+        """
+        for reaction_name in reaction_names:
+            if reaction_name in self.additional_rxn_options:
+                return True
+        return False
+
     def find(self, reactant: Chem.Mol, reaction_name: str) -> List[str]:
         """
         This function is used to find additional similar reactants that are cheaper as defined in the

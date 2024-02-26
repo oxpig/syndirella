@@ -33,6 +33,7 @@ export INPUT="/data/xchem-fragalysis/kfieseler/syndirella/jobs/syndirella_input.
 export OUTPUT_DIR="/data/xchem-fragalysis/kfieseler/A71EV2A_run2/test";
 export TEMPLATE="/data/xchem-fragalysis/kfieseler/syndirella/exps/fragments/x0310_template.pdb";
 export HITS="/data/xchem-fragalysis/kfieseler/syndirella/exps/fragments/clean_hits.sdf";
+export SYNDIRELLA_BASE_PATH="/data/xchem-fragalysis/kfieseler/syndirella";
 
 echo "Running syndirella pipeline"
 echo "INPUT: $INPUT"
