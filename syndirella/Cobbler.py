@@ -18,8 +18,7 @@ class Cobbler:
     """
     def __init__(self,
                  base_compound: str,
-                 output_dir: str,
-                 additional_info: List[str] = []):
+                 output_dir: str):
         self.base_compound: str = base_compound
         # Manifold API
         self.url = "https://api.postera.ai"
@@ -27,7 +26,6 @@ class Cobbler:
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.fairy = Fairy()
         self.output_dir = output_dir
-        self.additional_info = additional_info
 
     def get_routes(self) -> List[CobblersWorkshop]:
         """
@@ -111,8 +109,7 @@ class Cobbler:
                 num_steps=len(reaction_names),
                 output_dir=self.output_dir,
                 filter=False,
-                atoms_ids_expansion=None,
-                additional_info=self.additional_info
+                atoms_ids_expansion=None
             )
             cobblers_workshops.append(cobblers_workshop)
         return cobblers_workshops

@@ -10,6 +10,7 @@ import pandas as pd
 from rdkit import Chem
 import datetime
 import ast
+import traceback
 
 from syndirella.Cobbler import Cobbler
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
@@ -36,7 +37,12 @@ def _assert_csv(csv_path: str) -> str:
     required_columns = ['smiles', 'compound_set', 'hits']
     for col in required_columns:
         assert col in df.columns, f"The csv must contain the column {col}."
-    # TODO: could assert that the hits column is a space seperated list of strings
+    # Assert that the hits column is a space-separated list of strings
+    for index, row in df.iterrows():
+        hits = row['hits']
+        split_hits = hits.split(' ')
+        assert all(isinstance(hit, str) for hit in
+                   split_hits), f"The 'hits' column must contain space-separated strings at index {index}."
     return csv_path
 
 
@@ -76,7 +82,16 @@ def _elaborate_compound_with_manual_routes(product: str,
     assert mol, f"Could not create a molecule from the smiles {product}."
     # convert hits to a list
     hits = hits.split()
-    # Just creating cobblers workshop directly
+    # create cobblersWorkshop objects and get the ones not containing the same reaction as manually proposed
+    # create the cobbler
+    cobbler = Cobbler(base_compound=product,
+                      output_dir=output_dir)
+    # get the cobbler workshops
+    cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
+    # filter out the cobbler workshops that contain the same reaction as the manually proposed route
+    cobbler_workshops: List[CobblersWorkshop] = [workshop for workshop in cobbler_workshops if workshop.reaction_names
+                                                 != reaction_names]
+    # Elab first the manually proposed route
     workshop = CobblersWorkshop(product=product,
                                 reactants=reactants,
                                 reaction_names=reaction_names,
@@ -93,6 +108,18 @@ def _elaborate_compound_with_manual_routes(product: str,
     slipper.get_products()
     slipper.place_products()
     slipper.clean_up_placements()
+    # Elab the other routes
+    for workshop in cobbler_workshops:
+        final_library = workshop.get_final_library()
+        slipper = Slipper(final_library,
+                          template_path,
+                          hits_path,
+                          hits,
+                          batch_num,
+                          additional_info=additional_info)
+        slipper.get_products()
+        slipper.place_products()
+        slipper.clean_up_placements()
     print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
     print()
 
@@ -113,8 +140,7 @@ def _elaborate_compound_full_auto(product: str,
     hits = hits.split()
     # create the cobbler
     cobbler = Cobbler(base_compound=product,
-                      output_dir=output_dir,
-                      additional_info=additional_info)
+                      output_dir=output_dir)
     # get the cobbler workshops
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
     for workshop in cobbler_workshops:
@@ -123,9 +149,11 @@ def _elaborate_compound_full_auto(product: str,
                           template_path,
                           hits_path,
                           hits,
-                          batch_num)
+                          batch_num,
+                          additional_info=additional_info)
         slipper.get_products()
         slipper.place_products()
+        slipper.clean_up_placements()
     print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
     print()
 
@@ -178,7 +206,8 @@ def run_pipeline(csv_path: str,
                                                        output_dir=output_dir,
                                                        additional_info=additional_info)
             except Exception as e:
-                print(f"Error elaborating compound {row['smiles']}. Error: {e}")
+                tb = traceback.format_exc()
+                print(f"Error elaborating compound {row['smiles']}. {tb}")
                 continue
 
     print("Pipeline complete.")

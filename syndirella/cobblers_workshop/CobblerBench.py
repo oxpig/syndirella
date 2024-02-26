@@ -22,8 +22,16 @@ class CobblerBench:
 
     It is given a step.
     """
-    def __init__(self, product: str, reactants: Tuple[str], reaction_name: str, output_dir: str,
-                 smarts_handler: SMARTSHandler, id: str, num_steps: int, current_step: int, filter: bool):
+    def __init__(self,
+                 product: str,
+                 reactants: Tuple[str],
+                 reaction_name: str,
+                 output_dir: str,
+                 smarts_handler: SMARTSHandler,
+                 id: str,
+                 num_steps: int,
+                 current_step: int,
+                 filter: bool):
         self.product: Chem.Mol = Chem.MolFromSmiles(product)
         self.reactants: List[Chem.Mol] = [Chem.MolFromSmiles(reactant) for reactant in reactants]
         self.reaction_name: str = reaction_name
