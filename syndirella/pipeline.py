@@ -15,6 +15,7 @@ import traceback
 from syndirella.Cobbler import Cobbler
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
+from syndirella.Fairy import Fairy
 
 
 def _format_additional_info(df: pd.DataFrame, additional_columns: List[str]) -> Dict[str, Any]:
@@ -65,6 +66,33 @@ def _assert_manual_df(df: pd.DataFrame) -> None:
         assert type(num_steps) == int, "The num_steps column must be a integer."
 
 
+def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
+                                      template_path: str,
+                                      hits_path: str,
+                                      hits: str,
+                                      batch_num: int,
+                                      additional_info: Dict[str, Any] = []):
+    """
+    Does elaboration once the cobbler workshops are created.
+    """
+    for workshop in cobbler_workshops:
+        try:
+            final_library = workshop.get_final_library()
+            slipper = Slipper(final_library,
+                              template_path,
+                              hits_path,
+                              hits,
+                              batch_num,
+                              additional_info=additional_info)
+            slipper.get_products()
+            slipper.place_products()
+            slipper.clean_up_placements()
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(f"Error elaborating compound {workshop.product}. {tb}")
+            continue
+
+
 def _elaborate_compound_with_manual_routes(product: str,
                                            reactants: List[Tuple[str]],
                                            reaction_names: List[str],
@@ -78,48 +106,49 @@ def _elaborate_compound_with_manual_routes(product: str,
     """
     This function is used to elaborate a single compound using a manually defined route.
     """
+    fairy = Fairy()
     mol = Chem.MolFromSmiles(product)
     assert mol, f"Could not create a molecule from the smiles {product}."
     # convert hits to a list
     hits = hits.split()
-    # create cobblersWorkshop objects and get the ones not containing the same reaction as manually proposed
-    # create the cobbler
-    cobbler = Cobbler(base_compound=product,
-                      output_dir=output_dir)
-    # get the cobbler workshops
-    cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
-    # filter out the cobbler workshops that contain the same reaction as the manually proposed route
-    cobbler_workshops: List[CobblersWorkshop] = [workshop for workshop in cobbler_workshops if workshop.reaction_names
-                                                 != reaction_names]
-    # Elab first the manually proposed route
     workshop = CobblersWorkshop(product=product,
                                 reactants=reactants,
                                 reaction_names=reaction_names,
                                 num_steps=num_steps,
                                 output_dir=output_dir,
                                 filter=False)
-    final_library = workshop.get_final_library()
-    slipper = Slipper(final_library,
-                      template_path,
-                      hits_path,
-                      hits,
-                      batch_num,
-                      additional_info=additional_info)
-    slipper.get_products()
-    slipper.place_products()
-    slipper.clean_up_placements()
-    # Elab the other routes
-    for workshop in cobbler_workshops:
-        final_library = workshop.get_final_library()
-        slipper = Slipper(final_library,
-                          template_path,
-                          hits_path,
-                          hits,
-                          batch_num,
-                          additional_info=additional_info)
-        slipper.get_products()
-        slipper.place_products()
-        slipper.clean_up_placements()
+    cobbler_workshops = []
+    if fairy.do_i_need_alterative_route(reaction_names):
+        print(f"Found the need for an alternative route for compound {product}.")
+        try:
+            # create cobblersWorkshop objects and get the ones not containing the same reaction as manually proposed
+            # create the cobbler
+            cobbler = Cobbler(base_compound=product,
+                              output_dir=output_dir)
+            # get the cobbler workshops
+            cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
+            # filter out the cobbler workshops that contain the same reaction as the manually proposed route
+            cobbler_workshops: List[CobblersWorkshop] = [workshop for workshop in cobbler_workshops if
+                                                         workshop.reaction_names
+                                                         != reaction_names]
+            workshop = CobblersWorkshop(product=product,
+                                        reactants=reactants,
+                                        reaction_names=reaction_names,
+                                        num_steps=num_steps,
+                                        output_dir=output_dir,
+                                        filter=True)
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(f"Error finding alternative route for compound {product}. {tb}")
+            cobbler_workshops = []
+    # add workshop to the list first
+    cobbler_workshops.insert(0, workshop)
+    _elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops,
+                                      template_path=template_path,
+                                      hits_path=hits_path,
+                                      hits=hits,
+                                      batch_num=batch_num,
+                                      additional_info=additional_info)
     print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
     print()
 
@@ -143,17 +172,9 @@ def _elaborate_compound_full_auto(product: str,
                       output_dir=output_dir)
     # get the cobbler workshops
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
-    for workshop in cobbler_workshops:
-        final_library = workshop.get_final_library()
-        slipper = Slipper(final_library,
-                          template_path,
-                          hits_path,
-                          hits,
-                          batch_num,
-                          additional_info=additional_info)
-        slipper.get_products()
-        slipper.place_products()
-        slipper.clean_up_placements()
+    _elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
+                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
+                                      additional_info=additional_info)
     print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
     print()
 
@@ -178,36 +199,25 @@ def run_pipeline(csv_path: str,
     if not manual_routes:
         print("Running the full auto pipeline.")
         for index, row in df.iterrows():  # could make this a parallel for loop
-            # TODO: finish this function
-            try:
-                _elaborate_compound_full_auto(product=row['smiles'],
-                                              hits=row['hits'],
-                                              template_path=template_path,
-                                              hits_path=hits_path,
-                                              batch_num=batch_num,
-                                              output_dir=output_dir,
-                                              additional_info=additional_info)
-            except Exception as e:
-                print(f"Error elaborating compound {row['smiles']}. Error: {e}")
-                continue
+            _elaborate_compound_full_auto(product=row['smiles'],
+                                          hits=row['hits'],
+                                          template_path=template_path,
+                                          hits_path=hits_path,
+                                          batch_num=batch_num,
+                                          output_dir=output_dir,
+                                          additional_info=additional_info)
     else:
         print("Running the pipeline with manual routes.")
         _assert_manual_df(df)
         for index, row in df.iterrows():
-            try:
-                _elaborate_compound_with_manual_routes(product=row['smiles'],
-                                                       reactants=ast.literal_eval(row['reactants']),
-                                                       reaction_names=ast.literal_eval(row['reaction_names']),
-                                                       num_steps=row['num_steps'],
-                                                       hits=row['hits'],
-                                                       template_path=template_path,
-                                                       hits_path=hits_path,
-                                                       batch_num=batch_num,
-                                                       output_dir=output_dir,
-                                                       additional_info=additional_info)
-            except Exception as e:
-                tb = traceback.format_exc()
-                print(f"Error elaborating compound {row['smiles']}. {tb}")
-                continue
-
+            _elaborate_compound_with_manual_routes(product=row['smiles'],
+                                                   reactants=ast.literal_eval(row['reactants']),
+                                                   reaction_names=ast.literal_eval(row['reaction_names']),
+                                                   num_steps=row['num_steps'],
+                                                   hits=row['hits'],
+                                                   template_path=template_path,
+                                                   hits_path=hits_path,
+                                                   batch_num=batch_num,
+                                                   output_dir=output_dir,
+                                                   additional_info=additional_info)
     print("Pipeline complete.")
