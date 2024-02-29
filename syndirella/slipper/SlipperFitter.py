@@ -170,7 +170,7 @@ class SlipperFitter:
             percent_success = round((self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
                                     , 2)
         print(f'{num_success} ({percent_success}%) successful placements '
-              f'where ∆∆G < 0 and RMSD < 2 Å.')
+              f'where ∆∆G < -1 and RMSD < 2 Å.')
 
     def fix_intxns(self):
         intxn_names: List[tuple] = [c for c in self.placements.columns if isinstance(c, tuple)]

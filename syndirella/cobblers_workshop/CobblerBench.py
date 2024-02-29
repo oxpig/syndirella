@@ -33,7 +33,7 @@ class CobblerBench:
                  current_step: int,
                  filter: bool):
         self.product: Chem.Mol = Chem.MolFromSmiles(product)
-        self.reactants: List[Chem.Mol] = [Chem.MolFromSmiles(reactant) for reactant in reactants]
+        self.reactants: List[Chem.Mol] = self._make_reactant_mols(reactants)
         self.reaction_name: str = reaction_name
         self.output_dir: str = output_dir
         self.smarts_handler: SMARTSHandler = smarts_handler
@@ -44,14 +44,22 @@ class CobblerBench:
         self.reaction: Reaction = None
         self.library = None
 
+    def _make_reactant_mols(self, reactants) -> List[Chem.Mol]:
+        """
+        This function is used to make reactant molecules from the input SMILES.
+        """
+        if type(reactants) == str:
+            reactant_mols = [Chem.MolFromSmiles(reactants)]
+        else:
+            reactant_mols = [Chem.MolFromSmiles(reactant) for reactant in reactants]
+        return reactant_mols
+
     def check_reaction(self):
         """
         This function is used to check the reaction is valid.
         """
         if self.reaction_name not in self.smarts_handler.reaction_smarts.keys():
             raise ReactionError("Reaction name not found in SMARTS handler.")
-        if len(self.reactants) != 2:
-            raise ReactionError("This function is only for bimolecular reactions.")
         reaction = Reaction(self.product,
                             self.reactants,
                             self.reaction_name,
