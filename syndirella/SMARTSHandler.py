@@ -54,6 +54,14 @@ class SMARTSHandler:
 
         :return:
         """
+        if len(reactant_attach_ids) == 1: # Performing for one reactant
+            patt = self.reactant1_dict[reaction_name]
+            attach_ids = set(next(iter(reactant_attach_ids.values()))) # get first and only value
+            reactant_mol = next(iter(reactant_attach_ids.keys())) # get first and only key
+            self.matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] = (
+                self.format_matched_reactant_for_one(reactant_mol, attach_ids, patt))
+            assert self.matched_reactants is not None, "Reactant could not be matched to only SMARTS in reaction."
+            return self.matched_reactants
         r1: Chem.Mol = list(reactant_attach_ids.keys())[0]
         r2: Chem.Mol = list(reactant_attach_ids.keys())[1]
         # Check to make sure they are not the same
@@ -98,7 +106,8 @@ class SMARTSHandler:
             return None
         return True
 
-    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[str, List]:
+    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> (
+            Dict)[str, Tuple[Chem.Mol, List[int], str]]:
         """
         This function finds the matched atoms in a reactant against both reactant SMARTS.
         """
@@ -115,6 +124,20 @@ class SMARTSHandler:
                     found[patt] = match
                     break
         return found
+
+    def format_matched_reactant_for_one(self, reactant_mol: Chem.Mol, attach_ids: List[Tuple[int, int]], patt: str) -> (
+            Dict)[str, Tuple[Chem.Mol, List[int], str]]:
+        """
+        Formats matched reactants for one reactant.
+        """
+        matched_reactants = {}
+        mol_patt = Chem.MolFromSmarts(patt)
+        matches = reactant_mol.GetSubstructMatches(mol_patt)
+        for match in matches:
+            if attach_ids.intersection(match):
+                matched_reactants[patt] = (reactant_mol, match, 'r1')
+                break
+        return matched_reactants
 
 
 

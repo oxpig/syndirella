@@ -45,7 +45,7 @@ class Library:
         """
         This function is used to create the analogue library from the Reaction object.
         """
-        for key, value in self.reaction.matched_smarts_to_reactant.items():
+        for key, value in self.reaction.matched_smarts_to_reactant.items(): # can work for 1 and 2 reactants
             reactant = value[0]
             reactant_smarts = key
             analogue_prefix = value[2]
@@ -80,6 +80,7 @@ class Library:
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
         """
         analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
+        analogues_mols: List[Chem.Mol] = Fairy.remove_chirality(analogues_mols)
         analogues_mols: List[Chem.Mol] = Fairy.remove_repeat_mols(analogues_mols)
         self.print_diff(analogues, analogues_mols, analogue_prefix)
         if self.filter:
@@ -91,15 +92,19 @@ class Library:
         contains_smarts_pattern: List[bool]
         num_matches: List[int]
 
-        contains_other_reactant_smarts_pattern, other_reactant_prefix = (
-            self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
+        if len(self.reaction.matched_smarts_to_reactant) == 1:
+            contains_other_reactant_smarts_pattern = [False for _ in analogues_mols]
+            other_reactant_prefix = None
+        else:
+            contains_other_reactant_smarts_pattern, other_reactant_prefix = (
+                self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
 
         # get lead time from analogues
         analogues = [Chem.MolToSmiles(analogue) for analogue in analogues_mols]
         if analogues_full is not None:
-            lead_times = [analogues_full[analogue] for analogue in analogues]
+            lead_times = [analogues_full[analogue] if analogue in analogues_full else None for analogue in analogues]
             assert len(lead_times) == len(analogues), "Problem with finding lead times."
 
         analogues_df = (
@@ -186,8 +191,8 @@ class Library:
         This function is used to check if the analogue library has already been created and saved as a .csv file.
         """
         internal_step = False
-        if self.current_step != 1 and self.current_step == self.num_steps:
-            print('Since this is the final step, looking for the products .csv from first step...')
+        if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
+            print('Since this is an internal or final step looking for the products .csv from previous step...')
             csv_path: str = self.find_products_csv_name(reactant)
             internal_step = True
             return csv_path, internal_step
@@ -219,7 +224,7 @@ class Library:
                     AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
                 # If a perfect match is found, return the path
                 if similarity_score == 1:
-                    print(f"Found {path} as the products .csv from first step.")
+                    print(f"Found {path} as the products .csv from previous step.")
                     return path
         return None
 

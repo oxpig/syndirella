@@ -55,25 +55,14 @@ class SlipperSynthesizer:
             return self.products
         # Filter analogues
         self.filter_analogues()
+        if len(self.analogues_dataframes_to_react) == 1:
+            self.products = self.get_products_from_single_reactant()
+            return self.products
         # Get cartesian product of all analogues
         self.reactant_combinations: pd.DataFrame = self.combine_analogues()
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
         return self.products
-
-    # def _filter_out_repeats(self, df: pd.DataFrame, analogue_columns: Tuple[str, str], reactant_prefix: str) \
-    #         -> pd.DataFrame:
-    #     """
-    #     This function is used to filter out repeats from the analogues dataframes.
-    #     """
-    #     print(f"Filtering repeats from {reactant_prefix} dataframe...")
-    #     orig_df = df.copy()
-    #     # filter out repeats
-    #     df = df.drop_duplicates(subset=analogue_columns)
-    #     num_filtered = len(orig_df) - len(df)
-    #     percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
-    #     print(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
-    #     return df
 
     def check_product_csv_exists(self):
         """
@@ -179,6 +168,12 @@ class SlipperSynthesizer:
 
         If longer than 10,000 will cluster analogues and sample on diversity.
         """
+        if len(self.analogues_dataframes_to_react) < 2:
+            if len(list(self.analogues_dataframes_to_react.values())[0]) > 10000:
+                print(f"Too many analogues for {list(self.analogues_dataframes_to_react.keys())[0]}.")
+                self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]] = (
+                    self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]].head(10000))
+            return
         max_allowed_size = 10000
         lengths: List[int] = [len(df) for df in self.analogues_dataframes_to_react.values()]
         product_of_lengths = lengths[0] * lengths[1]
@@ -232,6 +227,8 @@ class SlipperSynthesizer:
         """
         This function is used to combine the analogues of reactants into 1 dataframe that the products are found from.
         """
+        if len(self.analogues_dataframes_to_react) < 2:
+            return list(self.analogues_dataframes_to_react.values())[0]
         # Get all the analogues dataframes
         r1 = self.analogues_dataframes_to_react['r1']
         r2 = self.analogues_dataframes_to_react['r2']
@@ -272,9 +269,68 @@ class SlipperSynthesizer:
         print(f"Found {len(set(list(all_products['name'])))} unique products.")
         return all_products
 
+    def get_products_from_single_reactant(self) -> pd.DataFrame:
+        """
+        This function gets the products from a single reactant (like deprotections).
+        """
+        reactant = list(self.analogues_dataframes_to_react.values())[0]
+        products: pd.DataFrame = reactant.apply(self.apply_reaction_single, axis=1)
+        try:
+            products = products.explode('combined').reset_index(drop=True)
+            # Attempt to split the 'combined' column
+            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'], index=products.index)
+            products[['smiles', 'num_atom_diff']] = new_columns
+            products.drop('combined', axis=1, inplace=True)
+        except ValueError as e:
+            print(f"Error: {e}")
+        # Filter products
+        products = self.filter_products(products)
+        # Add metadata
+        products = self.add_metadata(products)
+        # Enumerate stereoisomers.
+        all_products = self.enumerate_stereoisomers(products)
+        print(f"Found {len(set(list(all_products['name'])))} unique products.")
+        return all_products
+
+    def apply_reaction_single(self, row) -> pd.Series:
+        """
+        For mono-molecular reactions:
+        This function applies the original reaction to each row of the reactant combinations dataframe. Can return
+        multiple products.
+        """
+        # only get num_atom_diff if final step of route
+        reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
+        r1: str = row['r1_mol']
+        products = reaction.RunReactants((r1,))
+        if len(products) == 0:
+            print("No products found.")
+            row['flag'] = None
+            row['combined'] = [(None, None)]
+            return row
+        elif len(products) > 1 or len(products[0]) > 1:
+            # check if all products can be sanitized, only keep the ones that can
+            row_smiles = []
+            row_num_atom_diff = []
+            for product in products:
+                if self.can_be_sanitized(product[0]):
+                    row_smiles.append(Chem.MolToSmiles(product[0]))
+                    row_num_atom_diff.append(self.calc_num_atom_diff(self.library.reaction.product, product[0]))
+                if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
+                    print(f"Found multiple products at {row.name}. Flagging...")
+                    row['flag'] = 'one_of_multiple_products'
+                row['combined'] = list(zip(row_smiles, row_num_atom_diff))
+                return row
+            product = products[0][0]
+            if self.can_be_sanitized(product):
+                base = self.library.reaction.product
+                num_atom_diff = self.calc_num_atom_diff(base, product)
+                row['flag'] = None
+                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+                return row
 
     def apply_reaction(self, row) -> pd.Series:
         """
+        For bimolecular reactions:
         This function applies the original reaction to each row of the reactant combinations dataframe. Can return 
         multiple products. 
         """
@@ -303,8 +359,6 @@ class SlipperSynthesizer:
                 print(f"Found multiple products at {row.name}. Flagging...")
                 row['flag'] = 'one_of_multiple_products'
             row['combined'] = list(zip(row_smiles, row_num_atom_diff))
-            # row['smiles'] = row_smiles
-            # row['num_atom_diff'] = row_num_atom_diff
             return row
         product = products[0][0]
         if self.can_be_sanitized(product):
@@ -312,8 +366,6 @@ class SlipperSynthesizer:
             num_atom_diff = self.calc_num_atom_diff(base, product)
             row['flag'] = None
             row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-            # row['smiles'] = Chem.MolToSmiles(product)
-            # row['num_atom_diff'] = num_atom_diff
             return row
 
     def can_be_sanitized(self, mol: Chem.Mol):

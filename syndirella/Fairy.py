@@ -170,6 +170,7 @@ class Fairy:
         """
         Converts mols to fingerprints, checks for Tanimoto similarity of 1, and removes repeats.
         """
+        print("Removing repeat analogues...")
         unique_mols = []
         fingerprints = [rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048) for mol in mols]
         seen = set()  # To keep track of indices of molecules that are duplicates
@@ -193,6 +194,24 @@ class Fairy:
                         (atom.GetIsotope() not in [0, 1] and atom.GetAtomicNum() == 1)
                         for atom in mol.GetAtoms())]
         return mols
+
+    @staticmethod
+    def _remove_chirality_from_mol(mol: Chem.Mol) -> Chem.Mol:
+        """
+        This function is used to remove chirality from a single molecule.
+        """
+        [atom.SetChiralTag(Chem.CHI_UNSPECIFIED) for atom in mol.GetAtoms()]
+        return mol
+
+    @staticmethod
+    def remove_chirality(mols: List[Chem.Mol]) -> List[Chem.Mol]:
+        """
+        This function is used to remove mols that have chirality specification.
+        """
+        print("Removing chirality from analogues...")
+        mols = [Fairy._remove_chirality_from_mol(mol) for mol in mols]
+        return mols
+
 
     def print_diff(self, mols: List[Chem.Mol], valid_mols: List[Chem.Mol], desc: str) -> None:
         """
