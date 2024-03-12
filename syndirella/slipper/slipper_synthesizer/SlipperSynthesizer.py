@@ -380,6 +380,7 @@ class SlipperSynthesizer:
     def calc_num_atom_diff(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
         This function is used to calculate the number of atoms added to another compound compared to the base compound.
+        It is done by finding the maximum common substructure (MCS) and then finding the difference in atoms.
         """
         mcs = rdFMCS.FindMCS([base, product])
         mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
