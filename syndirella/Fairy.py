@@ -189,9 +189,10 @@ class Fairy:
         This function is used to remove mols that have non-abundant isotopes.
         """
         mols = [mol for mol in mols if
-                not any((atom.GetIsotope() not in [0, 12] and atom.GetAtomicNum() == 6) or
-                        (atom.GetIsotope() not in [0, 14] and atom.GetAtomicNum() == 7) or
-                        (atom.GetIsotope() not in [0, 1] and atom.GetAtomicNum() == 1)
+                not any((atom.GetIsotope() not in [0, 12] and atom.GetAtomicNum() == 6) or # Carbon
+                        (atom.GetIsotope() not in [0, 14] and atom.GetAtomicNum() == 7) or # Nitrogen
+                        (atom.GetIsotope() not in [0, 1] and atom.GetAtomicNum() == 1) or # Hydrogen
+                        (atom.GetIsotope() not in [0, 16] and atom.GetAtomicNum() == 8) # Oxygen
                         for atom in mol.GetAtoms())]
         return mols
 

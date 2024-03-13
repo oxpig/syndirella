@@ -1,0 +1,4 @@
+﻿,smiles,reactants,reaction_names,num_steps,hits,compound_set,batch
+0,Cc1cc(NC(=O)CO)cc(OCC(=O)N(C)C)c1,"[('Cc1cc(O)cc(N)c1', 'C(O)(=O)CO[Si](C(C)(C)C)(C)C'), 'Cc1cc(O)cc(NC(=O)CO[Si](C)(C)C(C)(C)C)c1', ('Cc1cc(O)cc(NC(=O)CO)c1', 'CN(C)C(=O)CCl')]","['Amidation', 'TBS_alcohol_deprotection', 'Williamson_ether_synthesis']",3,x0922A x0732A,x0922-x0732-merge-1-1,9
+1,Cn1ncc(NC(=O)CC#N)c1NC(=O)C1CCCO1,"[('Cn1ncc(NC(=O)OC(C)(C)C)c1N', 'O=C(O)C1CCCO1'), 'Cn1ncc(NC(=O)OC(C)(C)C)c1NC(=O)C1CCCO1', ('Cn1ncc(N)c1NC(=O)C1CCCO1', 'N#CCC(=O)O')]","['Amidation', 'N-Boc_deprotection', 'Amidation']",3,x0310A x0416A,x0310-x0416-merge-1-1,0
+2,CC(=O)Nc1cc(C)cc(NC(=O)CO)c1,"[('CC(C)(C)OC(=O)Nc1cc(C)cc(N)c1', 'CC(=O)O'), 'CC(=O)Nc1cc(C)cc(NC(=O)OC(C)(C)C)c1', ('CC(=O)Nc1cc(C)cc(N)c1', 'O=C(O)CO')]","['Amidation', 'N-Boc_deprotection', 'Amidation']",3,x0884A x0732A,x0884-x0732-merge-3-7,5

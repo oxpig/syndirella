@@ -183,6 +183,10 @@ class Reaction():
         pattern associated with the reaction.
         """
         # check reactant smarts in both reactants
-        matched_reactants: Dict[str, Tuple[Chem.Mol, List[int]]] = self.smarts_handler.assign_reactants_w_rxn_smarts(self.all_attach_ids, self.reaction_name)
+        matched_reactants: Dict[str, Tuple[Chem.Mol, List[int]]] = self.smarts_handler.assign_reactants_w_rxn_smarts(
+            self.all_attach_ids, self.reaction_name)
         self.matched_smarts_to_reactant = matched_reactants
+        if len(self.matched_smarts_to_reactant) == 0:
+            raise ReactionError("No reaction atoms found for reaction {}".format(self.reaction_name))
+            return None
         return self.matched_smarts_to_reactant

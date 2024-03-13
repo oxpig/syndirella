@@ -60,7 +60,7 @@ class SMARTSHandler:
             reactant_mol = next(iter(reactant_attach_ids.keys())) # get first and only key
             self.matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] = (
                 self.format_matched_reactant_for_one(reactant_mol, attach_ids, patt))
-            assert self.matched_reactants is not None, "Reactant could not be matched to only SMARTS in reaction."
+            assert len(self.matched_reactants) != 0 , "Reactant could not be matched to only SMARTS in reaction."
             return self.matched_reactants
         r1: Chem.Mol = list(reactant_attach_ids.keys())[0]
         r2: Chem.Mol = list(reactant_attach_ids.keys())[1]
@@ -135,6 +135,10 @@ class SMARTSHandler:
         matches = reactant_mol.GetSubstructMatches(mol_patt)
         for match in matches:
             if attach_ids.intersection(match):
+                matched_reactants[patt] = (reactant_mol, match, 'r1')
+                break
+            # Lax check if no attachment ids are found
+            if len(match) == mol_patt.GetNumAtoms():
                 matched_reactants[patt] = (reactant_mol, match, 'r1')
                 break
         return matched_reactants

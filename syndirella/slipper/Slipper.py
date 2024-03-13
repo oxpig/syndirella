@@ -15,7 +15,7 @@ import os, shutil
 
 class Slipper:
     """
-    This class is instantiated to represent all products for a route.
+    This class is instantiated to represent all products for a step in a route.
     """
     def __init__(self,
                  final_library: Library,
@@ -36,8 +36,7 @@ class Slipper:
         self.batch_num: int = batch_num
         self.atoms_ids_expansion: dict = atoms_ids_expansion
         self.placements: pd.DataFrame = None
-        self.n_cores: int = 8
-        self.timeout: int = 240
+
         self.output_path: str = None
         self.additional_info: dict = additional_info
 
@@ -60,8 +59,13 @@ class Slipper:
         """
         This function is used to place the products with Fragmenstein.
         """
-        slipper_fitter = SlipperFitter(self.products, self.template, self.hits, self.hits_names, self.n_cores,
-                                       self.timeout, self.batch_num, self.output_dir, self.final_products_csv_path)
+        slipper_fitter = SlipperFitter(self.template,
+                                       self.hits,
+                                       self.hits_names,
+                                       self.output_dir)
+        slipper_fitter.final_products = self.products
+        slipper_fitter.batch_num = self.batch_num
+        slipper_fitter.final_products_csv_path = self.final_products_csv_path
         self.placements: pd.DataFrame = slipper_fitter.fit_products()
         slipper_fitter.save_placements()
         self.output_path: str = slipper_fitter.output_path
