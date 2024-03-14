@@ -9,21 +9,76 @@ product of a reaction.
 import unittest
 
 import pandas as pd
+from rdkit import Chem
 
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.Cobbler import Cobbler
 from ..cobblers_workshop.Library import Library
 from syndirella.slipper.Slipper import Slipper
+from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
+
+class TestSyndirellaV2(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/syndirella_v2/test.csv'
+        self.output_dir = (
+            '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/syndirella_v2')
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
+                              'x0310_relaxed_apo.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/new_hits.sdf'
+        self.batch_num = 10000
+        self.additional_info = ['compound_set']
+        self.manual_routes = True
+
+    def test_pipeline(self):
+        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
+                     self.additional_info, self.manual_routes)
+
+class TestPipelineIntraGeometry(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry/intra_test.csv')
+        self.output_dir = (
+            '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry_new_fragmenstein/')
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
+                              'x0310_relaxed_apo.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/new_hits.sdf'
+        self.batch_num = 5
+        self.additional_info = ['compound_set']
+        self.manual_routes = True
+
+    def test_pipeline(self):
+        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
+                     self.additional_info, self.manual_routes)
+
+class TestIntraGeometryCheck(unittest.TestCase):
+    def setUp(self):
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
+                              'x0310_relaxed_apo.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/new_hits.sdf'
+        self.batch_num = 1
+        self.base = Chem.MolFromSmiles('CN1CCC(Oc2ccccc2OCC(=O)N2CCOCC2)C1=O')
+        self.input_df = None
+        self.hits_names = ['A71EV2A-x0528A', 'A71EV2A-x0739A']
+        self.timeout = 240
+        self.n_cores = 8
+        self.final_products_csv_path = None
+
+    def test_intra_geometry(self):
+        slipper_fitter = SlipperFitter(self.template_path,
+                                       self.hits_path,
+                                       self.hits_names,
+                                       self.output_dir)
+        slipper_fitter.check_base(self.base)
 
 class TestPipelineWBocDeprotection(unittest.TestCase):
     def setUp(self):
         self.csv_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_boc_deprotection/'
                          'test.csv')
         self.output_dir = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_boc_deprotection/')
-        self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
-                              'x0310_template.pdb')
-        self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/clean_hits.sdf'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
+                              'x0310_relaxed_apo.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/new_hits.sdf'
         self.batch_num = 1
         self.additional_info = ['compound_set']
         self.manual_routes = True

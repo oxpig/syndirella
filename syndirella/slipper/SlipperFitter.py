@@ -9,9 +9,12 @@ from fragmenstein import Laboratory, Wictor
 import pandas as pd
 from fragmenstein.laboratory.validator import place_input_validator
 from rdkit import Chem
+from rdkit.Chem import rdinchi
 import os, logging
 import time
-
+from syndirella.slipper import intra_geometry
+import shutil
+import datetime
 
 class SlipperFitter:
     """
@@ -19,41 +22,82 @@ class SlipperFitter:
     """
 
     def __init__(self,
-                 final_products: pd.DataFrame,
                  template_path: str,
                  hits_path: str,
                  hits_names: List[str],
-                 n_cores: int,
-                 timeout: int,
-                 batch_num: int,
-                 output_dir: str,
-                 final_products_csv_path: str):
-        self.final_products: pd.DataFrame = final_products
+                 output_dir: str):
         self.template_path: str = template_path
         self.hits_path: str = hits_path
         self.hits_names: List[str] = hits_names
-        self.input_df: pd.DataFrame = None
+        self.output_dir: str = output_dir
+        self.num_atom_diff_limit: int = 15
+        self.final_products_csv_path: str = None
+        self.batch_num: int = None
+        self.final_products: pd.DataFrame = None
         self.placements: pd.DataFrame = None
         self.merged_placements: pd.DataFrame = None
-
-        # Placements variables set
-        self.n_cores: int = n_cores
-        self.timeout: int = timeout
-        self.batch_num: int = batch_num
-        self.output_dir: str = output_dir
-
-        self.final_products_csv_path: str = final_products_csv_path
         self.output_path = None
+        # Placements variables set
+        self.n_cores: int = 8
+        self.timeout: int = 240
 
     def fit_products(self):
         """
         Main entry to the SlipperFitter class. This function is used to fit the products to the final library.
         """
-        self.input_df = self.prep_products()
-        self.placements = self.place_products()
+        print('Fitting products, warning: it is expected that the base compound has already passed minimisation and '
+              'intramolecular checks.')
+        input_df: pd.DataFrame = self.prep_products()
+        self.placements = self.place_products(input_df)
         self.edit_placements()
         self.merged_placements = self.merge_placements()
         return self.merged_placements
+
+    def check_base(self, base: Chem.Mol) -> bool:
+        """
+        Checks if the base can be minimised (no specific stereoisomer) and passes intermolecular checks.
+        If it cannot be minimised after 3 attempts, returns False.
+        """
+        input_df: pd.DataFrame = self._prep_base_input_df(base)
+        id = generate_inchi_ID(Chem.MolToSmiles(base))
+        output_path: str = os.path.join(self.output_dir, f'{id}-base-check')
+        lab: Laboratory = self.setup_Fragmenstein(output_path)
+        for attempt in range(1, 2):
+            base_placed: Chem.Mol = self._place_base(lab, input_df)  # None if not minimised
+            if base_placed is not None:
+                geometries: Dict = intra_geometry.check_geometry(base_placed,
+                                                                 threshold_clash=0.4) # increasing threshold for clash
+                if geometries['results']['bond_lengths_within_bounds'] and \
+                        geometries['results']['bond_angles_within_bounds'] and \
+                        geometries['results']['no_internal_clash']:
+                    print('Base could be minimised and passed intramolecular checks!')
+                    # remove output directory
+                    shutil.rmtree(os.path.join(output_path))
+                    return True
+                else:
+                    print(f'Base could not pass intramolecular checks. Attempt {attempt} of 3.')
+            else:
+                print(f'Base could not be minimised. Attempt {attempt} of 3.')
+        return False
+
+    def _prep_base_input_df(self, base: Chem.Mol) -> pd.DataFrame:
+        """
+        Prepares input dataframe to Fragmenstein for the base compound.
+        """
+        base_df: pd.DataFrame = pd.DataFrame({'name': ['base_check'],
+                                              'smiles': [Chem.MolToSmiles(base)]})
+        base_df = self.add_hits(base_df)
+        base_df = base_df.astype({'name': str, 'smiles': str})
+        return base_df
+
+    def _get_base(self, input_df: pd.DataFrame) -> Chem.Mol:
+        """
+        Get base compound as mol object from the input_df.
+        """
+        # get flat base smiles
+        base_smiles: str = input_df.loc['base' in input_df['name'], 'smiles'].values[0]
+        base_mol: Chem.Mol = Chem.MolFromSmiles(base_smiles)
+        return base_mol
 
     def prep_products(self) -> pd.DataFrame:
         """
@@ -77,16 +121,24 @@ class SlipperFitter:
         input_df: pd.DataFrame = self.final_products.copy(deep=True)
         # drop duplicates of names
         input_df = input_df.drop_duplicates(subset='name')
+        # cut rows with number of atoms difference greater than num_atom_diff_limit
+        print(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
+        input_df = input_df[input_df['num_atom_diff'] <= self.num_atom_diff_limit]
+        self._print_diff(self.final_products, input_df, verb='Kept')
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
         # place number in batch
-        if self.batch_num > 0:
-            print(f'Only placing the top {self.batch_num} products.')
+        if len(input_df) > self.batch_num:
+            print(f'Even after cutting products, the number of products is over {self.batch_num}.'
+                  f'Only placing the top {self.batch_num} products.')
             input_df = input_df.iloc[:self.batch_num]
-        self._print_diff(self.final_products, input_df)
+        self._print_diff(self.final_products, input_df, verb='Placing')
         return input_df
 
-    def _print_diff(self, orig_df: pd.DataFrame, input_df: pd.DataFrame):
+    def _print_diff(self,
+                    orig_df: pd.DataFrame,
+                    input_df: pd.DataFrame,
+                    verb: str = None):
         """
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
@@ -95,7 +147,7 @@ class SlipperFitter:
                                                "the original list of analogues")
         num_placed = len(input_df)
         percent = round(((len(input_df) / len(orig_df)) * 100), 2)
-        print(f'Placing {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
+        print(f'{verb} {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -117,34 +169,41 @@ class SlipperFitter:
         input_df['hits'] = input_df.apply(lambda row: hits, axis=1)
         return input_df
 
-    def place_products(self) -> pd.DataFrame:
+    def _place_base(self, lab: Laboratory, input_df: pd.DataFrame) -> bool:
+        """
+        Places the base compound, returns the mol object of the base compound if successful else None.
+        """
+        placements: pd.DataFrame = lab.place(place_input_validator(input_df), n_cores=self.n_cores,
+                                             timeout=self.timeout)
+        base: Chem.Mol = placements.at[0, 'minimized_mol']
+        return base
+
+    def place_products(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
         This function places products using Fragmenstein.
         """
         start_time = time.time()  # Start timing
         # set up Wictor
-        self.setup_Fragmenstein()
-        # Get pdbblock from template_path
-        with open(self.template_path) as fh:
-            pdbblock: str = fh.read()
-        lab = Laboratory(pdbblock=pdbblock, covalent_resi=None, run_plip=False)
-        placements: pd.DataFrame = lab.place(place_input_validator(self.input_df), n_cores=self.n_cores,
+        self.output_path: str = self.output_dir
+        lab: Laboratory = self.setup_Fragmenstein(self.output_path)
+        placements: pd.DataFrame = lab.place(place_input_validator(input_df),
+                                             n_cores=self.n_cores,
                                              timeout=self.timeout)
         end_time = time.time()  # End timing
         elapsed_time = end_time - start_time  # Calculate elapsed time
-        print(f"Placing {len(self.input_df)} run time: {elapsed_time:.2f} seconds")  # Print the elapsed time
+        print(f"Placing {len(input_df)} run time: {datetime.timedelta(seconds=elapsed_time)}")
         return placements
 
-    def setup_Fragmenstein(self):
+    def setup_Fragmenstein(self,
+                           output_path: str) -> Laboratory:
         """
         This function sets up Fragmenstein to run.
         """
         # Using Wictor to place just by RDKit minimisation
         # make output directory
-        self.output_path: str = os.path.join(self.output_dir, 'output')
-        os.makedirs(self.output_path, exist_ok=True)
-        Wictor.work_path = self.output_path
-        os.chdir(self.output_dir)  # this does the trick
+        os.makedirs(output_path, exist_ok=True)
+        Wictor.work_path = output_path
+        os.chdir(output_path)  # this does the trick
         Wictor.monster_throw_on_discard = True  # stop this merger if a fragment cannot be used.
         Wictor.monster_joining_cutoff = 5  # Å
         Wictor.quick_reanimation = False  # for the impatient
@@ -152,6 +211,13 @@ class SlipperFitter:
         Wictor.enable_stdout(logging.CRITICAL)
         # Wictor.enable_logfile(os.path.join(self.output_path, f'fragmenstein.log'), logging.ERROR)
         Laboratory.Victor = Wictor
+
+        with open(self.template_path) as fh:
+            pdbblock: str = fh.read()
+        lab = Laboratory(pdbblock=pdbblock,
+                         covalent_resi=None,
+                         run_plip=False)
+        return lab
 
     def edit_placements(self):
         """
@@ -201,3 +267,13 @@ class SlipperFitter:
         # get final name same as final products csv
         merged_placements_path = self.final_products_csv_path.split('.')[0] + '_placements.csv'
         self.merged_placements.to_csv(merged_placements_path)
+
+
+def generate_inchi_ID(smiles: str) -> str:
+    """
+    This function is used to generate a unique id for the route just using the product.
+    """
+    assert Chem.MolFromSmiles(smiles), f"Could not create a molecule from the smiles {smiles}."
+    ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
+    id = rdinchi.InchiToInchiKey(ID[0])
+    return id

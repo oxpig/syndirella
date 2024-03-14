@@ -28,7 +28,13 @@ class Library:
     object. It will also store the analogue library as a .csv file.
 
     """
-    def __init__(self, reaction: Reaction, output_dir: str, id: str, num_steps: int, current_step: int, filter: bool):
+    def __init__(self,
+                 reaction: Reaction,
+                 output_dir: str,
+                 id: str,
+                 num_steps: int,
+                 current_step: int,
+                 filter: bool):
         self.reaction: Reaction = reaction
         self.id: str = id
         self.output_dir: str = f"{output_dir}/{self.id}"

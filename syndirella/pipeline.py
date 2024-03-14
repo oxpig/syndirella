@@ -8,23 +8,26 @@ import os
 from typing import List, Tuple, Dict, Any
 import pandas as pd
 from rdkit import Chem
-import datetime
+import datetime, time
 import ast
 import traceback
 
 from syndirella.Cobbler import Cobbler
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
+from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.Fairy import Fairy
+from syndirella.error import RouteError
 
 
-def _format_additional_info(df: pd.DataFrame, additional_columns: List[str]) -> Dict[str, Any]:
+def _format_additional_info(row: pd.Series,
+                            additional_columns: List[str]) -> Dict[str, Any]:
     """
     This function is used to format the additional info from the dataframe into a dictionary.
     """
     additional_info = {}
     for col in additional_columns:
-        additional_info[col] = df[col]
+        additional_info[col] = row[col]
     return additional_info
 
 
@@ -65,6 +68,23 @@ def _assert_manual_df(df: pd.DataFrame) -> None:
         assert type(reaction_names) == list, "The reaction_names column must be a list of strings."
         assert type(num_steps) == int, "The num_steps column must be a integer."
 
+def _assert_base_placement(base: str,
+                           template_path: str,
+                           hits_path: str,
+                           hits_names: List[str],
+                           output_dir: str
+                           ) -> None:
+    """
+    Assert that the base can be placed.
+    """
+    base_mol = Chem.MolFromSmiles(base)
+    slipper_fitter = SlipperFitter(template_path,
+                                   hits_path,
+                                   hits_names,
+                                   output_dir)
+    can_be_placed: bool = slipper_fitter.check_base(base_mol)
+    if not can_be_placed:
+        raise RouteError(base)
 
 def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                                       template_path: str,
@@ -78,6 +98,9 @@ def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
     for workshop in cobbler_workshops:
         try:
             final_library = workshop.get_final_library()
+            if final_library is None:
+                print(f"Could not get the final library for compound {workshop.product}. Skipping...")
+                continue
             slipper = Slipper(final_library,
                               template_path,
                               hits_path,
@@ -106,11 +129,18 @@ def _elaborate_compound_with_manual_routes(product: str,
     """
     This function is used to elaborate a single compound using a manually defined route.
     """
+    start_time = time.time()
     fairy = Fairy()
     mol = Chem.MolFromSmiles(product)
     assert mol, f"Could not create a molecule from the smiles {product}."
+    print('Elaborating compound:', product)
     # convert hits to a list
     hits = hits.split()
+    _assert_base_placement(base=product,
+                           template_path=template_path,
+                           hits_path=hits_path,
+                           hits_names=hits,
+                           output_dir=output_dir)
     workshop = CobblersWorkshop(product=product,
                                 reactants=reactants,
                                 reaction_names=reaction_names,
@@ -149,7 +179,9 @@ def _elaborate_compound_with_manual_routes(product: str,
                                       hits=hits,
                                       batch_num=batch_num,
                                       additional_info=additional_info)
-    print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
+    end_time = time.time()
+    elapsed_time = end_time - start_time  # Calculate elapsed time
+    print(f"Finished elaborating compound {product} after {datetime.timedelta(seconds=elapsed_time)}")
     print()
 
 
@@ -163,10 +195,16 @@ def _elaborate_compound_full_auto(product: str,
     """
     This function is used to elaborate a single compound.
     """
+    start_time = time.time()
     mol = Chem.MolFromSmiles(product)
     assert mol, f"Could not create a molecule from the smiles {product}."
     # convert hits to a list
     hits = hits.split()
+    _assert_base_placement(base=product,
+                           template_path=template_path,
+                           hits_path=hits_path,
+                           hits_names=hits,
+                           output_dir=output_dir)
     # create the cobbler
     cobbler = Cobbler(base_compound=product,
                       output_dir=output_dir)
@@ -175,7 +213,9 @@ def _elaborate_compound_full_auto(product: str,
     _elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
                                       hits_path=hits_path, hits=hits, batch_num=batch_num,
                                       additional_info=additional_info)
-    print(f"Finished elaborating compound {product} at {datetime.datetime.now()}.")
+    end_time = time.time()
+    elapsed_time = end_time - start_time  # Calculate elapsed time
+    print(f"Finished elaborating compound {product} after {datetime.timedelta(seconds=elapsed_time)}")
     print()
 
 
@@ -199,25 +239,35 @@ def run_pipeline(csv_path: str,
     if not manual_routes:
         print("Running the full auto pipeline.")
         for index, row in df.iterrows():  # could make this a parallel for loop
-            _elaborate_compound_full_auto(product=row['smiles'],
-                                          hits=row['hits'],
-                                          template_path=template_path,
-                                          hits_path=hits_path,
-                                          batch_num=batch_num,
-                                          output_dir=output_dir,
-                                          additional_info=additional_info)
+            try:
+                additional_info = _format_additional_info(row, additional_columns)
+                _elaborate_compound_full_auto(product=row['smiles'],
+                                              hits=row['hits'],
+                                              template_path=template_path,
+                                              hits_path=hits_path,
+                                              batch_num=batch_num,
+                                              output_dir=output_dir,
+                                              additional_info=additional_info)
+            except RouteError:
+                print(f"Base compound {row['smiles']} could not be placed successfully. Skipping...")
+                continue
     else:
         print("Running the pipeline with manual routes.")
         _assert_manual_df(df)
         for index, row in df.iterrows():
-            _elaborate_compound_with_manual_routes(product=row['smiles'],
-                                                   reactants=ast.literal_eval(row['reactants']),
-                                                   reaction_names=ast.literal_eval(row['reaction_names']),
-                                                   num_steps=row['num_steps'],
-                                                   hits=row['hits'],
-                                                   template_path=template_path,
-                                                   hits_path=hits_path,
-                                                   batch_num=batch_num,
-                                                   output_dir=output_dir,
-                                                   additional_info=additional_info)
+            try:
+                additional_info = _format_additional_info(row, additional_columns)
+                _elaborate_compound_with_manual_routes(product=row['smiles'],
+                                                       reactants=ast.literal_eval(row['reactants']),
+                                                       reaction_names=ast.literal_eval(row['reaction_names']),
+                                                       num_steps=row['num_steps'],
+                                                       hits=row['hits'],
+                                                       template_path=template_path,
+                                                       hits_path=hits_path,
+                                                       batch_num=batch_num,
+                                                       output_dir=output_dir,
+                                                       additional_info=additional_info)
+            except RouteError:
+                print(f"Base compound {row['smiles']} could not be placed successfully. Skipping...")
+                continue
     print("Pipeline complete.")

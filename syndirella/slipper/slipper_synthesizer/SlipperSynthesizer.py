@@ -43,6 +43,8 @@ class SlipperSynthesizer:
         self.atom_ids_expansion: dict = atom_ids_expansion
         self.uuid = shortuuid.ShortUUID().random(length=6)
         self.additional_info = additional_info
+        self.current_step: int = library.current_step
+        self.num_steps: int = library.num_steps
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -128,7 +130,7 @@ class SlipperSynthesizer:
         # Add num_atom_diff to base reactant, which is the first reactant
         base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
         df[f'{reactant_prefix}_num_atom_diff'] = (
-            df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff(base_reactant, x)))
+            df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
         # get columns to sort by
         ordered_columns = [f'{reactant_prefix}_lead_time', f'{reactant_prefix}_num_atom_diff', 'num_matches']
         matching_columns = []
@@ -314,16 +316,16 @@ class SlipperSynthesizer:
             for product in products:
                 if self.can_be_sanitized(product[0]):
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(self.calc_num_atom_diff(self.library.reaction.product, product[0]))
+                    row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
                 if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
-                    print(f"Found multiple products at {row.name}. Flagging...")
+                    #print(f"Found multiple products at {row.name}. Flagging...")
                     row['flag'] = 'one_of_multiple_products'
                 row['combined'] = list(zip(row_smiles, row_num_atom_diff))
                 return row
             product = products[0][0]
             if self.can_be_sanitized(product):
                 base = self.library.reaction.product
-                num_atom_diff = self.calc_num_atom_diff(base, product)
+                num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
                 row['flag'] = None
                 row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
                 return row
@@ -354,16 +356,16 @@ class SlipperSynthesizer:
             for product in products:
                 if self.can_be_sanitized(product[0]):  # only keep products that can be sanitized
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(self.calc_num_atom_diff(self.library.reaction.product, product[0]))
+                    row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
             if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
-                print(f"Found multiple products at {row.name}. Flagging...")
+                #print(f"Found multiple products at {row.name}. Flagging...")
                 row['flag'] = 'one_of_multiple_products'
             row['combined'] = list(zip(row_smiles, row_num_atom_diff))
             return row
         product = products[0][0]
         if self.can_be_sanitized(product):
             base = self.library.reaction.product
-            num_atom_diff = self.calc_num_atom_diff(base, product)
+            num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
             row['flag'] = None
             row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
             return row
@@ -377,16 +379,23 @@ class SlipperSynthesizer:
         except:
             return False
 
-    def calc_num_atom_diff(self, base: Chem.Mol, product: Chem.Mol) -> int:
+    def calc_num_atom_diff_mcs(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
-        This function is used to calculate the number of atoms added to another compound compared to the base compound.
-        It is done by finding the maximum common substructure (MCS) and then finding the difference in atoms.
+        This function is used to calculate the number of atoms added to product
+        by finding the maximum common substructure (MCS) and then finding the difference in length.
         """
         mcs = rdFMCS.FindMCS([base, product])
         mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
         mcs_atoms = mcs_mol.GetNumAtoms()
         new_mol_atoms = product.GetNumAtoms()
         difference = new_mol_atoms - mcs_atoms
+        return difference
+
+    def calc_num_atom_diff_absolute(self, base: Chem.Mol, product: Chem.Mol) -> int:
+        """
+        This function calculates the absolute number of atoms difference between the base and product.
+        """
+        difference = product.GetNumAtoms() - base.GetNumAtoms()
         return difference
 
     def filter_products(self, products: pd.DataFrame) -> pd.DataFrame:
@@ -504,7 +513,10 @@ class SlipperSynthesizer:
         """
         This function is used to enumerate the stereoisomers of the products.
         """
-        print("Enumerating stereoisomers...")
+        # First check if internal step, if yes, don't enumerate stereoisomers
+        if self.library.num_steps != self.library.current_step:
+            return products
+        print("Enumerating stereoisomers since this is the final step...")
         new_rows = []
         for index, row in products.iterrows():
             try:

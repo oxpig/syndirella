@@ -4,14 +4,15 @@ Postera.py
 
 This module contains the functionality for a Postera search.
 """
-from syndirella.DatabaseSearch import DatabaseSearch
-from syndirella.cobblers_workshop.Reaction import Reaction
 import os
 from typing import (Any, List, Dict, Tuple, Optional)
 from rdkit import Chem
 import requests
 import json
+import time
 from syndirella.Fairy import Fairy
+from syndirella.DatabaseSearch import DatabaseSearch
+from syndirella.cobblers_workshop.Reaction import Reaction
 
 
 class Postera(DatabaseSearch):
@@ -81,30 +82,71 @@ class Postera(DatabaseSearch):
     @staticmethod
     def get_resp_json(url: str,
                       api_key: str,
-                      data: Dict = None) -> Optional[Dict]:
+                      data: Dict = None,
+                      retries: int = 3,
+                      backoff_factor: float = 0.5) -> Optional[Dict]:
         """
-        Directly get the response json from a request.
+        Directly get the response json from a request, with retry mechanism for handling 429 status code.
         """
-        response = requests.post(
-            url,
-            headers={
-                'X-API-KEY': api_key,
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps(data),
-        )
-        response.raise_for_status()
-        try:
-            resp_json = response.json()
-        except requests.exceptions.HTTPError as err:
-            print(f"HTTP error: {err}")
-        except requests.exceptions.ConnectionError as err:
-            print(f"Connection error: {err}")
-        except requests.exceptions.Timeout as err:
-            print(f"Timeout error: {err}")
-        except requests.exceptions.RequestException as err:
-            print(f"Error: {err}")
-        return resp_json
+        for attempt in range(retries):
+            response = requests.post(
+                url,
+                headers={
+                    'X-API-KEY': api_key,
+                    'Content-Type': 'application/json',
+                },
+                data=json.dumps(data),
+            )
+            if response.status_code == 429:
+                if attempt < retries - 1:
+                    # Calculate wait time using exponential backoff strategy
+                    wait_time = backoff_factor * (2 ** attempt)
+                    print(f"Rate limit exceeded. Waiting for {wait_time} seconds before retrying...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print("Max retries exceeded. Please try again later.")
+                    return None
+            response.raise_for_status()
+            try:
+                return response.json()
+            except requests.exceptions.HTTPError as err:
+                print(f"HTTP error: {err}")
+            except requests.exceptions.ConnectionError as err:
+                print(f"Connection error: {err}")
+            except requests.exceptions.Timeout as err:
+                print(f"Timeout error: {err}")
+            except requests.exceptions.RequestException as err:
+                print(f"Error: {err}")
+            break  # If the request was successful, break out of the loop.
+
+    # @staticmethod
+    # def get_resp_json(url: str,
+    #                   api_key: str,
+    #                   data: Dict = None) -> Optional[Dict]:
+    #     """
+    #     Directly get the response json from a request.
+    #     """
+    #     response = requests.post(
+    #         url,
+    #         headers={
+    #             'X-API-KEY': api_key,
+    #             'Content-Type': 'application/json',
+    #         },
+    #         data=json.dumps(data),
+    #     )
+    #     response.raise_for_status()
+    #     try:
+    #         resp_json = response.json()
+    #     except requests.exceptions.HTTPError as err:
+    #         print(f"HTTP error: {err}")
+    #     except requests.exceptions.ConnectionError as err:
+    #         print(f"Connection error: {err}")
+    #     except requests.exceptions.Timeout as err:
+    #         print(f"Timeout error: {err}")
+    #     except requests.exceptions.RequestException as err:
+    #         print(f"Error: {err}")
+    #     return resp_json
 
     @staticmethod
     def get_search_results(url: str,
