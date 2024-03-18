@@ -75,13 +75,13 @@ class SyndirellaParserPipeline:
             GOAL OF PROCESS_EXAMPLE:
             def process_example(self, example: pd.Series, shared_resources):
                 cobbler_workshop = CobblerWorkshop() # will automatically know if single or multi
-                final_library = cobbler_workshop.get_final_library() # will return the final product library
-                reaction = final_library.reaction() # will be the final reaction object
+                library = cobbler_workshop.get_final_library() # will return the final product library
+                reaction = library.reaction() # will be the final reaction object
 
                 first_library = cobbler_library.get_first_library() # will return the first library
                 first_reaction = first_library.reaction() # will be the first reaction object
 
-                slipper = Slipper(final_library) # will be the final slipper object, requires cobbler_library to be instantiated
+                slipper = Slipper(library) # will be the final slipper object, requires cobbler_library to be instantiated
                 slipper.get_products() # will return the final slippers using SlipperSynthesizer class
                 slipper.place_products() # will return the final placed slippers using SlipperFitter class
         '''

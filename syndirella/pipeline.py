@@ -101,14 +101,15 @@ def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
             if final_library is None:
                 print(f"Could not get the final library for compound {workshop.product}. Skipping...")
                 continue
-            slipper = Slipper(final_library,
-                              template_path,
-                              hits_path,
-                              hits,
-                              batch_num,
+            slipper = Slipper(library=final_library,
+                              template=template_path,
+                              hits=hits_path,
+                              hits_names=hits,
+                              batch_num=batch_num,
                               additional_info=additional_info)
-            slipper.get_products()
+            _, uuid = slipper.get_products()
             slipper.place_products()
+            slipper.write_products_to_hippo(uuid=uuid) # only write at the end after placement, to get correct uuid
             slipper.clean_up_placements()
         except Exception as e:
             tb = traceback.format_exc()
@@ -219,7 +220,8 @@ def _elaborate_compound_full_auto(product: str,
     print()
 
 
-def run_pipeline(csv_path: str,
+def run_pipeline(*,
+                 csv_path: str,
                  output_dir: str,
                  template_path: str,
                  hits_path: str,
@@ -235,7 +237,6 @@ def run_pipeline(csv_path: str,
     # assert that the df contains additional_columns
     for col in additional_columns:
         assert col in df.columns, f"The csv must contain the column {col}."
-    additional_info = _format_additional_info(df, additional_columns)
     if not manual_routes:
         print("Running the full auto pipeline.")
         for index, row in df.iterrows():  # could make this a parallel for loop

@@ -63,7 +63,7 @@ class CobblersWorkshop():
                 self.cobbler_benches.append(cobbler_bench)
                 current_library = cobbler_bench.find_analogues()
                 if step+1 < self.num_steps: # you're not at the last step
-                    slipper = Slipper(current_library,
+                    slipper = Slipper(library=current_library,
                                       atoms_ids_expansion=self.atoms_ids_expansion)
                     slipper.get_products()
                 # Update the final library at each step

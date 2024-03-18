@@ -39,6 +39,7 @@ class SlipperSynthesizer:
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
         self.reactant_combinations: pd.DataFrame = None
+        self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
         self.atom_ids_expansion: dict = atom_ids_expansion
         self.uuid = shortuuid.ShortUUID().random(length=6)
@@ -52,7 +53,7 @@ class SlipperSynthesizer:
         called.
         """
         # Check if products already exist
-        if self.check_product_csv_exists():
+        if self.check_product_pkl_exists():
             self.load_products()
             return self.products
         # Filter analogues
@@ -66,36 +67,36 @@ class SlipperSynthesizer:
         self.products: pd.DataFrame = self.find_products_from_reactants()
         return self.products
 
-    def check_product_csv_exists(self):
+    def check_product_pkl_exists(self):
         """
-        This function checks if the products csv already exists and if so it loads it.
+        This function checks if the products pkl already exists and if so it loads it.
         """
-        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
-                    f"{self.library.current_step}of{self.library.num_steps}.csv")
+        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.pkl")
         if self.library.num_steps != self.library.current_step:
-            csv_path = os.path.join(self.output_dir, 'extra', csv_name)
-            if os.path.exists(csv_path):
-                print(f"Products already exist at {csv_path}. "
+            pkl_path = os.path.join(self.output_dir, 'extra', pkl_name)
+            if os.path.exists(pkl_path):
+                print(f"Products already exist at {pkl_path}. "
                       f"Loading from file...")
                 return True
         else:
-            final_csv_path = os.path.join(self.output_dir, csv_name)
-            if os.path.exists(final_csv_path):
-                print(f"Products already exist at {final_csv_path}. "
+            final_pkl_path = os.path.join(self.output_dir, pkl_name)
+            if os.path.exists(final_pkl_path):
+                print(f"Products already exist at {final_pkl_path}. "
                       f"Loading from file...")
                 return True
         return False
 
     def load_products(self):
         """
-        This function loads the product .csv file.
+        This function loads the product .pkl file.
         """
-        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
-                    f"{self.library.current_step}of{self.library.num_steps}.csv")
+        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.pkl")
         if self.library.num_steps != self.library.current_step:
-            self.products = pd.read_csv(f"{self.output_dir}/extra/{csv_name}")
+            self.products = pd.read_pickle(f"{self.output_dir}/extra/{pkl_name}")
         else:
-            self.products = pd.read_csv(f"{self.output_dir}/{csv_name}")
+            self.products = pd.read_pickle(f"{self.output_dir}/{pkl_name}")
         # Check if any 'Unnamed' columns and remove them
         unnamed_columns = [col for col in self.products.columns if 'Unnamed' in col]
         if len(unnamed_columns) > 0:
@@ -268,7 +269,8 @@ class SlipperSynthesizer:
         products = self.add_metadata(products)
         # Enumerate stereoisomers.
         all_products = self.enumerate_stereoisomers(products)
-        print(f"Found {len(set(list(all_products['name'])))} unique products.")
+        if self.num_steps == self.current_step:
+            print(f"Found {len(set(list(all_products['name'])))} unique products.")
         return all_products
 
     def get_products_from_single_reactant(self) -> pd.DataFrame:
@@ -419,6 +421,9 @@ class SlipperSynthesizer:
         return products
 
     def find_similarity_groups(self, products: pd.DataFrame) -> (pd.DataFrame, int):
+        """
+        This is an intensive function to find all the similarity groups of the products. Could probably be optimized.
+        """
         if 'group_id' not in products.columns:
             products['group_id'] = -1  # Initialize all to -1 to indicate no group yet
         fps = products['fp'].tolist()
@@ -492,10 +497,12 @@ class SlipperSynthesizer:
 
     def add_metadata(self, products: pd.DataFrame) -> pd.DataFrame:
         print('Adding metadata to products...')
+        # don't add name if not final step
         products['name'] = None  # Add a name column
         products = self.calculate_fingerprints(products)
         products, base_group_id = self.find_similarity_groups(products)
         products = self.assign_names_based_on_groups(products, self.library.id, base_group_id)
+        products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         # Add other metadata
         products['reaction'] = self.library.reaction.reaction_name
         products['step'] = self.library.current_step
@@ -506,7 +513,6 @@ class SlipperSynthesizer:
         if self.additional_info:
             for key, value in self.additional_info.items():
                 products[key] = value
-        products.drop(['mol', 'fp', 'group_id'], axis=1, inplace=True)
         return products
 
     def enumerate_stereoisomers(self, products: pd.DataFrame) -> pd.DataFrame:
@@ -546,19 +552,24 @@ class SlipperSynthesizer:
 
     def save_products(self):
         """
-        This function is used to save the products dataframe as a .csv file.
+        This function is used to save the products dataframe as a .pkl file.
         """
+        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+                    f"{self.library.current_step}of{self.library.num_steps}.pkl.gz")
         csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
             print("Since these products are not the final products they will be saved in the /extra folder. \n")
-            print(f"Saving products to {self.output_dir}/extra/{csv_name} \n")
+            print(f"Saving products to {self.output_dir}/extra/{pkl_name} \n")
             os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
-            self.products.to_csv(f"{self.output_dir}/extra/{csv_name}", index=False)
+            self.products.to_pickle(f"{self.output_dir}/extra/{pkl_name}")
         else:
+            self.final_products_pkl_path: str = f"{self.output_dir}/{pkl_name}"
             self.final_products_csv_path: str = f"{self.output_dir}/{csv_name}"
-            print(f"Saving final products to {self.final_products_csv_path} \n")
+            print(f"Saving final products to {self.final_products_pkl_path} \n")
             os.makedirs(f"{self.output_dir}/", exist_ok=True)
+            self.products.to_pickle(self.final_products_pkl_path)
+            print(f"Saving final products to {self.final_products_csv_path} \n")
             self.products.to_csv(self.final_products_csv_path, index=False)
 
     def label_products(self):
