@@ -184,7 +184,7 @@ class SlipperFitter:
         """
         start_time = time.time()  # Start timing
         # set up Wictor
-        self.output_path: str = self.output_dir
+        self.output_path: str = self.output_dir + '/output'
         lab: Laboratory = self.setup_Fragmenstein(self.output_path)
         placements: pd.DataFrame = lab.place(place_input_validator(input_df),
                                              n_cores=self.n_cores,
