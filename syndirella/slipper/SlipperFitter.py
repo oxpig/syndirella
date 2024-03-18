@@ -69,11 +69,14 @@ class SlipperFitter:
             if base_placed is not None:
                 geometries: Dict = intra_geometry.check_geometry(base_placed,
                                                                  threshold_clash=0.4) # increasing threshold for clash
-                if geometries['results']['bond_lengths_within_bounds'] and \
+                if (geometries['results']['bond_lengths_within_bounds'] and \
                         geometries['results']['bond_angles_within_bounds'] and \
-                        geometries['results']['no_internal_clash']:
-                    print('Base could be minimised and passed intramolecular checks!')
-                    return True
+                        geometries['results']['no_internal_clash']):
+                    if len(os.listdir(f'{output_path}/base-check')) > 0:
+                            print('Base could be minimised and passed intramolecular checks!')
+                            return True
+                    else:
+                        print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
                 else:
                     print(f'Base could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
             else:
