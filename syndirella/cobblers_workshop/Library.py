@@ -3,7 +3,7 @@
 syndirella.cobblers_workshop.Library.py
 
 This module contains the Library class. This class contains information about the analogue library. It will create the
-analogue library from the Reaction object. It will also store the analogue library as a .csv file.
+analogue library from the Reaction object. It will also store the analogue library as a .pkl file.
 """
 
 import pandas as pd
@@ -25,7 +25,7 @@ from syndirella.Fairy import Fairy
 class Library:
     """
     This class contains information about the analogue library. It will create the analogue library from the Reaction
-    object. It will also store the analogue library as a .csv file.
+    object. It will also store the analogue library as a .pkl file.
 
     """
     def __init__(self,
@@ -62,9 +62,11 @@ class Library:
 
     def process_reactant(self, reactant: Chem.Mol, reactant_smarts: str, analogue_prefix: str) -> pd.DataFrame:
         # search for analogues csv if already created. Perform for all reactants.
-        reactant_analogues_path, internal_step = self.check_analogues_csv_exists(analogue_prefix, reactant)
+        reactant_analogues_path, internal_step, previous_product = self.check_analogues_pkl_exists(analogue_prefix,
+                                                                                                   reactant)
         if reactant_analogues_path is not None:
-            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path, analogue_prefix,
+            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path,
+                                                                 analogue_prefix,
                                                                  internal_step)
             analogues: List[str] = list(analogues_full.keys())
         else: # perform database search
@@ -73,13 +75,21 @@ class Library:
             analogues_full: Dict[str, float] = postera_search.perform_database_search(reactant)
             analogues: List[str] = list(analogues_full.keys())
         processed_analogues_df, analogue_columns = (
-            self.process_analogues(analogues, reactant_smarts, analogue_prefix, analogues_full))
+            self.process_analogues(analogues,
+                                   reactant_smarts,
+                                   analogue_prefix,
+                                   previous_product,
+                                   analogues_full))
         processed_analogues_df: pd.DataFrame
         analogue_columns: Tuple[str, str]
         self.save_library(processed_analogues_df, analogue_prefix)
         return processed_analogues_df, analogue_columns
 
-    def process_analogues(self, analogues: List[str], reactant_smarts: str, analogue_prefix: str,
+    def process_analogues(self,
+                          analogues: List[str],
+                          reactant_smarts: str,
+                          analogue_prefix: str,
+                          previous_product: bool,
                           analogues_full: Dict[str, float] = None) -> pd.DataFrame:
         """
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
@@ -92,12 +102,10 @@ class Library:
         if self.filter:
             analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
         reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(reactant_smarts)
-
         contains_smarts_pattern, num_matches = self.check_analogue_contains_smarts_pattern(analogues_mols,
                                                                                            reactant_smarts_mol)
         contains_smarts_pattern: List[bool]
         num_matches: List[int]
-
         if len(self.reaction.matched_smarts_to_reactant) == 1:
             contains_other_reactant_smarts_pattern = [False for _ in analogues_mols]
             other_reactant_prefix = None
@@ -106,21 +114,19 @@ class Library:
                 self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
-
         # get lead time from analogues
         analogues = [Chem.MolToSmiles(analogue) for analogue in analogues_mols]
         if analogues_full is not None:
             lead_times = [analogues_full[analogue] if analogue in analogues_full else None for analogue in analogues]
             assert len(lead_times) == len(analogues), "Problem with finding lead times."
-
         analogues_df = (
             pd.DataFrame({f"{analogue_prefix}_smiles": analogues,
                           f"{analogue_prefix}_mol": analogues_mols,
                           f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
                           f"{analogue_prefix}_{self.reaction.reaction_name}_num_matches": num_matches,
                           f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern,
-                          f"{analogue_prefix}_lead_time": lead_times}))
-
+                          f"{analogue_prefix}_lead_time": lead_times,
+                          f"{analogue_prefix}_is_previous_product": previous_product}))
         if self.filter:
             analogues_df['is_PAINS_A'] = False
         return analogues_df, (f"{analogue_prefix}_{self.reaction.reaction_name}",
@@ -192,35 +198,59 @@ class Library:
         """
         return NotImplementedError()
 
-    def check_analogues_csv_exists(self, analogue_prefix: str, reactant: Chem.Mol) -> str and bool:
+    def check_analogues_pkl_exists(self, analogue_prefix: str, reactant: Chem.Mol) -> str and bool:
         """
-        This function is used to check if the analogue library has already been created and saved as a .csv file.
+        This function is used to check if the analogue library has already been created and saved as a .pkl file.
         """
         internal_step = False
         if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
-            print('Since this is an internal or final step looking for the products .csv from previous step...')
-            csv_path: str = self.find_products_csv_name(reactant)
-            internal_step = True
-            return csv_path, internal_step
+            print('Since this is an internal or final step looking for the products .pkl from previous step...')
+            pkl_path: str = self._find_products_pkl_name(reactant)
+            if pkl_path is not None:
+                internal_step = True
+                previous_product = True
+                return pkl_path, internal_step, previous_product # returns path to products .pkl.gz since is reactant
+        if self.current_step != 1 and self.current_step < self.num_steps:
+            print('Looking for analogue library .pkl.gz if already created...')
+            pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
+            if pkl_path is not None:
+                internal_step = True
+                previous_product = False
+                return pkl_path, internal_step, previous_product # returns path to analogue .pkl.gz and is internal step
+        if self.current_step == 1:
+            print('Looking for analogue library .pkl.gz if already created...')
+            pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
+            if pkl_path is not None:
+                internal_step = False
+                previous_product = False
+                return pkl_path, internal_step, previous_product # returns path to analogue .pkl.gz and is first step
+        previous_product = False
         os.makedirs(self.extra_dir_path, exist_ok=True)
-        csv_name = (f"{self.id}_{self.reaction.reaction_name}_"
-                    f"{analogue_prefix}_{self.current_step}of{self.num_steps}.csv")
-        if os.path.exists(f"{self.extra_dir_path}/{csv_name}"):
-            return f"{self.extra_dir_path}/{csv_name}", internal_step
-        else:
-            return None, None
+        return None, internal_step, previous_product
 
-    def find_products_csv_name(self, reactant: Chem.Mol) -> str:
+    def _find_analogues_pkl_name(self, analogue_prefix: str) -> str:
         """
-        This function is used to find the name of the products .csv file by comparing the reactant to the product with
+        Checks if the analogue library was already created and saved as a .pkl.gz file. Returns the path to the
+        .pkl.gz file.
+        """
+        pkl: List[str] = glob.glob(f"{self.extra_dir_path}/"
+                                   f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_"
+                                   f"{self.current_step}of{self.num_steps}.pkl.gz")
+        if len(pkl) == 1:
+            print(f"Found {pkl[0]} as the analogue library .pkl from previous step.")
+            return pkl[0]
+
+    def _find_products_pkl_name(self, reactant: Chem.Mol) -> str:
+        """
+        This function is used to find the name of the products .pkl file by comparing the reactant to the product with
         bit vector similarity.
         """
-        product_csvs: List[str] = glob.glob(f"{self.extra_dir_path}/"
+        product_pkls: List[str] = glob.glob(f"{self.extra_dir_path}/"
                                             f"{self.id}_*products_{self.current_step-1}of"
-                                            f"{self.num_steps}.csv")
-        for i, path in enumerate(product_csvs):
+                                            f"{self.num_steps}.pkl.gz")
+        for i, path in enumerate(product_pkls):
             # Find if the reactant is the same as the product
-            df = pd.read_csv(path)
+            df = pd.read_pickle(path)
             # Iterate through the top 100 products
             for product in df["smiles"][:100]:
                 product_mol = Chem.MolFromSmiles(product)
@@ -230,27 +260,30 @@ class Library:
                     AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
                 # If a perfect match is found, return the path
                 if similarity_score == 1:
-                    print(f"Found {path} as the products .csv from previous step.")
+                    print(f"Found {path} as the products .pkl from previous step.")
                     return path
         return None
 
     def save_library(self, df: pd.DataFrame, analogue_prefix: str):
         """
-        This function is used to save the analogue library as a .csv file in self.extra_dir_path
+        This function is used to save the analogue library as a .pkl file in self.extra_dir_path
         """
         os.makedirs(f"{self.extra_dir_path}", exist_ok=True)
-        csv_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.csv"
-        print(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{csv_name} \n")
-        df.to_csv(f"{self.extra_dir_path}/{csv_name}", index=False)
+        pkl_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.pkl.gz"
+        print(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{pkl_name} \n")
+        df.to_pickle(f"{self.extra_dir_path}/{pkl_name}")
 
-    def load_library(self, reactant_analogues_path: str, analogue_prefix: str, internal_step: bool) -> Dict[str, float]:
+    def load_library(self,
+                     reactant_analogues_path: str,
+                     analogue_prefix: str,
+                     internal_step: bool) -> Dict[str, float]:
         """
-        This function is used to load the analogue library from a .csv file. Returns a dictionary of the smiles as keys
+        This function is used to load the analogue library from a .pkl file. Returns a dictionary of the smiles as keys
         and the lead time (if found) as float. Otherwise return lead time as None.
         """
         try:
             # find column with analogue smiles
-            df = pd.read_csv(reactant_analogues_path)
+            df = pd.read_pickle(reactant_analogues_path)
             if not internal_step:
                 analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
                 analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
@@ -260,7 +293,7 @@ class Library:
                 analogues_full = {analog: None for analog in analogues}
                 return analogues_full
         except KeyError:
-            print(f"Could not find analogue column in already existing product.csv at {reactant_analogues_path}. "
+            print(f"Could not find analogue column in already existing product.pkl at {reactant_analogues_path}. "
                   f"Stopping...")
 
     def save(self):

@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """
 syndirella.tests.test_all.py
-
-This module contains the Slipper class. A slipper in this metaphor is the set of molecules that is the
-product of a reaction.
 """
 
 import unittest
@@ -31,8 +28,9 @@ class TestSyndirellaV2(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info, self.manual_routes)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
 
 class TestPipelineIntraGeometry(unittest.TestCase):
     def setUp(self):
@@ -47,8 +45,9 @@ class TestPipelineIntraGeometry(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info, self.manual_routes)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
 
 class TestIntraGeometryCheck(unittest.TestCase):
     def setUp(self):
@@ -84,8 +83,9 @@ class TestPipelineWBocDeprotection(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info, self.manual_routes)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
 
 
 class TestPipelineWFairyFilters(unittest.TestCase):
@@ -100,8 +100,9 @@ class TestPipelineWFairyFilters(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info, self.manual_routes)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
 
 class TestInputCSV(unittest.TestCase):
     def setUp(self):
@@ -115,8 +116,9 @@ class TestInputCSV(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info, self.manual_routes)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
 
 
 class TestPipelineMultipleRxns(unittest.TestCase):
@@ -130,8 +132,8 @@ class TestPipelineMultipleRxns(unittest.TestCase):
         self.additional_info = ['compound_set']
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num,
-                     self.additional_info)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info)
 
 class TestPipeline(unittest.TestCase):
     def setUp(self):
@@ -143,7 +145,8 @@ class TestPipeline(unittest.TestCase):
         self.batch_num = 1
 
     def test_pipeline(self):
-        run_pipeline(self.csv_path, self.output_dir, self.template_path, self.hits_path, self.batch_num)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num)
 
 class TestFromInputBase(unittest.TestCase):
     def setUp(self):
@@ -245,12 +248,8 @@ class TestReactantsFiltering(unittest.TestCase):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.filter)
         final_library = cobblers_workshop.get_final_library()
-        slipper = Slipper(final_library,
-                          atoms_ids_expansion=self.atom_ids_expansion,
-                          template=self.template,
-                          hits=self.hits,
-                          hits_names=self.hits_names,
-                          batch_num=self.batch_num)
+        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+                          batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
         self.products = slipper.get_products()
         self.assertIsNotNone(self.products)
         self.placements = slipper.place_products()
@@ -268,23 +267,15 @@ class TestReactantsFiltering(unittest.TestCase):
 
     def test_Delete(self):
         final_library = Library.load(self.output_dir)
-        slipper = Slipper(final_library,
-                          atoms_ids_expansion=self.atom_ids_expansion,
-                          template=self.template,
-                          hits=self.hits,
-                          hits_names=self.hits_names,
-                          batch_num=self.batch_num)
+        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+                          batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
         slipper.output_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/output'
         slipper.clean_up_placements()
 
     def test_GetProductsDF(self):
         final_library = Library.load(self.output_dir)
-        slipper = Slipper(final_library,
-                          atoms_ids_expansion=self.atom_ids_expansion,
-                          template=self.template,
-                          hits=self.hits,
-                          hits_names=self.hits_names,
-                          batch_num=self.batch_num)
+        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+                          batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
         slipper.products: pd.DataFrame = (pd.read_csv('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/JFMKOYDGTWISRQ-UHFFFAOYSA-N_Sp3-sp2_Suzuki_coupling_products_2of2.csv'))
         slipper.output_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/output'
         placements: pd.DataFrame = slipper.get_placements_df()

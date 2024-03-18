@@ -32,6 +32,7 @@ class SlipperFitter:
         self.output_dir: str = output_dir
         self.num_atom_diff_limit: int = 15
         self.final_products_csv_path: str = None
+        self.final_products_pkl_path: str = None
         self.batch_num: int = None
         self.final_products: pd.DataFrame = None
         self.placements: pd.DataFrame = None
@@ -62,7 +63,8 @@ class SlipperFitter:
         id = generate_inchi_ID(Chem.MolToSmiles(base))
         output_path: str = os.path.join(self.output_dir, f'{id}-base-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
-        for attempt in range(1, 2):
+        num_attempts = 2
+        for attempt in range(1, num_attempts+1):
             base_placed: Chem.Mol = self._place_base(lab, input_df)  # None if not minimised
             if base_placed is not None:
                 geometries: Dict = intra_geometry.check_geometry(base_placed,
@@ -71,13 +73,11 @@ class SlipperFitter:
                         geometries['results']['bond_angles_within_bounds'] and \
                         geometries['results']['no_internal_clash']:
                     print('Base could be minimised and passed intramolecular checks!')
-                    # remove output directory
-                    shutil.rmtree(os.path.join(output_path))
                     return True
                 else:
-                    print(f'Base could not pass intramolecular checks. Attempt {attempt} of 3.')
+                    print(f'Base could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
             else:
-                print(f'Base could not be minimised. Attempt {attempt} of 3.')
+                print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
         return False
 
     def _prep_base_input_df(self, base: Chem.Mol) -> pd.DataFrame:
@@ -265,8 +265,10 @@ class SlipperFitter:
         self.placements.to_pickle(os.path.join(self.output_dir, 'fragmenstein_placements.pkl.gz'))
         self.placements.to_csv(os.path.join(self.output_dir, 'fragmenstein_placements.csv'))
         # get final name same as final products csv
-        merged_placements_path = self.final_products_csv_path.split('.')[0] + '_placements.csv'
-        self.merged_placements.to_csv(merged_placements_path)
+        merged_placements_csv_path = self.final_products_csv_path.split('.')[0] + '_placements.csv'
+        merged_placements_pkl_path = self.final_products_pkl_path.split('.')[0] + '_placements.pkl.gz'
+        self.merged_placements.to_csv(merged_placements_csv_path)
+        self.merged_placements.to_pickle(merged_placements_pkl_path)
 
 
 def generate_inchi_ID(smiles: str) -> str:
