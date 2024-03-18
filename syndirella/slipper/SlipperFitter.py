@@ -5,7 +5,7 @@ slipper_fitter/CobblersWorkshop.py
 This module contains the SlipperFitter class.
 """
 from typing import (List, Dict, Tuple, Union, Optional)
-from fragmenstein import Laboratory, Wictor
+from fragmenstein import Laboratory, Wictor, Igor
 import pandas as pd
 from fragmenstein.laboratory.validator import place_input_validator
 from rdkit import Chem
@@ -130,7 +130,7 @@ class SlipperFitter:
         # place number in batch
         if len(input_df) > self.batch_num:
             print(f'Even after cutting products, the number of products is over {self.batch_num}.'
-                  f'Only placing the top {self.batch_num} products.')
+                  f' Only placing the top {self.batch_num} products.')
             input_df = input_df.iloc[:self.batch_num]
         self._print_diff(self.final_products, input_df, verb='Placing')
         return input_df
@@ -169,13 +169,17 @@ class SlipperFitter:
         input_df['hits'] = input_df.apply(lambda row: hits, axis=1)
         return input_df
 
-    def _place_base(self, lab: Laboratory, input_df: pd.DataFrame) -> bool:
+    def _place_base(self,
+                    lab: Laboratory, input_df: pd.DataFrame) -> Chem.Mol:
         """
         Places the base compound, returns the mol object of the base compound if successful else None.
         """
         placements: pd.DataFrame = lab.place(place_input_validator(input_df), n_cores=self.n_cores,
                                              timeout=self.timeout)
-        base: Chem.Mol = placements.at[0, 'minimized_mol']
+        try:
+            base: Chem.Mol = placements.at[0, 'minimized_mol']
+        except Exception:
+            base = None
         return base
 
     def place_products(self, input_df: pd.DataFrame) -> pd.DataFrame:
@@ -211,7 +215,7 @@ class SlipperFitter:
         Wictor.enable_stdout(logging.CRITICAL)
         # Wictor.enable_logfile(os.path.join(self.output_path, f'fragmenstein.log'), logging.ERROR)
         Laboratory.Victor = Wictor
-
+        Igor.init_pyrosetta()
         with open(self.template_path) as fh:
             pdbblock: str = fh.read()
         lab = Laboratory(pdbblock=pdbblock,
