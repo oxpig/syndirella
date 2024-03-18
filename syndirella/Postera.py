@@ -83,7 +83,7 @@ class Postera(DatabaseSearch):
     def get_resp_json(url: str,
                       api_key: str,
                       data: Dict = None,
-                      retries: int = 3,
+                      retries: int = 10,
                       backoff_factor: float = 0.5) -> Optional[Dict]:
         """
         Directly get the response json from a request, with retry mechanism for handling 429 status code.

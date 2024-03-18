@@ -18,10 +18,10 @@ from syndirella.pipeline import run_pipeline
 
 class TestBasicPipeline(unittest.TestCase):
     def setUp(self):
-        self.test_csv = "test.csv"
+        self.test_csv = "/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/batches_run3/batch3.csv"
         self.template_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/hippo/x0310_relaxed_apo.pdb'
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/hippo/A71EV2A/A71EV2A_combined.sdf'
-        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/hippo'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/batch1'
         self.batch_num = 10
         self.additional_info = ['compound_set']
         self.manual_routes = True
