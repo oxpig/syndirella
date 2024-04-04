@@ -15,6 +15,22 @@ from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
 
+class Testx0450(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/x0450_designs/x0450_test.csv'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/x0450_designs'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
+                              'x0310_relaxed_apo.pdb')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/A71EV2A_combined.sdf'
+        self.batch_num = 10
+        self.additional_info = ['compound_set']
+        self.manual_routes = True
+
+    def test_pipeline(self):
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
+
 class TestSyndirellaV2(unittest.TestCase):
     def setUp(self):
         self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/syndirella_v2/test.csv'

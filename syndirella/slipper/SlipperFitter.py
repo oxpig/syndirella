@@ -72,7 +72,7 @@ class SlipperFitter:
                 if (geometries['results']['bond_lengths_within_bounds'] and \
                         geometries['results']['bond_angles_within_bounds'] and \
                         geometries['results']['no_internal_clash']):
-                    if len(os.listdir(f'{output_path}/base-check')) > 0:
+                    if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
                             print('Base could be minimised and passed intramolecular checks!')
                             return True
                     else:
@@ -173,7 +173,8 @@ class SlipperFitter:
         return input_df
 
     def _place_base(self,
-                    lab: Laboratory, input_df: pd.DataFrame) -> Chem.Mol:
+                    lab: Laboratory,
+                    input_df: pd.DataFrame) -> Chem.Mol:
         """
         Places the base compound, returns the mol object of the base compound if successful else None.
         """
