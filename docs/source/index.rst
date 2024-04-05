@@ -3,18 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to syndirella's documentation!
+Syndirella Documentation
 ======================================
+
+Syndirella (Synthetically Directed Elaborations) is a tool for generating and scoring synthetically practical elaborations of molecules designed from fragment screens.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+Getting started <getting_started>
