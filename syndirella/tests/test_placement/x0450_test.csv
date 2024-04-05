@@ -1,0 +1,3 @@
+﻿smiles,reactants,reaction_names,num_steps,compound_set,batch,hits
+CN(C)C(=O)c1ccccc1OC1CCN(C)C1=O,"[('CN(C)C(=O)c1ccccc1Cl', 'O=C1C(O)CCN1C')]",['Nucleophilic_substitution'],1,x0528-x0450-merge-1-2,3,A71EV2A-x0528_A_147_A71EV2A-x0501+A+152+1 A71EV2A-x0450_A_201_A71EV2A-x0501+A+152+1
+CN(C)C(=O)c1ccc(F)cc1OC1CCN(C)C1=O,"[('O=C(c1ccc(F)cc1Cl)N(C)C', 'O=C1C(O)CCN1C')]",['Nucleophilic_substitution'],1,x0528-x0450-merge-1-1,2,A71EV2A-x0528_A_147_A71EV2A-x0501+A+152+1 A71EV2A-x0450_A_201_A71EV2A-x0501+A+152+1
