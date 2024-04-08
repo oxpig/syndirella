@@ -10,7 +10,7 @@ from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple, Union, Optional)
 import pandas as pd
-from rdkit.Chem.Draw import rdMolDraw2D
+#from rdkit.Chem.Draw import rdMolDraw2D
 from syndirella.cobblers_workshop.Library import Library
 import time
 
