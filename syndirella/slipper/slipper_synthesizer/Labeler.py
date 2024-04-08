@@ -50,14 +50,14 @@ class Labeler:
         red = (1, 0, 0)
         atom_colors: Dict[int, str] = {atom_id: green if self.atom_ids_expansion[atom_id] is True
                                        else red for atom_id in atom_ids}
-        drawer = rdMolDraw2D.MolDraw2DSVG(400, 400)
-        drawer.DrawMolecule(base_compound,
-                            highlightAtoms=atom_ids,
-                            highlightAtomColors=atom_colors)
-        drawer.FinishDrawing()
-        svg = drawer.GetDrawingText()
-        with open(os.path.join(self.output_dir, "base_expansion.svg"), "w") as f:
-            f.write(svg)
+        # drawer = rdMolDraw2D.MolDraw2DSVG(400, 400)
+        # drawer.DrawMolecule(base_compound,
+        #                     highlightAtoms=atom_ids,
+        #                     highlightAtomColors=atom_colors)
+        # drawer.FinishDrawing()
+        # svg = drawer.GetDrawingText()
+        # with open(os.path.join(self.output_dir, "base_expansion.svg"), "w") as f:
+        #     f.write(svg)
 
     def label_products_with_atom_ids(self):
         """

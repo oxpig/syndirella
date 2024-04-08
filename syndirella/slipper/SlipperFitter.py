@@ -49,7 +49,8 @@ class SlipperFitter:
         print('Fitting products, warning: it is expected that the base compound has already passed minimisation and '
               'intramolecular checks.')
         input_df: pd.DataFrame = self.prep_products()
-        self.placements = self.place_products(input_df)
+        placements = self.place_products(input_df)
+        self.placements = self.check_intra_geometry(placements)
         self.edit_placements()
         self.merged_placements = self.merge_placements()
         return self.merged_placements
@@ -69,9 +70,7 @@ class SlipperFitter:
             if base_placed is not None:
                 geometries: Dict = intra_geometry.check_geometry(base_placed,
                                                                  threshold_clash=0.4) # increasing threshold for clash
-                if (geometries['results']['bond_lengths_within_bounds'] and \
-                        geometries['results']['bond_angles_within_bounds'] and \
-                        geometries['results']['no_internal_clash']):
+                if self._check_intra_geometry_results(geometries):
                     if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
                             print('Base could be minimised and passed intramolecular checks!')
                             return True
@@ -82,6 +81,22 @@ class SlipperFitter:
             else:
                 print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
         return False
+
+    def _check_intra_geometry_results(self,
+                                      geometries: Dict) -> bool:
+        """
+        This function checks the intramolecular geometry results and returns True if all are True.
+        """
+        if not geometries['results']['bond_lengths_within_bounds']:
+            print('Mol could not pass bond length checks.')
+            return False
+        if not geometries['results']['bond_angles_within_bounds']:
+            print('Mol could not pass bond angle checks.')
+            return False
+        if not geometries['results']['no_internal_clash']:
+            print('Mol could not pass internal clash checks.')
+            return False
+        return True
 
     def _prep_base_input_df(self, base: Chem.Mol) -> pd.DataFrame:
         """
@@ -200,6 +215,25 @@ class SlipperFitter:
         end_time = time.time()  # End timing
         elapsed_time = end_time - start_time  # Calculate elapsed time
         print(f"Placing {len(input_df)} run time: {datetime.timedelta(seconds=elapsed_time)}")
+        return placements
+
+    def check_intra_geometry(self,
+                             placements: pd.DataFrame) -> pd.DataFrame:
+        """
+        Checks the intramolecular geometry of each mol object.
+        """
+        # get list of mol objects
+        mols: List[Chem.Mol] = placements['minimized_mol'].tolist()
+        assert len(mols) == len(placements), "There are missing mol objects in the placements."
+        intra_geometry_results: List[bool] = []
+        for mol in mols:
+            if mol is None:
+                intra_geometry_results.append(None)
+            else:
+                geometries: Dict = intra_geometry.check_geometry(mol)
+                intra_geometry_results.append(self._check_intra_geometry_results(geometries))
+        # get list of pass output from intra_geometry for each mol
+        placements['intra_geometry_pass'] = intra_geometry_results
         return placements
 
     def setup_Fragmenstein(self,
