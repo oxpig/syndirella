@@ -246,6 +246,7 @@ class Slipper:
             delta_G_unbound: List[float] = products_df['∆G_unbound'].tolist()
             comRMSD: List[float] = products_df['comRMSD'].tolist()
             regarded: List[bool] = products_df['regarded'].tolist()
+            intra_geometry_pass: List[bool] = products_df['intra_geometry_pass'].tolist()
             path_to_mol: List[Optional[str]] = [
                 f'{self.output_dir}/output/{name}/{name}.minimised.mol' if not pd.isna(ddg) else None
                 for name, ddg in zip(product_names, products_df['∆∆G'])
@@ -270,6 +271,7 @@ class Slipper:
             hippo_df_step[f'comRMSD'] = comRMSD
             hippo_df_step[f'regarded'] = regarded
             hippo_df_step[f'path_to_mol'] = path_to_mol
+            hippo_df_step[f'intra_geometry_pass'] = intra_geometry_pass
         return hippo_df_step
 
     def which_reactant_was_previous_product(self,
