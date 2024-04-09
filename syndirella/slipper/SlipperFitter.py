@@ -140,6 +140,7 @@ class SlipperFitter:
         # drop duplicates of names
         input_df = input_df.drop_duplicates(subset='name')
         # cut rows with number of atoms difference greater than num_atom_diff_limit
+        print()
         print(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
         input_df = input_df[input_df['num_atom_diff'] <= self.num_atom_diff_limit]
         self._print_diff(self.final_products, input_df, verb='Kept')
@@ -279,6 +280,7 @@ class SlipperFitter:
                                     , 2)
         print(f'{num_success} ({percent_success}%) successful placements '
               f'where ∆∆G < -1 and RMSD < 2 Å.')
+        print()
 
     def fix_intxns(self):
         intxn_names: List[tuple] = [c for c in self.placements.columns if isinstance(c, tuple)]
