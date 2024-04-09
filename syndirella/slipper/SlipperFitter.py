@@ -30,7 +30,7 @@ class SlipperFitter:
         self.hits_path: str = hits_path
         self.hits_names: List[str] = hits_names
         self.output_dir: str = output_dir
-        self.num_atom_diff_limit: int = 15
+        self.num_atom_diff_limit: int = 10
         self.final_products_csv_path: str = None
         self.final_products_pkl_path: str = None
         self.batch_num: int = None
