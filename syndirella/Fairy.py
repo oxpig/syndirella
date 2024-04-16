@@ -10,7 +10,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
-from syndirella._cli_defaults import cli_default_settings
+from syndirella.cli_defaults import cli_default_settings
 from rdkit.Chem import rdMolDescriptors
 from rdkit import DataStructs
 

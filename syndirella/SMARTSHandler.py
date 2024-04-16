@@ -10,7 +10,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
-from ._cli_defaults import cli_default_settings
+from .cli_defaults import cli_default_settings
 
 class SMARTSHandler:
     def __init__(self):

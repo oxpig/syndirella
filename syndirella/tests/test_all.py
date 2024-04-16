@@ -122,7 +122,7 @@ class TestPipelineWFairyFilters(unittest.TestCase):
 
 class TestInputCSV(unittest.TestCase):
     def setUp(self):
-        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template.csv'
+        self.csv_path = '/syndirella/syndirella_input_template_manual.csv'
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_input2/'
         self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
                               'x0310_template.pdb')

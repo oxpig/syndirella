@@ -8,7 +8,6 @@ This module contains the Reaction class. One instance of this object is used to 
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple)
-from syndirella.constants.constants import DUMMY_SYMBOL
 from syndirella.SMARTSHandler import SMARTSHandler
 from syndirella.error import ReactionError
 
@@ -113,7 +112,7 @@ class Reaction():
         if len(attachment_idxs_list) == 0 and self.reaction_name == 'Amide_Schotten-Baumann_with_amine':  # run if no other attachments found
             # replace halide with dummy atom
             reactant = self._replace_halide_with_dummy(reactant)
-            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol=DUMMY_SYMBOL)
+            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol="*")
             print(neig_idx_list)
             print(dummy_idx_list)
             return neig_idx_list[0]
@@ -121,7 +120,7 @@ class Reaction():
         if len(attachment_idxs_list) == 0 and self.reaction_name == 'Amidation':  # run if no other attachments found
             # replace hydroxyl in carboxylic acid with dummy atom
             reactant = self._replace_carboxylic_acid_hydroxy_with_dummy(reactant)
-            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol=DUMMY_SYMBOL)
+            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol="*")
             print(neig_idx_list)
             print(dummy_idx_list)
             return neig_idx_list[0]
@@ -130,7 +129,7 @@ class Reaction():
             # it is probably having trouble on the sulfonyl halide group
             # replace halide with dummy atom
             reactant = self._replace_halide_with_dummy(reactant, atom_to_check_by_symbol='S')
-            dummy_idx_list, neig_idx_list = self.find_attachment_id_from_dummy(reactant, dummy_symbol=DUMMY_SYMBOL)
+            dummy_idx_list, neig_idx_list = self.find_attachment_id_from_dummy(reactant, dummy_symbol="*")
             print(neig_idx_list)
             print(dummy_idx_list)
             return neig_idx_list[0]
@@ -138,7 +137,7 @@ class Reaction():
         if len(attachment_idxs_list) == 0 and self.reaction_name == "Buchwald-Hartwig_amination":
             # replace halide with dummy atom
             reactant = self._replace_halide_with_dummy(reactant)
-            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol=DUMMY_SYMBOL)
+            dummy_idx_list, neig_idx_list = self._find_attachment_id_from_dummy(reactant, dummy_symbol="*")
             print(neig_idx_list)
             print(dummy_idx_list)
             return neig_idx_list[0]
