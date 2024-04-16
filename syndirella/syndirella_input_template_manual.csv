@@ -1,0 +1,3 @@
+﻿smiles,reactants,reaction_names,num_steps,hits,compound_set
+CCCc1cccc(-c2cccc3cc[nH]c23)n1,"[('OB(O)c1cccc2cc[nH]c12', 'Ic1cccc(I)n1'), ('Ic1cccc(-c2cccc3cc[nH]c23)n1', 'CCCB(O)O')]","['Sp2-sp2_Suzuki_coupling', 'Sp3-sp2_Suzuki_coupling']",2,x0566_0A x0554_0A,syndirella_manual_1
+COC(=O)NCCc1ccnn1C,"[('COC(=O)NCCB(O)O', 'Cn1nccc1I')]",['Sp3-sp2_Suzuki_coupling'],1,x0566_0A x0451_0A,syndirella_manual_1

@@ -3,7 +3,7 @@ import multiprocessing
 from functools import partial
 
 from rdkit import Chem
-from .._cli_defaults import cli_default_settings
+from ..cli_defaults import cli_default_settings
 from .base import set_verbose
 from ..SMARTSHandler import SMARTSHandler
 from typing import List, Any, Dict
