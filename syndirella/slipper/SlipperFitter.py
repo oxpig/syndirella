@@ -71,6 +71,7 @@ class SlipperFitter:
                 geometries: Dict = intra_geometry.check_geometry(base_placed,
                                                                  threshold_clash=0.4) # increasing threshold for clash
                 if self._check_intra_geometry_results(geometries):
+                    return True
                     if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
                             print('Base could be minimised and passed intramolecular checks!')
                             return True
