@@ -1,0 +1,14 @@
+name: syndirella
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - pandas
+  - numpy
+  - glob2
+  - rdkit
+  - requests
+  - pillow
+  - fragmenstein
+  - shortuuid

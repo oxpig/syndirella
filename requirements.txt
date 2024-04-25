@@ -1,7 +1,9 @@
-pandas~=2.2.0rc0
-numpy~=1.26.3
-glob2~=0.7
-rdkit~=2023.3.2
-requests~=2.31.0
-pillow~=10.0.1
-fragmenstein==1.0.2
+python>=3.10
+pandas
+numpy
+glob2
+rdkit
+requests
+pillow
+fragmenstein
+shortuuid

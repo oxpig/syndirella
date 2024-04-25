@@ -13,7 +13,6 @@ from rdkit.Chem import rdinchi
 import os, logging
 import time
 from syndirella.slipper import intra_geometry
-import shutil
 import datetime
 
 class SlipperFitter:

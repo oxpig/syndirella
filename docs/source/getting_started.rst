@@ -19,11 +19,15 @@ Installation
        cd syndirella
        make
 
-**Using pip** NOT YET IMPLEMENTED
+**Using Conda**
 
    .. code-block:: bash
 
-       pip install syndirella
+       git clone https://github.com/kate-fie/syndirella.git
+       conda env create -f environment.yml
+       conda activate syndirella
+       # install pyrosetta, need signin info, replace 👾👾👾:👾👾👾 with your info
+       conda install -c https://👾👾👾:👾👾👾@west.rosettacommons.org/pyrosetta/conda/release pyrosetta
 
 Setting Up
 ==========
