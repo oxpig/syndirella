@@ -11,14 +11,6 @@ This guide will help you get started with Syndirella, covering the installation 
 Installation
 ============
 
-**Using the Makefile**
-
-   .. code-block:: bash
-
-       git clone https://github.com/kate-fie/syndirella.git
-       cd syndirella
-       make
-
 **Using Conda**
 
    .. code-block:: bash
@@ -28,6 +20,16 @@ Installation
        conda activate syndirella
        # install pyrosetta, need signin info, replace 👾👾👾:👾👾👾 with your info
        conda install -c https://👾👾👾:👾👾👾@west.rosettacommons.org/pyrosetta/conda/release pyrosetta
+
+You need a Rosetta license to install PyRosetta. You can find more information `here <https://www.rosettacommons.org/software/license-and-download>`_.
+
+**Using the Makefile** NOT RECOMMENDED
+
+   .. code-block:: bash
+
+       git clone https://github.com/kate-fie/syndirella.git
+       cd syndirella
+       make
 
 Setting Up
 ==========
@@ -51,7 +53,7 @@ Syndirella has 20 encoded reactions which you can find in `syndirella/constants/
 **Alternative Reactions**:
 You can provide alternative reactions to your preference if they are easier or more successful. Add them in `syndirella/constants/ADDITIONAL_RXN_OPTIONS.json`.
 
-***Alternative Reactants**:
+**Alternative Reactants**:
 If there are reactants for certain reactions that you prefer to use, you can add them in `syndirella/constants/RXN_SMARTS_CONSTANTS.json`.
 
 Basic Usage
