@@ -15,6 +15,30 @@ from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
 
+class TestSlipperSynthesizerUpdate(unittest.TestCase):
+    """
+    To Test:
+    - Only unique products are returned for like N boc deprotections
+    - Check if a reactant can be both reactants in a given rxn
+    Will just do it via pipeline for now
+    """
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/slippersynth/slipper_synth_test.csv'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/slippersynth'
+        self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/TO_USE/'
+                              'Ax0310_relaxed_apo.pdb')
+        self.hits_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/TO_USE/'
+                          'A71EV2A_combined.sdf')
+        self.batch_num = 10
+        self.additional_info = ['compound_set']
+        self.manual_routes = True
+
+    def get_library_and_analogues(self):
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
+                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+                     manual_routes=self.manual_routes)
+
+
 class Testx0450(unittest.TestCase):
     def setUp(self):
         self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/x0450_designs/x0450_test.csv'

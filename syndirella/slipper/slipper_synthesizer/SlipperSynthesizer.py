@@ -300,7 +300,7 @@ class SlipperSynthesizer:
         """
         For mono-molecular reactions:
         This function applies the original reaction to each row of the reactant combinations dataframe. Can return
-        multiple products.
+        multiple products which are checked for unqiueness by inchi key.
         """
         # only get num_atom_diff if final step of route
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
@@ -312,7 +312,8 @@ class SlipperSynthesizer:
             row['combined'] = [(None, None)]
             return row
         elif len(products) > 1 or len(products[0]) > 1:
-            # check if all products can be sanitized, only keep the ones that can
+            # check if all products can be sanitized and keep unique ones, only keep the ones that can be sanitized
+            # and are unique
             row_smiles = []
             row_num_atom_diff = []
             for product in products:
@@ -335,8 +336,8 @@ class SlipperSynthesizer:
     def apply_reaction(self, row) -> pd.Series:
         """
         For bimolecular reactions:
-        This function applies the original reaction to each row of the reactant combinations dataframe. Can return 
-        multiple products. 
+        This function applies the original reaction to each row of the reactant combinations dataframe. Checks to return
+        only unique products that are sanitized.
         """
         # only get num_atom_diff if final step of route
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
