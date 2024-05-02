@@ -1,0 +1,2 @@
+﻿smiles,name,frag_small,reactants,reaction_names,num_steps,compound_set,hits
+Cn1ncc(NC(=O)CC#N)c1NC(=O)C1CCCO1,LXINEYASRREWNB-UHFFFAOYSA-N,"['Ax0310a', 'Ax0416a']","[('Cn1ncc(NC(=O)OC(C)(C)C)c1N', 'O=C(O)C1CCCO1'), 'Cn1ncc(NC(=O)OC(C)(C)C)c1NC(=O)C1CCCO1', ('Cn1ncc(N)c1NC(=O)C1CCCO1', 'N#CCC(=O)O')]","['Amidation', 'N-Boc_deprotection', 'Amidation']",3,x0310-x0416-merge-1-1,A71EV2A-x0310_A_147_A71EV2A-x0501+A+152+1 A71EV2A-x0416_A_147_A71EV2A-x0501+A+152+1

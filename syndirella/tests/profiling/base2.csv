@@ -1,0 +1,2 @@
+﻿smiles,name,frag_small,reactants,reaction_names,num_steps,compound_set,hits
+CC(=O)Nc1cncc(OCC(=O)N2CCOCC2)c1,ZMNSQVIBTKNQGL-UHFFFAOYSA-N,"['Ax0739a', 'Ax0884a']","[('Nc1cncc(O)c1', 'CC(=O)O'), ('CC(=O)Nc1cncc(O)c1', 'O=C(CCl)N1CCOCC1')]","['Amidation', 'Williamson_ether_synthesis']",2,x0884-x0739-merge-3-10,A71EV2A-x0884_A_147_A71EV2A-x0501+A+152+1 A71EV2A-x0739_A_147_A71EV2A-x0501+A+152+1

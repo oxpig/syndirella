@@ -1,0 +1,2 @@
+﻿smiles,name,frag_small,reactants,reaction_names,num_steps,compound_set,hits
+Cc1ccc(OCC(=O)N(C)C)cc1OCC(=O)N1CCOCC1,HWHRLRWYYRBVIM-UHFFFAOYSA-N,"['Ax0739a', 'Ax0922a']","[('Cc1ccc(OCc2ccccc2)cc1O', 'O=C(CCl)N1CCOCC1'), 'Cc1ccc(OCc2ccccc2)cc1OCC(=O)N1CCOCC1', ('Cc1ccc(O)cc1OCC(=O)N1CCOCC1', 'CN(C)C(=O)CCl')]","['Williamson_ether_synthesis', 'Benzyl_alcohol_deprotection', 'Williamson_ether_synthesis']",3,x0922-x0739-merge-2-5,A71EV2A-x0922_A_147_A71EV2A-x0501+A+152+1 A71EV2A-x0739_A_147_A71EV2A-x0501+A+152+1
