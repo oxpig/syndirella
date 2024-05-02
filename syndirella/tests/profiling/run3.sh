@@ -50,6 +50,7 @@ conda info
 cd $HOME2/syndirella/syndirella/tests/profiling
 
 pwd;
+export SYNDIRELLA_BASE_PATH='/opt/xchem-fragalysis-2/kfieseler/syndirella'
 export INPUT='base3.csv'
 export OUTPUT='profiling_output_base3.txt'
 export BASE_DIR='/opt/xchem-fragalysis-2/kfieseler/syndirella/syndirella/tests/profiling'
