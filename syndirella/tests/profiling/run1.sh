@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=profile
 #SBATCH --chdir=/opt/xchem-fragalysis-2/kfieseler
-#SBATCH --output=/opt/xchem-fragalysis-2/kfieseler/logs/slurm-error_%x_%j.log
+#SBATCH --output=/opt/xchem-fragalysis-2/kfieseler/logs/slurm-log_%x_%j.log
 #SBATCH --error=/opt/xchem-fragalysis-2/kfieseler/logs/slurm-error_%x_%j.log
 # gpu partition is `gpu`
 #SBATCH --partition=main
