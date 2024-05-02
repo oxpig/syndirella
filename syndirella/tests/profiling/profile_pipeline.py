@@ -62,19 +62,19 @@ def main():
         print('Done!')
 
     # Redirect stdout to a file
-    original_stdout = sys.stdout
-    with open(output_file, 'w') as f:
-        sys.stdout = f
-        profiler = cProfile.Profile()
-        profiler.enable()
-        run_pipeline()
-        profiler.disable()
-        profiler.print_stats(sort='time')
-        print('\n\n')
-        profiler.print_stats(sort='cumtime')
+    # original_stdout = sys.stdout
+    # with open(output_file, 'w') as f:
+    #     sys.stdout = f
+    profiler = cProfile.Profile()
+    profiler.enable()
+    run_pipeline()
+    profiler.disable()
+    profiler.print_stats(sort='time')
+    print('\n\n')
+    profiler.print_stats(sort='cumtime')
 
     # Reset stdout to original
-    sys.stdout = original_stdout
+    #sys.stdout = original_stdout
 
 if __name__ == '__main__':
     main()
