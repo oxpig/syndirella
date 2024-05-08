@@ -21,10 +21,13 @@ extensions = [
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
-              'sphinx.ext.intersphinx']
+              'sphinx.ext.intersphinx',
+              'autoapi.extension'
+            ]
 
 templates_path = ['_templates']
 exclude_patterns = []
+autoapi_dirs = ['../../syndirella']
 
 
 
