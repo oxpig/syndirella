@@ -7,10 +7,10 @@ Poster searches, including multiple elaboration searches.
 """
 import os
 from typing import (List, Dict)
-from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
-from syndirella.Postera import Postera
-from syndirella.SMARTSHandler import SMARTSHandler
-from syndirella.Fairy import Fairy
+from .cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from .Postera import Postera
+from .SMARTSHandler import SMARTSHandler
+from .Fairy import Fairy
 
 class Cobbler:
     """
