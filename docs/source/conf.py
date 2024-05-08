@@ -32,7 +32,7 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 autoapi_dirs = [os.path.abspath("../../")]
-
+autoapi_ignore = ['*/tests/*']  # ignore test files
 
 
 # -- Options for HTML output -------------------------------------------------
