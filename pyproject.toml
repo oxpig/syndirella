@@ -35,3 +35,6 @@ dependencies = [
 include = [
     "syndirella/**",
 ]
+exclude = [
+    "syndirella/tests/**",
+]
