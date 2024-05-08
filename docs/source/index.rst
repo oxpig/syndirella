@@ -14,4 +14,5 @@ Syndirella (Synthetically Directed Elaborations) is a tool for generating and sc
    :caption: Contents:
 
    index
+   getting_started
 
