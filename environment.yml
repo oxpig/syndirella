@@ -7,7 +7,7 @@ dependencies:
   - pandas
   - numpy
   - glob2
-  - rdkit
+  - rdkit==2023.09.5
   - requests
   - pillow
   - fragmenstein

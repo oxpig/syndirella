@@ -1,4 +1,12 @@
-"""Module to check bond lengths, bond angles, and internal clash of ligand conformations."""
+#!venv/bin/env python3
+"""
+slipper/intra_geometry.py
+
+This module was directly sourced from the PoseBusters repository, which is open source code under the BSD-3-Clause license.
+The original code is found at: https://github.com/maabuu/posebusters/blob/3c467ab82bdbae5b71f80a286bb49ecc011be529/posebusters/modules/distance_geometry.py
+
+It is used to check bond lengths, bond angles, and the internal clash of ligand conformations.
+"""
 from __future__ import annotations
 
 from copy import deepcopy

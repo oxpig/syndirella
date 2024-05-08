@@ -12,7 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import rdinchi
 import os, logging
 import time
-from syndirella.slipper import intra_geometry
+from syndirella.slipper import intra_geometry, flatness
 import datetime
 
 class SlipperFitter:
@@ -68,8 +68,9 @@ class SlipperFitter:
             base_placed: Chem.Mol = self._place_base(lab, input_df)  # None if not minimised
             if base_placed is not None:
                 geometries: Dict = intra_geometry.check_geometry(base_placed,
-                                                                 threshold_clash=0.4) # increasing threshold for clash
-                if self._check_intra_geometry_results(geometries):
+                                                                 threshold_clash=0.4) # increasing threshold for internal clash
+                flat_results: Dict = flatness.check_flatness(base_placed)
+                if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
                     return True
                     if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
                             print('Base could be minimised and passed intramolecular checks!')
@@ -82,10 +83,11 @@ class SlipperFitter:
                 print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
         return False
 
-    def _check_intra_geometry_results(self,
-                                      geometries: Dict) -> bool:
+    def _check_intra_geom_flatness_results(self,
+                                           geometries: Dict,
+                                           flat_results: Dict) -> bool:
         """
-        This function checks the intramolecular geometry results and returns True if all are True.
+        This function checks the intramolecular geometry and flatness results and returns True if all are True.
         """
         if not geometries['results']['bond_lengths_within_bounds']:
             print('Mol could not pass bond length checks.')
@@ -95,6 +97,9 @@ class SlipperFitter:
             return False
         if not geometries['results']['no_internal_clash']:
             print('Mol could not pass internal clash checks.')
+            return False
+        if not flat_results['results']['flatness_passes']:
+            print('Mol could not pass flatness checks.')
             return False
         return True
 
@@ -221,18 +226,34 @@ class SlipperFitter:
     def check_intra_geometry(self,
                              placements: pd.DataFrame) -> pd.DataFrame:
         """
-        Checks the intramolecular geometry of each mol object.
+        Checks the intramolecular geometry and flatness of double bonds and aromatic rings
+        of each mol object using PoseBuster's implemented checks.
+
+        Checks:
+        Bond lengths
+            The bond lengths in the input molecule are within 0.75 of the lower and 1.25 of the upper bounds determined by distance geometry
+        Bond angles
+        	The angles in the input molecule are within 0.75 of the lower and 1.25 of the upper bounds determined by distance geometry
+        Planar aromatic rings
+            All atoms in aromatic rings with 5 or 6 members are within 0.25 Å of the closest shared plane
+        Planar double bonds
+            The two carbons of aliphatic carbon–carbon double bonds and their four neighbours are within 0.25 Å of the closest shared plane
+        Internal steric clash
+            The interatomic distance between pairs of non-covalently bound atoms is above 0.7 of the lower bound determined by distance geometry
         """
         # get list of mol objects
         mols: List[Chem.Mol] = placements['minimized_mol'].tolist()
         assert len(mols) == len(placements), "There are missing mol objects in the placements."
         intra_geometry_results: List[bool] = []
+        flatness_results: List[bool] = []
         for mol in mols:
             if mol is None:
                 intra_geometry_results.append(None)
+                flatness_results.append(None)
             else:
-                geometries: Dict = intra_geometry.check_geometry(mol)
-                intra_geometry_results.append(self._check_intra_geometry_results(geometries))
+                geometries: Dict = intra_geometry.check_geometry(mol, threshold_clash=0.4)  # increasing threshold for internal clash
+                flat_results: Dict = flatness.check_flatness(mol)
+                intra_geometry_results.append(self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results))
         # get list of pass output from intra_geometry for each mol
         placements['intra_geometry_pass'] = intra_geometry_results
         return placements
