@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "syndirella"
+version = "1.0.0-alpha"
+authors = [
+    { name = "Kate Fieseler", email = "kate.fieseler@stats.ox.ac.uk" },
+]
+description = "Synthetically Driven Elaborations"
+readme = "README.md"
+requires-python = ">=3.10"
+requires = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "rdkit == 2023.09.5",
+    "jupyter",
+    "numpy",
+    "glob2",
+    "requests",
+    "pillow",
+    "fragmenstein",
+    "shortuuid",
+    "pandas"
+]
+[project.urls]
+"Documentation" = "https://syndirella.readthedocs.io/en/latest/"
+"Source" = "https://github.com/kate-fie/syndirella"
+"Bug Tracker" = "https://github.com/kate-fie/syndirella/issues"
+[tool.hatch.build]
+include = [
+    "syndirella/*.py",
+]
