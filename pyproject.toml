@@ -33,5 +33,5 @@ dependencies = [
 "Bug Tracker" = "https://github.com/kate-fie/syndirella/issues"
 [tool.hatch.build]
 include = [
-    "syndirella/*.py",
+    "syndirella/**",
 ]
