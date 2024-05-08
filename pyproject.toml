@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "syndirella"
-version = "1.0.0-gamma"
+version = "1.0.0-delta"
 authors = [
     { name = "Kate Fieseler", email = "kate.fieseler@stats.ox.ac.uk" },
 ]
