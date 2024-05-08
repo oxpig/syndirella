@@ -10,7 +10,7 @@ Syndirella Documentation
 Syndirella (Synthetically Directed Elaborations) is a tool for generating and scoring synthetically practical elaborations of molecules designed from fragment screens.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    index
