@@ -81,16 +81,16 @@ Elaborate a set of base compounds using these steps:
 
     Manually check fragment hits are where you are expecting them!
 
-3. **Run pipeline**:
+4. **Run pipeline**:
 --------------------
 
-    **Manual Routes**:
+**Manual Routes**:
     .. code-block:: bash
 
         conda activate syndirella
         python pipeline --manual_route --input_csv /path/to/input_csv --output_dir /path/to/output_dir --template /path/to/template.pdb --hits /path/to/hits.sdf
 
-    **Automatic Routes**:
+**Automatic Routes**:
     .. code-block:: bash
 
         conda activate syndirella
