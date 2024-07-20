@@ -124,7 +124,7 @@ class SlipperSynthesizer:
 
     def order_analogues(self, df: pd.DataFrame, reactant_prefix: str) -> pd.DataFrame:
         """
-        This function is used to order the analogues dataframes by num atom diff to base compound,
+        This function is used to order the analogues dataframes by num atom diff to base reactant of base compound,
         number of reactant matches found, and lead time.
         """
         print(f"Ordering analogues of {reactant_prefix} before finding products...")
@@ -169,7 +169,7 @@ class SlipperSynthesizer:
         This function is used to filter the analogues dataframes by length. Need to make sure the final combination 
         is less than 10,000.
 
-        If longer than 10,000 will cluster analogues and sample on diversity.
+        If longer than 10,000, will just take the head with length of the square root of 10,000 (100).
         """
         if len(self.analogues_dataframes_to_react) < 2:
             if len(list(self.analogues_dataframes_to_react.values())[0]) > 10000:

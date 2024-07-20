@@ -84,6 +84,18 @@ Elaborate a set of base compounds using these steps:
 3. **Run pipeline**:
 --------------------
 
+    **Manual Routes**:
+    .. code-block:: bash
+
+        conda activate syndirella
+        python pipeline --manual_route --input_csv /path/to/input_csv --output_dir /path/to/output_dir --template /path/to/template.pdb --hits /path/to/hits.sdf
+
+    **Automatic Routes**:
+    .. code-block:: bash
+
+        conda activate syndirella
+        python pipeline --input_csv /path/to/input_csv --output_dir /path/to/output_dir --template /path/to/template.pdb --hits /path/to/hits.sdf
+
 
 
 
