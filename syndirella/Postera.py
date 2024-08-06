@@ -10,6 +10,7 @@ from rdkit import Chem
 import requests
 import json
 import time
+import logging
 from syndirella.Fairy import Fairy
 from syndirella.DatabaseSearch import DatabaseSearch
 from syndirella.cobblers_workshop.Reaction import Reaction
@@ -26,6 +27,7 @@ class Postera(DatabaseSearch):
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.search_type = search_type
         self.fairy = Fairy()
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def perform_database_search(self, reactant: Chem.Mol):
         """
@@ -38,7 +40,7 @@ class Postera(DatabaseSearch):
         for smiles in reactants:
             if self.search_type == "superstructure":
                 hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles)
-                print(f'Found {len(hits)} for {smiles} before filtering.')
+                self.logger.info(f'Found {len(hits)} hits for {smiles} before filtering.')
                 hits_all.extend(hits)
         filtered_hits: Dict[str, float] = self.fairy.filter(hits_all)
         return filtered_hits
@@ -49,8 +51,10 @@ class Postera(DatabaseSearch):
         """
         This function is used to perform the Postera superstructure search.
         """
-        print(f"Running superstructure search for {smiles}. Only searching for building blocks.")
-        assert type(smiles) == str, "Smiles must be a string."
+        self.logger.info(f"Running superstructure search for {smiles}. Only searching for building blocks.")
+        if not isinstance(smiles, str):
+            self.logger.error("Smiles must be a string.")
+            raise TypeError("Smiles must be a string.")
         superstructure_hits: List[Dict] = Postera.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
             api_key=self.api_key,
@@ -88,37 +92,44 @@ class Postera(DatabaseSearch):
         """
         Directly get the response json from a request, with retry mechanism for handling 429 status code.
         """
+        logger = logging.getLogger(__name__)
         for attempt in range(retries):
-            response = requests.post(
-                url,
-                headers={
-                    'X-API-KEY': api_key,
-                    'Content-Type': 'application/json',
-                },
-                data=json.dumps(data),
-            )
-            if response.status_code == 429:
-                if attempt < retries - 1:
-                    # Calculate wait time using exponential backoff strategy
-                    wait_time = backoff_factor * (2 ** attempt)
-                    print(f"Rate limit exceeded. Waiting for {wait_time} seconds before retrying...")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    print("Max retries exceeded. Please try again later.")
-                    return None
-            response.raise_for_status()
             try:
+                response = requests.post(
+                    url,
+                    headers={
+                        'X-API-KEY': api_key,
+                        'Content-Type': 'application/json',
+                    },
+                    data=json.dumps(data),
+                )
+
+                if response.status_code in [429, 504]:
+                    if attempt < retries - 1:
+                        # Calculate wait time using exponential backoff strategy
+                        wait_time = backoff_factor * (2 ** attempt)
+                        error_type = "Rate limit exceeded" if response.status_code == 429 else "Gateway timeout"
+                        logger.warning(f"{error_type}. Waiting for {wait_time} seconds before retrying...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error("Max retries exceeded. Please try again later.")
+                        return None
+
+                response.raise_for_status()
                 return response.json()
+
             except requests.exceptions.HTTPError as err:
-                print(f"HTTP error: {err}")
+                logger.error(f"HTTP error: {err}")
             except requests.exceptions.ConnectionError as err:
-                print(f"Connection error: {err}")
+                logger.error(f"Connection error: {err}")
             except requests.exceptions.Timeout as err:
-                print(f"Timeout error: {err}")
+                logger.error(f"Timeout error: {err}")
             except requests.exceptions.RequestException as err:
-                print(f"Error: {err}")
-            break  # If the request was successful, break out of the loop.
+                logger.error(f"Error: {err}")
+                break  # Exit the loop on non-recoverable errors
+
+        return None
 
     # @staticmethod
     # def get_resp_json(url: str,

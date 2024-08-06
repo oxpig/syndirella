@@ -14,6 +14,7 @@ import os, logging
 import time
 from syndirella.slipper import intra_geometry, flatness
 import datetime
+import logging
 
 class SlipperFitter:
     """
@@ -40,13 +41,15 @@ class SlipperFitter:
         # Placements variables set
         self.n_cores: int = 8
         self.timeout: int = 240
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
 
     def fit_products(self):
         """
         Main entry to the SlipperFitter class. This function is used to fit the products to the final library.
         """
-        print('Fitting products, warning: it is expected that the base compound has already passed minimisation and '
-              'intramolecular checks.')
+        self.logger.info('Fitting products, warning: it is expected that the base compound has already passed '
+                         'minimisation and intramolecular checks.')
         input_df: pd.DataFrame = self.prep_products()
         placements = self.place_products(input_df)
         self.placements = self.check_intra_geometry(placements)
@@ -73,14 +76,14 @@ class SlipperFitter:
                 if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
                     return True
                     if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
-                            print('Base could be minimised and passed intramolecular checks!')
+                            self.logger.info('Base could be minimised and passed intramolecular checks!')
                             return True
                     else:
-                        print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
+                        self.logger.info(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
                 else:
-                    print(f'Base could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
+                    self.logger.info(f'Base could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
             else:
-                print(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
+                self.logger.info(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
         return False
 
     def _check_intra_geom_flatness_results(self,
@@ -90,16 +93,16 @@ class SlipperFitter:
         This function checks the intramolecular geometry and flatness results and returns True if all are True.
         """
         if not geometries['results']['bond_lengths_within_bounds']:
-            print('Mol could not pass bond length checks.')
+            self.logger.info('Mol could not pass bond length checks.')
             return False
         if not geometries['results']['bond_angles_within_bounds']:
-            print('Mol could not pass bond angle checks.')
+            self.logger.info('Mol could not pass bond angle checks.')
             return False
         if not geometries['results']['no_internal_clash']:
-            print('Mol could not pass internal clash checks.')
+            self.logger.info('Mol could not pass internal clash checks.')
             return False
         if not flat_results['results']['flatness_passes']:
-            print('Mol could not pass flatness checks.')
+            self.logger.info('Mol could not pass flatness checks.')
             return False
         return True
 
@@ -145,15 +148,14 @@ class SlipperFitter:
         # drop duplicates of names
         input_df = input_df.drop_duplicates(subset='name')
         # cut rows with number of atoms difference greater than num_atom_diff_limit
-        print()
-        print(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
+        self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
         input_df = input_df[input_df['num_atom_diff'] <= self.num_atom_diff_limit]
         self._print_diff(self.final_products, input_df, verb='Kept')
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
         # place number in batch
         if len(input_df) > self.batch_num:
-            print(f'Even after cutting products, the number of products is over {self.batch_num}.'
+            self.logger.info(f'Even after cutting products, the number of products is over {self.batch_num}.'
                   f' Only placing the top {self.batch_num} products.')
             input_df = input_df.iloc[:self.batch_num]
         self._print_diff(self.final_products, input_df, verb='Placing')
@@ -167,11 +169,11 @@ class SlipperFitter:
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
         """
-        assert len(input_df) <= len(orig_df), ("Problem with finding unique analogues. There are more than were in "
-                                               "the original list of analogues")
-        num_placed = len(input_df)
+        if len(input_df) >= len(orig_df):
+            self.logger.error("Problem with finding unique analogues. There are more than were in the original list of "
+                              "analogues.")
         percent = round(((len(input_df) / len(orig_df)) * 100), 2)
-        print(f'{verb} {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
+        self.logger.info(f'{verb} {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -179,7 +181,7 @@ class SlipperFitter:
         """
         # load hits_path either from mol or sdf
         if os.path.splitext(self.hits_path)[1] == '.mol':
-            print('This is a mol file')
+            self.logger.info('This is a mol file')
             hits: List[Chem.Mol] = [Chem.MolFromMolFile(self.hits_path.strip())]
         else:
             with Chem.SDMolSupplier(self.hits_path.strip()) as sd:
@@ -220,7 +222,7 @@ class SlipperFitter:
                                              timeout=self.timeout)
         end_time = time.time()  # End timing
         elapsed_time = end_time - start_time  # Calculate elapsed time
-        print(f"Placing {len(input_df)} run time: {datetime.timedelta(seconds=elapsed_time)}")
+        self.logger.info(f"Placing {len(input_df)} run time: {datetime.timedelta(seconds=elapsed_time)}")
         return placements
 
     def check_intra_geometry(self,
@@ -243,7 +245,8 @@ class SlipperFitter:
         """
         # get list of mol objects
         mols: List[Chem.Mol] = placements['minimized_mol'].tolist()
-        assert len(mols) == len(placements), "There are missing mol objects in the placements."
+        if len(mols) != len(placements):
+            self.logger.warning("There are missing mol objects in the placements.")
         intra_geometry_results: List[bool] = []
         flatness_results: List[bool] = []
         for mol in mols:
@@ -299,9 +302,8 @@ class SlipperFitter:
             num_success = self.placements.outcome.value_counts()['acceptable']
             percent_success = round((self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
                                     , 2)
-        print(f'{num_success} ({percent_success}%) successful placements '
+        self.logger.info(f'{num_success} ({percent_success}%) successful placements '
               f'where ∆∆G < -1 and RMSD < 2 Å.')
-        print()
 
     def fix_intxns(self):
         intxn_names: List[tuple] = [c for c in self.placements.columns if isinstance(c, tuple)]

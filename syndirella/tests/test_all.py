@@ -15,6 +15,8 @@ from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
 
+#class TestCLI(unittest.TestCase):
+
 class TestSlipperSynthesizerUpdate(unittest.TestCase):
     """
     To Test:

@@ -16,6 +16,7 @@ import glob
 from rdkit import Chem
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit.Chem import AllChem, inchi
+import logging
 
 
 class Slipper:
@@ -45,6 +46,7 @@ class Slipper:
         self.placements: pd.DataFrame = None
         self.output_path: str = None
         self.additional_info: dict = additional_info
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def get_products(self) -> pd.DataFrame and str:
         """
@@ -92,7 +94,9 @@ class Slipper:
         Returns:
             path: str : the path to the saved dataframe
         """
-        assert self.placements is not None, "Placements need to be run first before writing HIPPO output."
+        if self.placements is None:
+            self.logger.critical("Placements need to be run first before writing HIPPO output.")
+            return None
         # cut placements to those that were placed by batch_num
         placements: pd.DataFrame = self.placements.iloc[:self.batch_num]
 
@@ -109,7 +113,7 @@ class Slipper:
             hippo_df = pd.concat([previous_hippo, hippo_df], axis=1, ignore_index=True)
         # save the dataframe
         hippo_df.to_pickle(hippo_path)
-        print(f"Saved HIPPO output to {hippo_path}")
+        self.logger.info(f"Saved HIPPO output to {hippo_path}")
         return hippo_path
 
     def _load_products_dfs(self, products_files: List[str]) -> Dict[int, pd.DataFrame]:
@@ -121,7 +125,9 @@ class Slipper:
             df = pd.read_pickle(file)
             step = df['step'].iloc[0]
             product_dfs[step] = df
-        assert len(product_dfs) == self.library.num_steps-1, "Not all steps have products dataframes."
+        if len(product_dfs) != self.library.num_steps-1:
+            self.logger.error("Not all steps have products dataframes.")
+            return None
         return product_dfs
 
     def _structure_products_for_hippo(self,
@@ -276,12 +282,14 @@ class Slipper:
 
     def which_reactant_was_previous_product(self,
                                             r1_is_previous_product: bool,
-                                            r2_is_previous_product: bool) -> int:
+                                            r2_is_previous_product: bool) -> int | None:
         """
         Determine which reactant was the product of the previous step.
         """
         if r1_is_previous_product:
-            assert not r2_is_previous_product, "Both reactants cannot be products of the previous step."
+            if r2_is_previous_product:
+                self.logger.critical("Both reactants cannot be products of the previous step.")
+                return None
             return 1
         elif r2_is_previous_product:
             return 2
@@ -300,7 +308,7 @@ class Slipper:
                 shutil.rmtree(path)
                 #print(f"Deleted directory: {path}")
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (path, e))
+            self.logger.warning('Failed to delete %s. Reason: %s' % (path, e))
 
     def _should_delete_file(self, file, suffixes_to_keep):
         """
@@ -320,7 +328,7 @@ class Slipper:
                     file_path = os.path.join(root, file)
                     self._delete_file_or_directory(file_path)
 
-    def get_placements_df(self) -> pd.DataFrame:
+    def get_placements_df(self) -> pd.DataFrame | None:
         """
         This function is used to get the placements dataframe which is the merged df with the products.
         """
@@ -328,7 +336,9 @@ class Slipper:
             return self.placements
         # otherwise you're gonna have to build it from scratch by going through each file in the output dir
         # get products df
-        assert self.products is not None, "You need to set the products df first."
+        if self.products is None:
+            self.logger.critical("You need to set the products df first.")
+            return None
         self.placements = get_placement_data(self.products, self.output_path, self.output_dir)
         return self.placements
 

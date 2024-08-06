@@ -5,15 +5,13 @@ syndirella.CobblerBench.py
 This module contains the CobblerBench class. One instance is made for each step.
 """
 
-import os
 from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
-import pandas as pd
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from .Reaction import Reaction
 from .Library import Library
 from ..error import ReactionError
 from ..SMARTSHandler import SMARTSHandler
+import logging
 
 class CobblerBench:
     """
@@ -43,6 +41,7 @@ class CobblerBench:
         self.filter: bool = filter
         self.reaction: Reaction = None
         self.library = None
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _make_reactant_mols(self, reactants) -> List[Chem.Mol]:
         """
@@ -59,6 +58,7 @@ class CobblerBench:
         This function is used to check the reaction is valid.
         """
         if self.reaction_name not in self.smarts_handler.reaction_smarts.keys():
+            self.logger.error("Reaction name not found in SMARTS handler.")
             raise ReactionError("Reaction name not found in SMARTS handler.")
         reaction = Reaction(self.product,
                             self.reactants,

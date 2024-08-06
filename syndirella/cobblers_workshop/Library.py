@@ -15,6 +15,7 @@ from rdkit import DataStructs
 from rdkit.Chem import AllChem
 import glob
 import pickle
+import logging
 
 from .Reaction import Reaction
 from syndirella.Postera import Postera
@@ -43,6 +44,7 @@ class Library:
         self.current_step: int = current_step
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
         self.filter: bool = filter
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self.r1 = None
         self.r2 = None
@@ -118,7 +120,9 @@ class Library:
         analogues = [Chem.MolToSmiles(analogue) for analogue in analogues_mols]
         if analogues_full is not None:
             lead_times = [analogues_full[analogue] if analogue in analogues_full else None for analogue in analogues]
-            assert len(lead_times) == len(analogues), "Problem with finding lead times."
+            if len(lead_times) != len(analogues):
+                self.logger.error("Problem with finding lead times.")
+                raise ValueError("Problem with finding lead times.")
         analogues_df = (
             pd.DataFrame({f"{analogue_prefix}_smiles": analogues,
                           f"{analogue_prefix}_mol": analogues_mols,
@@ -137,11 +141,15 @@ class Library:
         This function is used to check if the analogues contains the original reactant. Will return
         dictionary of boolean values and the number of matches.
         """
-        print('Checking if analogues contain SMARTS pattern of original reactant...')
+        self.logger.info('Checking if analogues contain SMARTS pattern of original reactant...')
         matching = [bool(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
         num = [len(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
-        assert len(matching) == len(analogues_mols), "Problem with finding matches."
-        assert len(num) == len(analogues_mols), "Problem with finding number of matches."
+        if len(matching) != len(analogues_mols):
+            self.logger.error("Problem with finding matches.")
+            raise ValueError("Problem with finding matches.")
+        if len(num) != len(analogues_mols):
+            self.logger.error("Problem with finding number of matches.")
+            raise ValueError("Problem with finding number of matches.")
         return matching, num
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:
@@ -159,17 +167,18 @@ class Library:
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
         """
-        assert len(valid_mols) <= len(mols), ("Problem with finding valid molecules. There are more than were in "
-                                              "the original list of molecules.")
+        if len(valid_mols) > len(mols):
+            self.logger.warning("Problem with finding valid molecules. There are more than were in the original list of "
+                              "molecules.")
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
-        print(f'Removed {num_filtered} invalid or repeated molecules ({percent_diff}%) of {analogue_prefix} analogues.')
+        self.logger.info(f'Removed {num_filtered} invalid or repeated molecules ({percent_diff}%) of {analogue_prefix} analogues.')
 
     def filter_on_substructure_filters(self, mols: List[Chem.Mol], ) -> List[str]:
         """
         This function is used to filter out analogues that do not pass the substructure filters.
         """
-        print('Filtering analogues on PAINS_A filters...')
+        self.logger.info('Filtering analogues on PAINS_A filters...')
         params = FilterCatalogParams()
         params.AddCatalog(FilterCatalogParams.FilterCatalogs.PAINS_A)
         catalog = FilterCatalog(params)
@@ -185,9 +194,11 @@ class Library:
         This function is used to check if the analogues contains the SMARTS patterns of the other reactant.
         """
         # get other reactant SMARTS pattern
-        print('Checking if analogues contain SMARTS pattern of other reactant...')
+        self.logger.info('Checking if analogues contain SMARTS pattern of other reactant...')
         other_reactant_smarts_pattern = [smarts for smarts in self.reaction.matched_smarts_to_reactant.keys() if not smarts == reactant_smarts][0]
-        assert other_reactant_smarts_pattern is not None, "Other reactant SMARTS pattern not found."
+        if other_reactant_smarts_pattern is None:
+            self.logger.error("Other reactant SMARTS pattern not found.")
+            raise ValueError("Other reactant SMARTS pattern not found.")
         other_reactant_prefix = self.reaction.matched_smarts_to_reactant[other_reactant_smarts_pattern][2]
         other_reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(other_reactant_smarts_pattern)
         return [bool(analogue.GetSubstructMatches(other_reactant_smarts_mol)) for analogue in analogues_mols], other_reactant_prefix
@@ -204,21 +215,21 @@ class Library:
         """
         internal_step = False
         if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
-            print('Since this is an internal or final step looking for the products .pkl from previous step...')
+            self.logger.info('Since this is an internal or final step looking for the products .pkl from previous step...')
             pkl_path: str = self._find_products_pkl_name(reactant)
             if pkl_path is not None:
                 internal_step = True
                 previous_product = True
                 return pkl_path, internal_step, previous_product # returns path to products .pkl.gz since is reactant
         if self.current_step != 1 and self.current_step < self.num_steps:
-            print('Looking for analogue library .pkl.gz if already created...')
+            self.logger.info('Looking for analogue library .pkl.gz if already created...')
             pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
             if pkl_path is not None:
                 internal_step = True
                 previous_product = False
                 return pkl_path, internal_step, previous_product # returns path to analogue .pkl.gz and is internal step
         if self.current_step == 1:
-            print('Looking for analogue library .pkl.gz if already created...')
+            self.logger.info('Looking for analogue library .pkl.gz if already created...')
             pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
             if pkl_path is not None:
                 internal_step = False
@@ -237,7 +248,7 @@ class Library:
                                    f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_"
                                    f"{self.current_step}of{self.num_steps}.pkl.gz")
         if len(pkl) == 1:
-            print(f"Found {pkl[0]} as the analogue library .pkl from previous step.")
+            self.logger.info(f"Found {pkl[0]} as the analogue library .pkl from previous step.")
             return pkl[0]
 
     def _find_products_pkl_name(self, reactant: Chem.Mol) -> str:
@@ -260,7 +271,7 @@ class Library:
                     AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
                 # If a perfect match is found, return the path
                 if similarity_score == 1:
-                    print(f"Found {path} as the products .pkl from previous step.")
+                    self.logger.info(f"Found {path} as the products .pkl from previous step.")
                     return path
         return None
 
@@ -270,7 +281,7 @@ class Library:
         """
         os.makedirs(f"{self.extra_dir_path}", exist_ok=True)
         pkl_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.pkl.gz"
-        print(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{pkl_name} \n")
+        self.logger.info(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{pkl_name} \n")
         df.to_pickle(f"{self.extra_dir_path}/{pkl_name}")
 
     def load_library(self,
@@ -293,7 +304,7 @@ class Library:
                 analogues_full = {analog: None for analog in analogues}
                 return analogues_full
         except KeyError:
-            print(f"Could not find analogue column in already existing product.pkl at {reactant_analogues_path}. "
+            self.logger.critical(f"Could not find analogue column in already existing product.pkl at {reactant_analogues_path}. "
                   f"Stopping...")
 
     def save(self):
@@ -308,6 +319,7 @@ class Library:
         """
         This function loads the library object. Will have to load all library objects
         """
+        logger = logging.getLogger(f"{__name__}.{Library.__name__}")
         # TODO: Change this to load all library objects, but check that it contains the specific variable you want
         # get all .pkl in output_dir.
         library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
@@ -316,9 +328,9 @@ class Library:
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)
             if library.id == id and library.num_steps == library.current_step: # return the final library
-                print(f"Loaded {library.id} final library.")
+                logger.info(f"Loaded {library.id} final library.")
                 return library
         # if not found, return None
-        print(f"Could not load {id} final library.")
+        logger.warning(f"Could not load {id} final library.")
         return None
 

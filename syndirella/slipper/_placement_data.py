@@ -42,7 +42,11 @@ def find_products_csv(library_output_dir: str) -> str:
 
 def make_fragmenstein_placements_csv(output_path: str, library_output_dir: str) -> str:
     """
-    This function makes a fragmenstein_placements.csv by looking through outputs.
+    This function makes a fragmenstein_placements.csv by looking through outputs of Fragmenstein.
+
+    Args:
+        output_path: str: The path to the output directory of Fragmenstein.
+        library_output_dir: str: The path to the directory where the final products csv is located.
     """
     # Make fragmenstein_placements.csv
     headers = ['name', 'ΔΔG', 'ΔG_bound', 'ΔG_unbound', 'comRMSD']

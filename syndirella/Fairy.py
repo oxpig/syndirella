@@ -13,6 +13,7 @@ import json
 from syndirella.cli_defaults import cli_default_settings
 from rdkit.Chem import rdMolDescriptors
 from rdkit import DataStructs
+import logging
 
 class Fairy:
     def __init__(self):
@@ -24,6 +25,7 @@ class Fairy:
             # the additional_rxn_options has structure of
             # {'reaction_name': 'additional_reaction_name'}
             self.additional_rxn_options: Dict[str, str] = json.load(f)
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def do_i_need_alterative_route(self, reaction_names: List[str]) -> bool:
         """
@@ -44,7 +46,7 @@ class Fairy:
         try:
             # Attempt to get the reactant filters using the reaction name
             reactant_filters: Dict[str, Any] = self.reactant_filters[reaction_name]
-            print(f"Reaction name '{reaction_name}' found in reactant filters. Getting cheaper reactants...")
+            self.logger.info(f"Reaction name '{reaction_name}' found in reactant filters. Getting cheaper reactants...")
             # get similar reactant
             similar_reactant: str = self._get_similar_reactant(reactant, reactant_filters)
         except KeyError:
@@ -90,7 +92,7 @@ class Fairy:
         Makes similar reactant from SMARTS to add and replace part of original reactant.
         """
         name = matched_details['name']
-        print(f"Performing '{name}'...")
+        self.logger.info(f"Performing '{name}'...")
         # Get the details to add
         to_add: str = matched_details['to_add']
         connecting_atom_id: int = matched_details['connecting_atom_id']
@@ -111,7 +113,7 @@ class Fairy:
         """
         # Convert hits to mols
         mols = [Chem.MolFromSmiles(info[0]) for info in hits]
-        print(f'Found {len(mols)} before filtering.')
+        self.logger.info(f'Found {len(mols)} before filtering.')
         # Do simple filters
         mols = self.simple_filters(mols)
         # Print the difference
@@ -170,7 +172,8 @@ class Fairy:
         """
         Converts mols to fingerprints, checks for Tanimoto similarity of 1, and removes repeats.
         """
-        print("Removing repeat analogues...")
+        logger = logging.getLogger(f"{__name__}.{Fairy.__name__}")
+        logger.info("Removing repeat analogues...")
         unique_mols = []
         fingerprints = [rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048) for mol in mols]
         seen = set()  # To keep track of indices of molecules that are duplicates
@@ -209,7 +212,8 @@ class Fairy:
         """
         This function is used to remove mols that have chirality specification.
         """
-        print("Removing chirality from analogues...")
+        logger = logging.getLogger(f"{__name__}.{Fairy.__name__}")
+        logger.info("Removing chirality from analogues...")
         mols = [Fairy._remove_chirality_from_mol(mol) for mol in mols]
         return mols
 
@@ -219,11 +223,12 @@ class Fairy:
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
         """
-        assert len(valid_mols) <= len(mols), ("Problem with finding valid molecules. There are more than were in "
-                                              "the original list of molecules.")
+        if len(valid_mols) > len(mols):
+            self.logger.info("Problem with finding valid molecules. There are more than were in the original list of "
+                              "molecules.")
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
-        print(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
+        self.logger.info(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
 
     def get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
         """
@@ -234,11 +239,11 @@ class Fairy:
         # get first route
         first_route_names = reaction_names[0]
         if len(first_route_names) == 1:
-            print(f"The route found is {len(first_route_names)} step. The forward synthesis is:")
-            print(f"{first_route_names[::-1]}") # reverse the order to make it forward synthesis
+            self.logger.info(f"The route found is {len(first_route_names)} step. "
+                             f"The forward synthesis is: {first_route_names[::-1]}")
         else:
-            print(f"The first route found is {len(first_route_names)} steps. The forward synthesis is:")
-            print(f"{first_route_names[::-1]}") # reverse the order to make it forward synthesis
+            self.logger.info(f"The first route found is {len(first_route_names)} steps. "
+                             f"The forward synthesis is: {first_route_names[::-1]}")
         final_routes: List[List[Dict]] = self.get_additional_routes(first_route_names, routes)
         return final_routes
 
@@ -252,12 +257,13 @@ class Fairy:
             # get additional reactions if specified in fairy filters
             if reaction_name in self.additional_rxn_options:
                 additional_reaction_name = self.additional_rxn_options[reaction_name]
-                print(f"Additional reaction for '{reaction_name}' found in fairy filters. "
-                      f"Getting additional routes containing '{additional_reaction_name}'...")
+                self.logger.info(f"Additional reaction for '{reaction_name}' found in fairy filters. "
+                                 f"Getting additional routes containing '{additional_reaction_name}'...")
                 # just get the first additional route
                 additional_route: List[List[Dict]] = self.get_additional_route(additional_reaction_name, routes)
         final_route: List[List[Dict]] = [routes[0]]
-        assert final_route != additional_route, "The first route and the additional route are the same."
+        if final_route == additional_route:
+            self.logger.error("The additional route is the same as the first route. Not adding it to the final route.")
         if additional_route is not None:
             final_route.append(additional_route)
         return final_route

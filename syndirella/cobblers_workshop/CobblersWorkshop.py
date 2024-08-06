@@ -13,6 +13,7 @@ from rdkit import Chem
 from rdkit.Chem import rdinchi
 from syndirella.slipper.Slipper import Slipper
 import traceback
+import logging
 
 
 class CobblersWorkshop():
@@ -40,6 +41,7 @@ class CobblersWorkshop():
         self.cobbler_benches: List[CobblerBench] = []  # To store instances for each step
         self.first_library: Library = None
         self.final_library: Library = None
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def get_final_library(self):
         """
@@ -48,7 +50,7 @@ class CobblersWorkshop():
         try:
             current_library = None
             for step in range(self.num_steps):
-                print(f"Step {step + 1} in this route using {self.reaction_names[step]}")
+                self.logger.info(f"Step {step + 1} in this route using {self.reaction_names[step]}")
                 reactants = self.reactants[step]
                 reaction_name = self.reaction_names[step]
                 cobbler_bench = CobblerBench(self.product,
@@ -71,8 +73,7 @@ class CobblersWorkshop():
             return self.final_library
         except Exception as e:
             tb = traceback.format_exc()
-            print(f"An error occurred in the route elaboration: {e}")
-            print(tb)
+            self.logger.error(f"An error occurred in the route elaboration: {tb}")
             return None
 
     @staticmethod
@@ -80,7 +81,10 @@ class CobblersWorkshop():
         """
         This function is used to generate a unique id for the route just using the product.
         """
-        assert Chem.MolFromSmiles(smiles), f"Could not create a molecule from the smiles {smiles}."
+        if Chem.MolFromSmiles(smiles) is None:
+            logger = logging.getLogger(f"{__name__}.{CobblersWorkshop.__name__}")
+            logger.error(f"Could not create a molecule from the smiles {smiles}.")
+            return None
         ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
         id = rdinchi.InchiToInchiKey(ID[0])
         return id

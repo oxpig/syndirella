@@ -11,6 +11,7 @@ from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.Postera import Postera
 from syndirella.SMARTSHandler import SMARTSHandler
 from syndirella.Fairy import Fairy
+import logging
 
 class Cobbler:
     """
@@ -26,6 +27,7 @@ class Cobbler:
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.fairy = Fairy()
         self.output_dir = output_dir
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def get_routes(self) -> List[CobblersWorkshop]:
         """
@@ -43,8 +45,10 @@ class Cobbler:
         """
         This function is used to perform the route query.
         """
-        print(f"Running retrosynthesis analysis for {self.base_compound}...")
-        assert type(self.base_compound) == str, "Smiles must be a string."
+        self.logger.info(f"Running retrosynthesis analysis for {self.base_compound}...")
+        if not isinstance(self.base_compound, str):
+            self.logger.error("Smiles must be a string.")
+            raise TypeError("Smiles must be a string.")
         retro_hits: List[Dict] = Postera.get_search_results(
             url=f'{self.url}/api/v1/retrosynthesis/',
             api_key=self.api_key,
@@ -78,7 +82,7 @@ class Cobbler:
         except IndexError:
             # there were no passing routes
             final_routes = []
-            print(f"No routes found for {self.base_compound}.")
+            self.logger.info(f"No routes found for {self.base_compound}.")
         return final_routes
 
     def _create_cobblers_workshops(self, final_routes: List[List[Dict]]) -> List[CobblersWorkshop]:
@@ -86,10 +90,8 @@ class Cobbler:
         From the final routes, creates the cobblers workshops.
         """
         cobblers_workshops = []
-        try:
-            assert len(final_routes) > 0, "There are no final routes."
-        except AssertionError as e:
-            print(e)
+        if len(final_routes) == 0:
+            self.logger.error("There are no final routes.")
             return cobblers_workshops
         for route in final_routes:
             route: List[Dict]
@@ -118,12 +120,10 @@ class Cobbler:
         """
         This function is used to print the route.
         """
-        print('Syndirella 👑 will elaborate the following route:')
+        self.logger.info('Syndirella 👑 will elaborate the following route:')
         for i, reaction in enumerate(reaction_names):
-            print('Step', i+1)
-            print(f"{reaction} <- {reactants[i]}")
-        print('Final product:', product)
-        print()
+            self.logger.info(f'\n Step {i+1}: \n {reactants[i]} -> {reaction}')
+        self.logger.info(f'Final product: {product}')
 
     def save(self):
         """
