@@ -21,16 +21,16 @@ def add_hits(df: pd.DataFrame,
     else:
         with Chem.SDMolSupplier(hits_path.strip()) as sd:
             hits: List[Chem.Mol] = list(sd)
-    # Find which hits are in the hit_names
+    # Find which hits_path are in the hit_names
     for i, row in df.iterrows():
-        hits_names = row['hits'].split(' ')
+        hits_names = row['hits_path'].split(' ')
         orig_num = len(hits_names)
         hits = [
             hit for hit in hits
             if any(hit_name in hit.GetProp('_Name') for hit_name in hits_names)
         ]
-        df.at[i, 'hits'] = hits
-        assert len(hits) == orig_num, 'Some hits were not found in the hits file.'
+        df.at[i, 'hits_path'] = hits
+        assert len(hits) == orig_num, 'Some hits_path were not found in the hits_path file.'
     return df
 
 def setup_Fragmenstein(template_path: str) -> Laboratory:
@@ -65,7 +65,7 @@ def main():
     template_path = os.path.join(os.getcwd(), 'x0310_relaxed_apo.pdb')
     # Initiate laboratory
     lab: Laboratory = setup_Fragmenstein(template_path)
-    # Add hits path to df
+    # Add hits_path path to df
     df = add_hits(df, hits_path)
     # Place fragments
     placements: pd.DataFrame = lab.place(place_input_validator(df), n_cores=8, timeout=240)

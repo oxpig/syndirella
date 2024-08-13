@@ -27,7 +27,7 @@ class Slipper:
                  *,
                  library: Library,
                  template: str = None,
-                 hits: str = None,
+                 hits_path: str = None,
                  hits_names: List[str] = None,
                  batch_num: int = None,
                  atoms_ids_expansion: dict = None,
@@ -39,7 +39,7 @@ class Slipper:
         self.final_products_csv_path: str = None
         # need Fragmenstein information
         self.template: str = template # path to pdb file
-        self.hits: str = hits # path to .sdf or .mol file
+        self.hits_path: str = hits_path # path to .sdf or .mol file
         self.hits_names: List[str] = hits_names # name of fragments
         self.batch_num: int = batch_num
         self.atoms_ids_expansion: dict = atoms_ids_expansion
@@ -69,10 +69,10 @@ class Slipper:
         """
         This function is used to place the products with Fragmenstein.
         """
-        slipper_fitter = SlipperFitter(self.template,
-                                       self.hits,
-                                       self.hits_names,
-                                       self.output_dir)
+        slipper_fitter = SlipperFitter(template_path=self.template,
+                                       hits_path=self.hits_path,
+                                       hits_names=self.hits_names,
+                                       output_dir=self.output_dir)
         slipper_fitter.final_products = self.products
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path

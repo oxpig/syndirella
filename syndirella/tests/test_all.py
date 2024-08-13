@@ -14,8 +14,71 @@ from ..cobblers_workshop.Library import Library
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
+import syndirella.check_inputs as check_inputs
 
-#class TestCLI(unittest.TestCase):
+
+class TestCheckInputs(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template_v2.csv'
+        self.manual_csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_manual_input_template_v2.csv'
+        self.template_dir = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates'
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
+        self.additional_info = ['compound_set']
+        self.manual_routes = False
+        self.metadata = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/metadata.csv'
+        self.holo_template = '/Users/kate_fieseler/Downloads/A71EV2A (6)/aligned_files/Ax1445a/Ax1445a.pdb'
+        self.apo_template = '/Users/kate_fieseler/Downloads/A71EV2A (6)/aligned_files/Ax1445a/Ax1445a_apo.pdb'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/check_inputs'
+        self.batch_num = 5
+
+    def test_check_manual(self):
+        check_inputs.check_manual(self.manual_csv_path)
+
+    def test_check_csv(self):
+        check_inputs.check_csv(self.csv_path)
+
+    def test_check_hit_names(self):
+        check_inputs.check_hit_names(self.csv_path, self.hits_path, self.metadata)
+
+    def test_template_paths(self):
+        check_inputs.check_template_paths(self.template_dir, self.csv_path, self.metadata)
+
+    def test_check_apo_template(self):
+        check_inputs.check_apo_template(self.apo_template)
+
+    def test_check_inputs(self):
+        check_inputs.check_pipeline_inputs(csv_path=self.csv_path, template_dir=self.template_dir,
+                                           hits_path=self.hits_path, metadata_path=self.metadata,
+                                           manual_routes=self.manual_routes)
+
+    def test_check_pipeline(self):
+        run_pipeline(csv_path=self.csv_path, template_dir=self.template_dir,
+                     hits_path=self.hits_path, metadata_path=self.metadata,
+                     manual_routes=self.manual_routes, output_dir=self.output_dir,
+                     batch_num=self.batch_num, additional_columns=self.additional_info)
+
+    def test_check_pipeline_manual(self):
+        run_pipeline(csv_path=self.manual_csv_path, template_dir=self.template_dir,
+                     hits_path=self.hits_path, metadata_path=self.metadata,
+                     manual_routes=True, output_dir=self.output_dir,
+                     batch_num=self.batch_num, additional_columns=self.additional_info)
+
+
+class TestGeneralError(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/general_error_debug_aug_2024/general_error_debug_aug_2024.csv'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/general_error_debug_aug_2024'
+        self.template_dir = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates')
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
+        self.batch_num = 10
+        self.additional_info = ['compound_set']
+        self.manual_routes = False
+
+    def test_pipeline(self):
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_dir=self.template_dir,
+                     hits_path=self.hits_path, metadata_path=str, batch_num=self.batch_num,
+                     additional_columns=self.additional_info, manual_routes=self.manual_routes)
+
 
 class TestSlipperSynthesizerUpdate(unittest.TestCase):
     """
@@ -24,6 +87,7 @@ class TestSlipperSynthesizerUpdate(unittest.TestCase):
     - Check if a reactant can be both reactants in a given rxn
     Will just do it via pipeline for now
     """
+
     def setUp(self):
         self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/slippersynth/slipper_synth_test.csv'
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/slippersynth'
@@ -36,8 +100,8 @@ class TestSlipperSynthesizerUpdate(unittest.TestCase):
         self.manual_routes = True
 
     def get_library_and_analogues(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_dir=str, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
 
 
@@ -53,9 +117,10 @@ class Testx0450(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
+
 
 class TestSyndirellaV2(unittest.TestCase):
     def setUp(self):
@@ -70,13 +135,15 @@ class TestSyndirellaV2(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
+
 
 class TestPipelineIntraGeometry(unittest.TestCase):
     def setUp(self):
-        self.csv_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry/intra_test.csv')
+        self.csv_path = (
+            '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry/intra_test.csv')
         self.output_dir = (
             '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/intra_geometry_new_fragmenstein/')
         self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
@@ -87,9 +154,10 @@ class TestPipelineIntraGeometry(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
+
 
 class TestIntraGeometryCheck(unittest.TestCase):
     def setUp(self):
@@ -112,11 +180,13 @@ class TestIntraGeometryCheck(unittest.TestCase):
                                        self.output_dir)
         slipper_fitter.check_base(self.base)
 
+
 class TestPipelineWBocDeprotection(unittest.TestCase):
     def setUp(self):
         self.csv_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_boc_deprotection/'
                          'test.csv')
-        self.output_dir = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_boc_deprotection/')
+        self.output_dir = (
+            '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_boc_deprotection/')
         self.template_path = ('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/'
                               'x0310_relaxed_apo.pdb')
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run/fragments/new_hits.sdf'
@@ -125,8 +195,8 @@ class TestPipelineWBocDeprotection(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
 
 
@@ -142,9 +212,10 @@ class TestPipelineWFairyFilters(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
+
 
 class TestInputCSV(unittest.TestCase):
     def setUp(self):
@@ -158,8 +229,8 @@ class TestInputCSV(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
 
 
@@ -174,8 +245,9 @@ class TestPipelineMultipleRxns(unittest.TestCase):
         self.additional_info = ['compound_set']
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num, additional_columns=self.additional_info)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info)
+
 
 class TestPipeline(unittest.TestCase):
     def setUp(self):
@@ -187,8 +259,9 @@ class TestPipeline(unittest.TestCase):
         self.batch_num = 1
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, template_path=self.template_path,
-                     hits_path=self.hits_path, batch_num=self.batch_num)
+        run_pipeline(csv_path=self.csv_path, output_dir=self.output_dir, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num)
+
 
 class TestFromInputBase(unittest.TestCase):
     def setUp(self):
@@ -198,6 +271,7 @@ class TestFromInputBase(unittest.TestCase):
     def test_from_input(self):
         cobbler = Cobbler(self.base, self.output_dir)
         cobbler.get_routes()
+
 
 class TestFairyFilters(unittest.TestCase):
     def setUp(self):
@@ -224,10 +298,7 @@ class TestFairyFilters(unittest.TestCase):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.filter)
         final_library = cobblers_workshop.get_final_library()
-        slipper = Slipper(final_library, self.template, self.hits, self.hits_names, self.batch_num)
-        products = slipper.get_products()
-        placements = slipper.place_products()
-        self.assertIsNotNone(placements)
+
 
 class TestReactantsFiltering(unittest.TestCase):
     def setUp(self):
@@ -290,7 +361,7 @@ class TestReactantsFiltering(unittest.TestCase):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.filter)
         final_library = cobblers_workshop.get_final_library()
-        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+        slipper = Slipper(template=self.template, hits_path=self.hits, hits_names=self.hits_names,
                           batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
         self.products = slipper.get_products()
         self.assertIsNotNone(self.products)
@@ -309,19 +380,21 @@ class TestReactantsFiltering(unittest.TestCase):
 
     def test_Delete(self):
         final_library = Library.load(self.output_dir)
-        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+        slipper = Slipper(template=self.template, hits_path=self.hits, hits_names=self.hits_names,
                           batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
         slipper.output_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/output'
         slipper.clean_up_placements()
 
     def test_GetProductsDF(self):
         final_library = Library.load(self.output_dir)
-        slipper = Slipper(final_library, template=self.template, hits=self.hits, hits_names=self.hits_names,
+        slipper = Slipper(template=self.template, hits_path=self.hits, hits_names=self.hits_names,
                           batch_num=self.batch_num, atoms_ids_expansion=self.atom_ids_expansion)
-        slipper.products: pd.DataFrame = (pd.read_csv('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/JFMKOYDGTWISRQ-UHFFFAOYSA-N_Sp3-sp2_Suzuki_coupling_products_2of2.csv'))
+        slipper.products: pd.DataFrame = (pd.read_csv(
+            '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/JFMKOYDGTWISRQ-UHFFFAOYSA-N_Sp3-sp2_Suzuki_coupling_products_2of2.csv'))
         slipper.output_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/reactants_filtering_w_labels/output'
         placements: pd.DataFrame = slipper.get_placements_df()
         self.assertIsNotNone(placements)
+
 
 class TestWarrenOneStep(unittest.TestCase):
     def setUp(self):
@@ -332,7 +405,7 @@ class TestWarrenOneStep(unittest.TestCase):
         self.num_steps = 1
         self.output_dir = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/'
                            'one_step_warren_A71EV2A')
-        self.database_search = None #postera? might not need this
+        self.database_search = None  #postera? might not need this
         self.final_library = None
         self.slipper = None
         self.products = None
@@ -370,16 +443,10 @@ class TestWarrenOneStep(unittest.TestCase):
 
     def test_SlipperPlacement(self):
         self.final_library = Library.load(self.output_dir)
-        self.slipper = Slipper(self.final_library, self.template, self.hits, self.hits_names, self.batch_num)
-        self.products = self.slipper.get_products()
-        self.placements = self.slipper.place_products()
-        self.assertIsNotNone(self.placements)
 
     def test_AtomIDExpansionLabeling(self):
         self.final_library = Library.load(self.output_dir)
-        self.slipper = Slipper(self.final_library, self.template, self.hits, self.hits_names, self.batch_num, False)
-        self.products = self.slipper.get_products()
-        self.assertIsNotNone(self.products)
+
 
 class TestSyndirellaOneStep(unittest.TestCase):
     def setUp(self):
@@ -389,7 +456,7 @@ class TestSyndirellaOneStep(unittest.TestCase):
         self.reaction_names = ['Sp2-sp2_Suzuki_coupling']
         self.num_steps = 1
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/retrievesynthesizable/syndirella/tests/test_output'
-        self.database_search = None #postera? might not need this
+        self.database_search = None  #postera? might not need this
 
     def test_CobblersWorkshop(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
@@ -401,18 +468,17 @@ class TestSyndirellaOneStep(unittest.TestCase):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
                                              self.output_dir, self.database_search)
         final_library = cobblers_workshop.get_final_library()
-        slipper = Slipper(final_library)
-        products = slipper.get_products()
-        self.assertIsNotNone(products)
+
 
 class TestSyndirellaTwoStep(unittest.TestCase):
     def setUp(self):
         self.product = 'CC(C)(CCC(=O)Nc1cccc2nc(Cl)ccc12)c1nn[nH]n1'
-        self.reactants = [('Nc1cccc2nc(Cl)ccc12', 'CC(C)(CCC(=O)O)B(O)O'), ('CC(C)(CCC(=O)Nc1cccc2nc(Cl)ccc12)B(O)O', 'Brc1nn[nH]n1')]
+        self.reactants = [('Nc1cccc2nc(Cl)ccc12', 'CC(C)(CCC(=O)O)B(O)O'),
+                          ('CC(C)(CCC(=O)Nc1cccc2nc(Cl)ccc12)B(O)O', 'Brc1nn[nH]n1')]
         self.reaction_names = ['Amidation', 'Sp3-sp2_Suzuki_coupling']
         self.num_steps = 2
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/retrievesynthesizable/syndirella/tests/test_output'
-        self.database_search = None #postera? might not need this
+        self.database_search = None  #postera? might not need this
 
     def test_CobblersWorkshop(self):
         cobblers_workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,

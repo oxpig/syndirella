@@ -51,10 +51,8 @@ class SMARTSHandler:
     def assign_reactants_w_rxn_smarts(self, reactant_attach_ids: Dict[Chem.Mol, List[Tuple[int, int]]],
                                       reaction_name: str) -> Dict[str, Tuple[Chem.Mol, List[int], str]]:
         """
-        This function is used to assign the reactant number to input reactants using the reaction SMARTS. For now it only
-        works for bimolecular reactions.
-
-        :return:
+        This function is used to assign the reactant number to input reactants using the reaction SMARTS. For now it
+        only supports bimolecular reactions.
         """
         if len(reactant_attach_ids) == 1: # Performing for one reactant
             patt = self.reactant1_dict[reaction_name]
@@ -81,7 +79,7 @@ class SMARTSHandler:
         self.matched_reactants = {patt1: None, patt2: None}
         found_1 = self.find_matching_atoms(r1, patt1, patt2, r1_attach_ids)
         found_2 = self.find_matching_atoms(r2, patt1, patt2, r2_attach_ids)
-        # Check that both reactants have been found, and that they are not the same
+        # Check that both reactants have been found
         if not self.check_found_reactants(found_1, found_2, reaction_name, r1, r2):
             return None
         return self.matched_reactants
@@ -89,15 +87,11 @@ class SMARTSHandler:
     def check_found_reactants(self, found_1: Dict[str, List], found_2: Dict[str, List], reaction_name: str,
                               r1: Chem.Mol, r2: Chem.Mol) -> bool:
         """
-        This function checks that both reactants have been found, and that they are not the same.
+        This function checks that both reactants have been found. It raises a warning if both reactants are matched
+        to the same reactant SMARTS.
         """
         if not found_1["r1"] and not found_2["r1"]:
             self.logger.error(f"The reactants do not match the reaction SMARTS in reaction {reaction_name} in "
-                              f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}.")
-            return False
-
-        if found_1["r1"] and found_2["r1"]:
-            self.logger.error(f"The reactants are the same in reaction {reaction_name} in "
                               f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}.")
             return False
 
@@ -107,11 +101,15 @@ class SMARTSHandler:
                 f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}")
             return False
 
+        if found_1["r1"] and found_2["r1"]:
+            self.logger.warning(
+                f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 1st "
+                f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
+
         if found_1["r2"] and found_2["r2"]:
-            self.logger.error(
-                f"Both reactants have atoms involved in reaction {reaction_name} in "
-                f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}")
-            return False
+            self.logger.warning(
+                f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 2nd "
+                f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
         return True
 
     def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> (

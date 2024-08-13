@@ -111,7 +111,7 @@ class Fairy:
         """
         Main entry to class to filter out reactants.
         """
-        # Convert hits to mols
+        # Convert hits_path to mols
         mols = [Chem.MolFromSmiles(info[0]) for info in hits]
         self.logger.info(f'Found {len(mols)} before filtering.')
         # Do simple filters
@@ -126,18 +126,18 @@ class Fairy:
         str, float]:
         """
         Formats the output of the filtered mols to a dictionary where the key is the SMILES of the molecule in the
-        mols list, and the value is the float value that is paired with that SMILES in the hits tuple list.
+        mols list, and the value is the float value that is paired with that SMILES in the hits_path tuple list.
         Comparison is done by Tanimoto similarity.
 
         Args:
         - mols: List of RDKit Mol objects.
-        - hits: List of tuples, where each tuple contains a SMILES string and a float value.
+        - hits_path: List of tuples, where each tuple contains a SMILES string and a float value.
 
         Returns:
         - A dictionary with SMILES strings as keys and float values as values.
         """
         hits_info: Dict[str, float] = {}
-        # Precompute fingerprints for the hits for efficiency
+        # Precompute fingerprints for the hits_path for efficiency
         hits_fps = [(Chem.MolFromSmiles(smiles), score) for smiles, score in hits]
         hits_fps = [(AllChem.GetMorganFingerprintAsBitVect(mol, 2), score) for mol, score in hits_fps if
                     mol is not None]

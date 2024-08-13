@@ -161,6 +161,8 @@ class SlipperSynthesizer:
         num_filtered = len(orig_df) - len(df)
         percent_diff = round((num_filtered / len(orig_df)) * 100, 2)
         self.logger.info(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
+        if len(df) == 0:
+            self.logger.critical(f"All reactants were filtered for {reactant_prefix}. No products will be found.")
         return df
 
 

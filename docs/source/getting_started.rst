@@ -84,6 +84,8 @@ Elaborate a set of base compounds using these steps:
 4. **Run pipeline**:
 --------------------
 
+Run as pip installed tool.
+
 **Manual Routes**:
     .. code-block:: bash
 

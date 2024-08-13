@@ -40,9 +40,10 @@ def config_parser():
     parser.add_argument('--input', type=str, required=True, help="Input .csv file path for the pipeline.")
     parser.add_argument('--output', type=str, required=True, help="Output directory for the pipeline results.")
     parser.add_argument('--templates', type=str, required=True, help="Absolute path to a directory containing the "
-                                                                                  "template(s).")
-    parser.add_argument('--hits', type=str, required=True, help="Absolute path to hits for placements (.sdf or .mol).")
-    parser.add_argument('--products', type=str, help="Absolute path to products for placements.")
+                                                                                   "template(s).")
+    parser.add_argument('--hits_path', type=str, required=True, help="Absolute path to hits_path for placements (.sdf or .mol).")
+    parser.add_argument('--metadata', type=str, required=True, help="Absolute path to metadata for placements.")
+    parser.add_argument('--products', type=str, required=True, help="Absolute path to products for placements.")
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--compound_set', action='store_true', help="Include values in compound_set column in the "
                                                                                       "output.")
@@ -56,15 +57,14 @@ def run_pipeline(settings: Dict[str, Any], pipeline):
     """
     logging.info('Running the pipeline...')
 
-    pipeline.run_pipeline(
-        csv_path=settings['input'],
-        output_dir=settings['output'],
-        template_dir=settings['templates'],
-        hits_path=settings['hits'],
-        batch_num=settings['batch_num'],
-        additional_columns=settings['additional_columns'],
-        manual_routes=settings['manual']
-    )
+    pipeline.run_pipeline(csv_path=settings['input'],
+                          output_dir=settings['output'],
+                          template_dir=settings['templates'],
+                          hits_path=settings['hits_path'],
+                          metadata_path=settings['metadata'],
+                          batch_num=settings['batch_num'],
+                          additional_columns=settings['additional_columns'],
+                          manual_routes=settings['manual'])
 
     logging.info('Pipeline execution completed successfully.')
 

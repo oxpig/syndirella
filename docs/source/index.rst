@@ -15,4 +15,5 @@ Syndirella (Synthetically Directed Elaborations) is a tool for generating and sc
 
    index
    getting_started
+   running_an_example
 

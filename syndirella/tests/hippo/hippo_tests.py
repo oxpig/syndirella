@@ -27,12 +27,8 @@ class TestBasicPipeline(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.test_csv,
-                     output_dir=self.output_dir,
-                     template_path=self.template_path,
-                     hits_path=self.hits_path,
-                     batch_num=self.batch_num,
-                     additional_columns=self.additional_info,
+        run_pipeline(csv_path=self.test_csv, output_dir=self.output_dir, template_dir=, hits_path=self.hits_path,
+                     metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
 
 class TestFromSlipper(unittest.TestCase):

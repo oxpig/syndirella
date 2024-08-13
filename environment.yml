@@ -13,3 +13,4 @@ dependencies:
   - fragmenstein
   - shortuuid
   - jupyter
+  - biopython

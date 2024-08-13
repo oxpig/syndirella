@@ -2,7 +2,7 @@
 """
 syndirella.cobbler.Cobbler.py
 
-This module contains the Cobbler class. It is used to perform retrosynthetic analysis of the base compound. It handles
+This module contains the Cobbler class. It is used to perform retrosynthetic analysis of the scaffold compound. It handles
 Poster searches, including multiple elaboration searches.
 """
 import os
@@ -15,12 +15,12 @@ import logging
 
 class Cobbler:
     """
-    A single cobbler represents 1 base compound design. It can contain multiple routes (CobblerWorkshop objects).
+    A single cobbler represents 1 scaffold compound design. It can contain multiple routes (CobblerWorkshop objects).
     """
     def __init__(self,
-                 base_compound: str,
+                 scaffold_compound: str,
                  output_dir: str):
-        self.base_compound: str = base_compound
+        self.scaffold_compound: str = scaffold_compound
         # Manifold API
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
@@ -31,7 +31,7 @@ class Cobbler:
 
     def get_routes(self) -> List[CobblersWorkshop]:
         """
-        This function is used to get the routes for the base compound. Main function that is called.
+        This function is used to get the routes for the scaffold compound. Main function that is called.
         """
         # get the routes from PostEra
         routes: List[List[Dict]] = self._perform_route_search()
@@ -45,15 +45,15 @@ class Cobbler:
         """
         This function is used to perform the route query.
         """
-        self.logger.info(f"Running retrosynthesis analysis for {self.base_compound}...")
-        if not isinstance(self.base_compound, str):
+        self.logger.info(f"Running retrosynthesis analysis for {self.scaffold_compound}...")
+        if not isinstance(self.scaffold_compound, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")
         retro_hits: List[Dict] = Postera.get_search_results(
             url=f'{self.url}/api/v1/retrosynthesis/',
             api_key=self.api_key,
             data={
-                'smiles': self.base_compound,
+                'smiles': self.scaffold_compound,
                 "withPurchaseInfo": True,
                 "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
             },
@@ -82,7 +82,7 @@ class Cobbler:
         except IndexError:
             # there were no passing routes
             final_routes = []
-            self.logger.info(f"No routes found for {self.base_compound}.")
+            self.logger.info(f"No routes found for {self.scaffold_compound}.")
         return final_routes
 
     def _create_cobblers_workshops(self, final_routes: List[List[Dict]]) -> List[CobblersWorkshop]:

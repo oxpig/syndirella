@@ -8,7 +8,7 @@ Possible errors when using syndirella.
 class ReactionError(Exception):
     pass
 
-class RouteError(Exception):
+class ScaffoldPlacementError(Exception):
     def __init__(self,
                  base: str):
         self.base = base

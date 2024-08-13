@@ -48,7 +48,7 @@ class SlipperFitter:
         """
         Main entry to the SlipperFitter class. This function is used to fit the products to the final library.
         """
-        self.logger.info('Fitting products, warning: it is expected that the base compound has already passed '
+        self.logger.info('Fitting products, warning: it is expected that the scaffold compound has already passed '
                          'minimisation and intramolecular checks.')
         input_df: pd.DataFrame = self.prep_products()
         placements = self.place_products(input_df)
@@ -57,33 +57,33 @@ class SlipperFitter:
         self.merged_placements = self.merge_placements()
         return self.merged_placements
 
-    def check_base(self, base: Chem.Mol) -> bool:
+    def check_scaffold(self, scaffold: Chem.Mol) -> bool:
         """
-        Checks if the base can be minimised (no specific stereoisomer) and passes intermolecular checks.
+        Checks if the scaffold can be minimised (no specific stereoisomer) and passes intermolecular checks.
         If it cannot be minimised after 3 attempts, returns False.
         """
-        input_df: pd.DataFrame = self._prep_base_input_df(base)
-        id = generate_inchi_ID(Chem.MolToSmiles(base))
-        output_path: str = os.path.join(self.output_dir, f'{id}-base-check')
+        input_df: pd.DataFrame = self._prep_scaffold_input_df(scaffold)
+        id = generate_inchi_ID(Chem.MolToSmiles(scaffold))
+        output_path: str = os.path.join(self.output_dir, f'{id}-scaffold-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
         num_attempts = 2
         for attempt in range(1, num_attempts+1):
-            base_placed: Chem.Mol = self._place_base(lab, input_df)  # None if not minimised
-            if base_placed is not None:
-                geometries: Dict = intra_geometry.check_geometry(base_placed,
+            scaffold_placed: Chem.Mol = self._place_scaffold(lab, input_df)  # None if not minimised
+            if scaffold_placed is not None:
+                geometries: Dict = intra_geometry.check_geometry(scaffold_placed,
                                                                  threshold_clash=0.4) # increasing threshold for internal clash
-                flat_results: Dict = flatness.check_flatness(base_placed)
+                flat_results: Dict = flatness.check_flatness(scaffold_placed)
                 if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
                     return True
-                    if len(os.listdir(f'{output_path}/base-check')) > 0: # last resort just check if there are files
-                            self.logger.info('Base could be minimised and passed intramolecular checks!')
+                    if len(os.listdir(f'{output_path}/scaffold-check')) > 0: # last resort just check if there are files
+                            self.logger.info('scaffold could be minimised and passed intramolecular checks!')
                             return True
                     else:
-                        self.logger.info(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
+                        self.logger.info(f'scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
                 else:
-                    self.logger.info(f'Base could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
+                    self.logger.info(f'scaffold could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
             else:
-                self.logger.info(f'Base could not be minimised. Attempt {attempt} of {num_attempts}.')
+                self.logger.info(f'scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
         return False
 
     def _check_intra_geom_flatness_results(self,
@@ -106,24 +106,24 @@ class SlipperFitter:
             return False
         return True
 
-    def _prep_base_input_df(self, base: Chem.Mol) -> pd.DataFrame:
+    def _prep_scaffold_input_df(self, scaffold: Chem.Mol) -> pd.DataFrame:
         """
-        Prepares input dataframe to Fragmenstein for the base compound.
+        Prepares input dataframe to Fragmenstein for the scaffold compound.
         """
-        base_df: pd.DataFrame = pd.DataFrame({'name': ['base_check'],
-                                              'smiles': [Chem.MolToSmiles(base)]})
-        base_df = self.add_hits(base_df)
-        base_df = base_df.astype({'name': str, 'smiles': str})
-        return base_df
+        scaffold_df: pd.DataFrame = pd.DataFrame({'name': ['scaffold_check'],
+                                              'smiles': [Chem.MolToSmiles(scaffold)]})
+        scaffold_df = self.add_hits(scaffold_df)
+        scaffold_df = scaffold_df.astype({'name': str, 'smiles': str})
+        return scaffold_df
 
-    def _get_base(self, input_df: pd.DataFrame) -> Chem.Mol:
+    def _get_scaffold(self, input_df: pd.DataFrame) -> Chem.Mol:
         """
-        Get base compound as mol object from the input_df.
+        Get scaffold compound as mol object from the input_df.
         """
-        # get flat base smiles
-        base_smiles: str = input_df.loc['base' in input_df['name'], 'smiles'].values[0]
-        base_mol: Chem.Mol = Chem.MolFromSmiles(base_smiles)
-        return base_mol
+        # get flat scaffold smiles
+        scaffold_smiles: str = input_df.loc['scaffold' in input_df['name'], 'smiles'].values[0]
+        scaffold_mol: Chem.Mol = Chem.MolFromSmiles(scaffold_smiles)
+        return scaffold_mol
 
     def prep_products(self) -> pd.DataFrame:
         """
@@ -177,37 +177,34 @@ class SlipperFitter:
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
-        This function adds the hits_path as mol objects to input_df['hits_path'].
+        This function adds:
+            hits_path as mol objects to input_df['hits']
         """
         # load hits_path either from mol or sdf
         if os.path.splitext(self.hits_path)[1] == '.mol':
             self.logger.info('This is a mol file')
-            hits: List[Chem.Mol] = [Chem.MolFromMolFile(self.hits_path.strip())]
+            hits: List[Chem.Mol] = [Chem.MolFromMolFile(self.hits_path.strip())] # single hit
         else:
             with Chem.SDMolSupplier(self.hits_path.strip()) as sd:
-                hits: List[Chem.Mol] = list(sd)
-        # Find which hits are in the hit_names
-        hits = [
-            hit for hit in hits
-            if any(hit_name in hit.GetProp('_Name') for hit_name in self.hits_names)
-        ]
-        # add hits column with contents of hits_names as space separated string
+                hits: List[Chem.Mol] = list(sd) # many hits
+        # only get hits that exactly match the hit_name in the hits_names
+        hits = [hit for hit in hits for hit_name in self.hits_names if hit.GetProp('_Name') == hit_name]
         input_df['hits'] = input_df.apply(lambda row: hits, axis=1)
         return input_df
 
-    def _place_base(self,
+    def _place_scaffold(self,
                     lab: Laboratory,
                     input_df: pd.DataFrame) -> Chem.Mol:
         """
-        Places the base compound, returns the mol object of the base compound if successful else None.
+        Places the scaffold compound, returns the mol object of the scaffold compound if successful else None.
         """
         placements: pd.DataFrame = lab.place(place_input_validator(input_df), n_cores=self.n_cores,
                                              timeout=self.timeout)
         try:
-            base: Chem.Mol = placements.at[0, 'minimized_mol']
+            scaffold: Chem.Mol = placements.at[0, 'minimized_mol']
         except Exception:
-            base = None
-        return base
+            scaffold = None
+        return scaffold
 
     def place_products(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """
