@@ -19,8 +19,8 @@ import syndirella.check_inputs as check_inputs
 
 class TestCheckInputs(unittest.TestCase):
     def setUp(self):
-        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template_v2.csv'
-        self.manual_csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_manual_input_template_v2.csv'
+        self.csv_path = '/syndirella/syndirella_input_template.csv'
+        self.manual_csv_path = '/syndirella/syndirella_manual_input_template.csv'
         self.template_dir = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates'
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
         self.additional_info = ['compound_set']
@@ -219,7 +219,7 @@ class TestPipelineWFairyFilters(unittest.TestCase):
 
 class TestInputCSV(unittest.TestCase):
     def setUp(self):
-        self.csv_path = '/syndirella/syndirella_input_template_manual.csv'
+        self.csv_path = '/syndirella/syndirella_input_template_manual_old.csv'
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_input2/'
         self.template_path = ('/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline/'
                               'x0310_template.pdb')

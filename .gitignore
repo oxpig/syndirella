@@ -4,6 +4,8 @@ __pycache__
 output
 /venv
 old_README.md
+syndirella_input_template_old.csv
+syndirella_input_template_manual_old.csv
 
 # tests
 /syndirella/tests/one_step_warren_A71EV2A/
