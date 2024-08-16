@@ -16,11 +16,33 @@ from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
 import syndirella.check_inputs as check_inputs
 
+class TestAdditionalReaction(unittest.TestCase):
+    def setUp(self):
+        self.reactants = [('CCOC(=O)Cc1cncc(N)c1', 'CC(=O)Cl'), ('NCC(N)c1ccc2ccccc2c1', 'CCOC(=O)Cc1cncc(NC(C)=O)c1'),
+                          ('O=C(Cl)CCl', 'CC(=O)Nc1cncc(CC(=O)NC(CN)c2ccc3ccccc3c2)c1')]
+        self.product = 'CC(=O)Nc1cncc(CC(=O)NC(CNC(=O)CCl)c2ccc3ccccc3c2)c1'
+        self.reaction_names = ['Amide_Schotten-Baumann_with_amine', 'Ester_amidation', 'Amide_Schotten-Baumann_with_amine']
+        self.num_steps = 3
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/additional_reaction'
+        self.filter = False
+        self.hits = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/additional_reaction/hits.sdf'
+
+    def test_get_additional_route(self):
+        workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
+                                             self.output_dir, self.filter)
+        routes = workshop.get_additional_routes(edit_route=True)
+        self.assertIsInstance(routes, list)
+
+    def test_get_additional_route_auto(self):
+        cobbler = Cobbler(scaffold_compound=self.product,
+                          output_dir=self.output_dir)
+        routes = cobbler.get_routes()
+        self.assertIsInstance(routes, list)
 
 class TestCheckInputs(unittest.TestCase):
     def setUp(self):
-        self.csv_path = '/syndirella/syndirella_input_template.csv'
-        self.manual_csv_path = '/syndirella/syndirella_manual_input_template.csv'
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template.csv'
+        self.manual_csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_manual_input_template.csv'
         self.template_dir = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates'
         self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
         self.additional_info = ['compound_set']

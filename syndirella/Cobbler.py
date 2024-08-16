@@ -3,15 +3,17 @@
 syndirella.cobbler.Cobbler.py
 
 This module contains the Cobbler class. It is used to perform retrosynthetic analysis of the scaffold compound. It handles
-Poster searches, including multiple elaboration searches.
+Postera searches, including multiple elaboration searches.
 """
 import os
 from typing import (List, Dict)
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.Postera import Postera
 from syndirella.SMARTSHandler import SMARTSHandler
-from syndirella.Fairy import Fairy
+import syndirella.fairy as fairy
+from syndirella.error import NoSynthesisRoute
 import logging
+from rdkit import Chem
 
 class Cobbler:
     """
@@ -25,7 +27,7 @@ class Cobbler:
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
-        self.fairy = Fairy()
+        self.n_reactants_per_reaction = SMARTSHandler().n_reactants_per_reaction
         self.output_dir = output_dir
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -33,62 +35,120 @@ class Cobbler:
         """
         This function is used to get the routes for the scaffold compound. Main function that is called.
         """
-        # get the routes from PostEra
-        routes: List[List[Dict]] = self._perform_route_search()
-        # get final route(s) which will usually just be one, but will be multiple if specified in fairy filters
-        final_routes: List[List[Dict]] = self._get_final_routes(routes)
-        # create the cobblers workshops
-        cobblers_workshops: List[CobblersWorkshop] = self._create_cobblers_workshops(final_routes)
+        postera_search: Postera = Postera()
+        routes: List[Dict[str, List[Dict[str, str]]]] = postera_search.perform_route_search(compound=self.scaffold_compound)
+        route: CobblersWorkshop = self.get_route(routes)
+        additional_routes: List[CobblersWorkshop] = route.get_additional_routes(edit_route=True)
+        if additional_routes is not None:
+            cobblers_workshops = [route] + additional_routes
+        else:
+            cobblers_workshops = [route]
         return cobblers_workshops
 
-    def _perform_route_search(self, max_pages: int = 10) -> List[List[Dict]]:
+    def get_route(self, routes: List[Dict[str, List[Dict[str, str]]]]) -> CobblersWorkshop:
         """
-        This function is used to perform the route query.
+        From Postera routes, choose the route, then create the cobblers workshop.
         """
-        self.logger.info(f"Running retrosynthesis analysis for {self.scaffold_compound}...")
-        if not isinstance(self.scaffold_compound, str):
-            self.logger.error("Smiles must be a string.")
-            raise TypeError("Smiles must be a string.")
-        retro_hits: List[Dict] = Postera.get_search_results(
-            url=f'{self.url}/api/v1/retrosynthesis/',
-            api_key=self.api_key,
-            data={
-                'smiles': self.scaffold_compound,
-                "withPurchaseInfo": True,
-                "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
-            },
-            max_pages=max_pages,
-        )
-        return retro_hits
+        route: List[Dict] = self.choose_route(routes)
+        cobblers_workshop: CobblersWorkshop = self.create_cobblers_workshop_from_Postera(route)
+        return cobblers_workshop
 
-    def _get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
+    def get_additional_cobblers_workshops(self, route: CobblersWorkshop) -> List[CobblersWorkshop]:
         """
-        This function is used to get the final routes, which are routes that contain all reactions we have encoded.
-        Then the final routes is either the first 1 or other specified by the fairy filters.
+        This function is used to get additional cobblers workshops if specified in fairy filters.
+        """
+        # TODO: Implement. Need to make sure that getting the new CobblersWorkshop is output from a CobblersWorkshop function.
+
+
+    def create_cobblers_workshop_from_Postera(self, route: List[Dict]) -> CobblersWorkshop:
+        """
+        Creates a cobblers workshop from a route.
+        """
+        route = route[::-1] # reverse route since it is a retrosynthesis route.
+        reaction_names = [reaction['name'].replace(" ", "_") for reaction in route]
+        reactants = [reaction['reactantSmiles'] for reaction in route]
+        product = self.scaffold_compound
+        cobblers_workshop = CobblersWorkshop(
+            product=product,
+            reactants=reactants,
+            reaction_names=reaction_names,
+            num_steps=len(reaction_names),
+            output_dir=self.output_dir,
+            filter=False,
+            atoms_ids_expansion=None
+        )
+        return cobblers_workshop
+
+    def get_passing_routes(self, routes: List[Dict[str, List[Dict[str, str]]]]) -> List[List[Dict]]:
+        """
+        Gets the passing routes from the routes based on their reaction names are in the allowed list.
         """
         passing_routes = []
         for route in routes:
             # get the reactions
-            reactions = route['reactions']
+            reactions: List[Dict[str,str]] = route['reactions']
             # check if all reactions are in the reactions
             if len(reactions) == 0:
                 continue
-            reaction_names = [reaction['name'].replace(" ","_") for reaction in reactions]
+            reaction_names = [reaction['name'].replace(" ", "_") for reaction in reactions]
             if all([name in self.reaction_names for name in reaction_names]):
                 passing_routes.append(reactions)
-        try:
-            # get first route and then other non-first routes if specified in fairy filters
-            final_routes: List[List[Dict]] = self.fairy.get_final_routes(passing_routes)
-        except IndexError:
-            # there were no passing routes
-            final_routes = []
-            self.logger.info(f"No routes found for {self.scaffold_compound}.")
+        return passing_routes
+
+    def filter_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
+        """
+        Filters routes that contain reactants with a single atom, or an intramolecular reaction that is coded as two
+        reactants.
+        """
+        passing_routes: List[List[Dict]] = []
+        for route in routes:
+            reactants = [reactant for reaction in route for reactant in reaction['reactantSmiles']]
+            reactant_atoms = [Chem.MolFromSmiles(reactant).GetNumAtoms() for reactant in reactants]
+            if 1 in reactant_atoms: # remove routes that contain reactions with single atoms
+                continue
+            # reaction name and n reactants dict
+            reaction_name_n_reactants = {reaction['name'].replace(" ", "_"): len(reaction['reactantSmiles']) for reaction in route}
+            if any([reaction_name in self.n_reactants_per_reaction.keys() and n_reactants != self.n_reactants_per_reaction[reaction_name] for reaction_name, n_reactants in reaction_name_n_reactants.items()]):
+                continue
+            passing_routes.append(route)
+        return passing_routes
+
+
+    def choose_route(self, routes: List[Dict[str, List[Dict[str, str]]]]) -> List[Dict]:
+        """
+        Gets first route from List if all the reaction names are allowed and if doesn't contain a single atom as reactant.
+        """
+        # TODO: Implement. Also need to add single atom reactant check that the main logic could be done by fairy (if makes sense??)
+        passing_routes: List[List[Dict]] = self.get_passing_routes(routes)
+        filtered_routes: List[List[Dict]] = self.filter_routes(passing_routes)
+        # there were no passing routes
+        final_route = filtered_routes[0] if len(filtered_routes) > 0 else []
+        if len(final_route) == 0:
+            self.logger.critical(f"No routes found for {self.scaffold_compound}.")
+            raise NoSynthesisRoute()
+        return final_route
+
+    def _get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
+        """
+        This function is used to get the final routes, which are routes that contain all reactions we have encoded
+        and others if specified in additional rxn_options.
+        """
+        first_route: List[Dict] = self.choose_route(routes)
+
+        # get first route and then other non-first routes if specified in fairy filters
+        #TODO: Main part to get additional route if using all auto
+        first_route: CobblersWorkshop = self.create_cobblers_workshop_from_Postera(first_route)
+        additional_routes: List[CobblersWorkshop] | None = first_route.get_additional_routes(edit_route=True)
+        if additional_routes is not None:
+            final_routes: List[CobblersWorkshop] = [first_route] + additional_routes
+
         return final_routes
 
     def _create_cobblers_workshops(self, final_routes: List[List[Dict]]) -> List[CobblersWorkshop]:
         """
         From the final routes, creates the cobblers workshops.
         """
+        # TODO: Might not need this function.
         cobblers_workshops = []
         if len(final_routes) == 0:
             self.logger.error("There are no final routes.")

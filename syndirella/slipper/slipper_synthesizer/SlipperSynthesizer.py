@@ -16,6 +16,8 @@ from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnum
 import os
 import shortuuid
 import logging
+from syndirella.error import NoReactants
+import numpy as np
 
 
 class SlipperSynthesizer:
@@ -41,7 +43,6 @@ class SlipperSynthesizer:
         self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
         self.atom_ids_expansion: dict = atom_ids_expansion
-        self.uuid = shortuuid.ShortUUID().random(length=6)
         self.additional_info = additional_info
         self.current_step: int = library.current_step
         self.num_steps: int = library.num_steps
@@ -71,7 +72,7 @@ class SlipperSynthesizer:
         """
         This function checks if the products pkl already exists and if so it loads it.
         """
-        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+        pkl_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.pkl")
         if self.library.num_steps != self.library.current_step:
             pkl_path = os.path.join(self.output_dir, 'extra', pkl_name)
@@ -91,7 +92,7 @@ class SlipperSynthesizer:
         """
         This function loads the product .pkl file.
         """
-        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+        pkl_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.pkl")
         if self.library.num_steps != self.library.current_step:
             self.products = pd.read_pickle(f"{self.output_dir}/extra/{pkl_name}")
@@ -116,7 +117,6 @@ class SlipperSynthesizer:
             analogue_columns: Tuple[str, str] = value[1]
             self.analogue_columns = [column for column in analogue_columns]
             df = self.filter_analogues_on_smarts(df, analogue_columns, reactant_prefix)
-            #df = self._filter_out_repeats(df, analogue_columns, reactant_prefix)
             df = self.order_analogues(df, reactant_prefix)
             self.analogues_dataframes_to_react[key] = df
         # Filters analogue df by size, shortens if necessary
@@ -124,11 +124,11 @@ class SlipperSynthesizer:
 
     def order_analogues(self, df: pd.DataFrame, reactant_prefix: str) -> pd.DataFrame:
         """
-        This function is used to order the analogues dataframes by num atom diff to base reactant of base compound,
+        This function is used to order the analogues dataframes by num atom diff to scaffold reactant of scaffold compound,
         number of reactant matches found, and lead time.
         """
         self.logger.info(f"Ordering analogues of {reactant_prefix} before finding products...")
-        # Add num_atom_diff to base reactant, which is the first reactant
+        # Add num_atom_diff to scaffold reactant, which is the first reactant
         base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
         df[f'{reactant_prefix}_num_atom_diff'] = (
             df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
@@ -152,8 +152,9 @@ class SlipperSynthesizer:
         """
         self.logger.info('Filtering analogues of reactants on SMARTS...')
         orig_df = df.copy()
-        # filter out rows with both 'r1' and 'r2' true (i.e. contains both reactants)
-        df = df[~(df[analogue_columns[0]] & df[analogue_columns[1]])]
+        # add flag to rows with both 'r1' and 'r2' true
+        df.loc[df[analogue_columns[0]] & df[
+            analogue_columns[1]], 'flag'] = 'selectivity_issue_contains_reaction_atoms_of_both_reactants'
         # only keep rows with original analogue_prefix true
         orig_r_column = [col for col in analogue_columns if reactant_prefix in col][0]
         df = df[df[orig_r_column]]
@@ -163,6 +164,7 @@ class SlipperSynthesizer:
         self.logger.info(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
         if len(df) == 0:
             self.logger.critical(f"All reactants were filtered for {reactant_prefix}. No products will be found.")
+            raise NoReactants()
         return df
 
 
@@ -247,6 +249,22 @@ class SlipperSynthesizer:
         # drop extra columns
         combinations.drop(['r1', 'r2'], axis=1, inplace=True)
         combinations.reset_index(drop=True, inplace=True)
+        # Combine 'flag' columns
+        def combine_flags(row):
+            flags = []  # TODO: Change to tuple
+            if pd.notna(row['flag_x']):
+                flags.append(row['flag_x'])
+            if pd.notna(row['flag_y']):
+                flags.append(row['flag_y'])
+            return flags if flags else np.nan
+        if 'flag' in r1.columns and 'flag' in r2.columns:
+            combinations['flag'] = combinations.apply(combine_flags, axis=1)
+        elif 'flag' in r1.columns:
+            combinations['flag'] = combinations['flag_x']
+        elif 'flag' in r2.columns:
+            combinations['flag'] = combinations['flag_y']
+        # Drop intermediate 'flag_x' and 'flag_y' columns if they exist
+        combinations.drop(['flag_x', 'flag_y'], axis=1, inplace=True, errors='ignore')
         # make sure there are no repeats
         combinations.drop_duplicates(inplace=True)
         return combinations
@@ -308,9 +326,10 @@ class SlipperSynthesizer:
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         products = reaction.RunReactants((r1,))
+        flags = row['flag'] if isinstance(row['flag'], list) else []
         if len(products) == 0:
             self.logger.info("No products found.")
-            row['flag'] = None
+            row['flag'] = flags if flags else None
             row['combined'] = [(None, None)]
             return row
         elif len(products) > 1 or len(products[0]) > 1:
@@ -324,14 +343,16 @@ class SlipperSynthesizer:
                     row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
                 if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
                     #self.logger.info(f"Found multiple products at {row.name}. Flagging...")
-                    row['flag'] = 'one_of_multiple_products'
+                    if 'one_of_multiple_products' not in flags:
+                        flags.append('one_of_multiple_products')
                 row['combined'] = list(zip(row_smiles, row_num_atom_diff))
+                row['flag'] = flags if flags else None
                 return row
             product = products[0][0]
             if self.can_be_sanitized(product):
                 base = self.library.reaction.product
                 num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-                row['flag'] = None
+                row['flag'] = flags if flags else None
                 row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
                 return row
 
@@ -345,13 +366,11 @@ class SlipperSynthesizer:
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
+        flags = row['flag'] if isinstance(row['flag'], list) else []
         products = reaction.RunReactants((r1, r2))
         if len(products) == 0:
-            self.logger.info("No products found.")
-            row['flag'] = None
+            row['flag'] = flags if flags else None
             row['combined'] = [(None, None)]
-            # row['smiles'] = None
-            # row['num_atom_diff'] = None
             return row
         elif len(products) > 1 or len(
                 products[0]) > 1:  # should only return 1 product, if more than 1 then there are selectivity issues
@@ -363,16 +382,18 @@ class SlipperSynthesizer:
                     row_smiles.append(Chem.MolToSmiles(product[0]))
                     row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
             if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
-                #self.logger.info(f"Found multiple products at {row.name}. Flagging...")
-                row['flag'] = 'one_of_multiple_products'
+                if 'one_of_multiple_products' not in flags:
+                    flags.append('one_of_multiple_products')
             row['combined'] = list(zip(row_smiles, row_num_atom_diff))
+            row['flag'] = flags if flags else None
             return row
         product = products[0][0]
         if self.can_be_sanitized(product):
             base = self.library.reaction.product
             num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-            row['flag'] = None
             row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+            # Set flag column to list of flags or None if empty
+            row['flag'] = flags if flags else None
             return row
 
     def can_be_sanitized(self, mol: Chem.Mol) -> bool:
@@ -398,7 +419,7 @@ class SlipperSynthesizer:
 
     def calc_num_atom_diff_absolute(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
-        This function calculates the absolute number of atoms difference between the base and product.
+        This function calculates the absolute number of atoms difference between the scaffold and product.
         """
         difference = product.GetNumAtoms() - base.GetNumAtoms()
         return difference
@@ -481,7 +502,7 @@ class SlipperSynthesizer:
 
     def assign_names_based_on_groups(self, products: pd.DataFrame, library_id: str, base_group_id: int) -> pd.DataFrame:
         """Assign names to products based on their group ID, ensuring duplicates have the same name."""
-        base_name = f"{library_id}-{self.uuid}-base"
+        base_name = f"{library_id}-{self.uuid}-scaffold"
         unique_groups = products['group_id'].unique()
         # Assign names based on group ID
         for group in unique_groups:
@@ -510,8 +531,8 @@ class SlipperSynthesizer:
         products['reaction'] = self.library.reaction.reaction_name
         products['step'] = self.library.current_step
         products['total_steps'] = self.library.num_steps
-        products['base_compound'] = f"{self.library.id}-base"
-        products['uuid'] = self.uuid
+        products['base_compound'] = f"{self.library.id}-scaffold"
+        products['route_uuid'] = self.route_uuid
         # Add additional info
         if self.additional_info:
             for key, value in self.additional_info.items():
@@ -557,9 +578,9 @@ class SlipperSynthesizer:
         """
         This function is used to save the products dataframe as a .pkl file.
         """
-        pkl_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+        pkl_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.pkl.gz")
-        csv_name = (f"{self.library.id}_{self.library.reaction.reaction_name}_products_"
+        csv_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
             self.logger.info("Since these products are not the final products they will be saved in the /extra folder. \n")

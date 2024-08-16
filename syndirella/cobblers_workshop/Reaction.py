@@ -10,20 +10,115 @@ from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple)
 from syndirella.SMARTSHandler import SMARTSHandler
 from syndirella.error import ReactionError
+import syndirella.fairy as fairy
+import logging
+
 
 class Reaction():
     """
     This class contains information about the reaction. It is used to find the atoms on the reactants involved in
     the reaction, check the reaction atoms are the ones that are supposed to be connected.
     """
-    def __init__(self, product: Chem.Mol, reactants: List[Chem.Mol], reaction_name: str, smarts_handler: SMARTSHandler):
+
+    def __init__(self,
+                 product: Chem.Mol,
+                 reactants: List[Chem.Mol],
+                 reaction_name: str,
+                 smarts_handler: SMARTSHandler):
+        self.logger = logging.getLogger(f"{__name__}")
         self.product: Chem.Mol = product
         self.reactants: List[Chem.Mol] = reactants
         self.reaction_name: str = reaction_name
         self.smarts_handler: SMARTSHandler = smarts_handler
         self.reaction_pattern: Chem.rdChemReactions = self.smarts_handler.reaction_smarts[self.reaction_name]
-        self.all_attach_ids: List[int] = None
-        self.matched_smarts_to_reactant: Dict[str, Tuple[Chem.Mol, List[int]]] = None
+        self.all_attach_ids: Dict[Chem.Mol, List[int]] | None = None
+        self.matched_smarts_to_reactant: Dict[str, Tuple[Chem.Mol, Tuple[int], str]] | None = None
+        self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, Tuple[int], str]] | None = None
+        self.additional_rxn_options: List[Dict[str, str]] = fairy.load_additional_rxn_options()
+
+    def alt_reaction(self) -> List[Dict[str, str]] | None:
+        """
+        This function is used to determine if an additional reaction is specified.
+        """
+        rxns = []
+        for rxn in self.additional_rxn_options:
+            if rxn['name'] == self.reaction_name:
+                rxns.append(rxn)
+        return rxns
+
+    def get_additional_reactions(self) -> List[Tuple[str, Tuple[str, str]]] | None:
+        """
+        This function edits the reactants to make an additional reaction.
+        """
+        alt_rxns: List[Dict[str, str]] = self.alt_reaction()
+        new_reactions: List[Tuple[str, Tuple[str, str]]] = []
+        for alt_rxn in alt_rxns: # go through all additional reactions
+            for r_index in self.matched_smarts_index_to_reactant: # go through each reactant
+                if alt_rxn['reactant_id_to_replace'] == r_index:
+                    new_reactant: Chem.Mol = self.edit_reactant(self.matched_smarts_index_to_reactant[r_index],
+                                                                alt_rxn['reactant_smarts_to_replace_with'],
+                                                                alt_rxn['reactant_smarts_to_replace'],
+                                                                alt_rxn['replacement_connecting_atom_id'])
+                    if new_reactant:
+                        other_reactant: Chem.Mol = next(value for key, value in self.matched_smarts_index_to_reactant.items() if key != r_index)[0]
+                        # check that new reactants can produce a product
+                        reaction_name: str = alt_rxn['replace_with']
+                        can_react: bool = self.check_reaction_can_produce_product(new_reactant, other_reactant, reaction_name)
+                        if can_react:
+                            self.logger.info(f"Additional reaction {reaction_name} for {self.reaction_name} found and"
+                                             f"validated.")
+                            new_reactant: str = Chem.MolToSmiles(new_reactant)
+                            other_reactant: str = Chem.MolToSmiles(other_reactant)
+                            reactants: Tuple[str, str] = (new_reactant, other_reactant)
+                            new_reactions.append((reaction_name, reactants))
+        return new_reactions
+
+    def check_reaction_can_produce_product(self,
+                                           new_reactant: Chem.Mol,
+                                           other_reactant: Chem.Mol,
+                                           reaction_name: str) -> bool:
+        """
+        This function is used to check if the new reactants can simply produce a product from the labeled reaction.
+        """
+        reaction: Chem.rdChemReactions = self.smarts_handler.reaction_smarts[reaction_name]
+        new_reactant_combo: Tuple[Chem.Mol] = (new_reactant, other_reactant)
+        products: Tuple[Chem.Mol] = reaction.RunReactants(new_reactant_combo)
+        if len(products[0]) == 0:
+            self.logger.error(f"Additional reaction {reaction_name} cannot produce a product from the new reactants "
+                              f"{Chem.MolToSmiles(new_reactant)} {Chem.MolToSmiles(other_reactant)}.")
+            return False
+        return True
+
+    def edit_reactant(self,
+                      reactant: Tuple[Chem.Mol, Tuple[int], str],
+                      new_reactant_smarts: str,
+                      to_replace_smarts: str,
+                      replacement_connecting_atom_id: int) -> Chem.Mol | None:
+        """
+        Directly edits the reactant to replace SMARTS matched atoms to new SMARTS.
+        """
+        to_replace: Chem.Mol = Chem.MolFromSmarts(to_replace_smarts)
+        to_replace_with: Chem.Mol = Chem.MolFromSmarts(new_reactant_smarts)
+        reactant_mol: Chem.Mol = reactant[0]
+        replaced_reactants: Tuple[Chem.Mol] = Chem.ReplaceSubstructs(mol=reactant_mol,
+                                                                     query=to_replace,
+                                                                     replacement=to_replace_with,
+                                                                     replacementConnectionPoint=replacement_connecting_atom_id,
+                                                                     replaceAll=True)
+        for replaced_reactant in replaced_reactants:
+            # get attach ids
+            attach_ids: List[int] = []
+            for mol in self.all_attach_ids.keys():
+                if fairy.calculate_tanimoto(mol, reactant_mol) == 1.0: # get attach ids of the right reactant replaced
+                    attach_ids: List[int] = self.all_attach_ids[mol]
+            if len(attach_ids) == 0:
+                self.logger.error(f"No attachment points found for reaction {self.reaction_name}")
+                return None
+            # get atom ids that match new smarts pattern
+            matched_atoms: Tuple[int] = replaced_reactant.GetSubstructMatch(to_replace_with)
+            if any(atom in matched_atoms for atom in attach_ids): # If any attach ids are in the SMARTS of the new reactant
+                return replaced_reactant
+        return None
 
     def _replace_carboxylic_acid_hydroxy_with_dummy(self, mol: Chem.Mol) -> Chem.Mol:
         # Get the oxygen atoms in the molecule
@@ -77,7 +172,7 @@ class Reaction():
         product_to_reactant_mapping = dict(zip(product_match, reactant_match))
         return product_to_reactant_mapping
 
-    def find_attachment_id_for_reactant(self, reactant: Chem.Mol) -> List[Tuple[int, int]]:
+    def find_attachment_id_for_reactant(self, reactant: Chem.Mol) -> List[int] | None:
         """
         This function is used to find the attachment indices of a single reactant in the reaction.
         :param reactant: a single reactant molecule
@@ -86,7 +181,7 @@ class Reaction():
         # product_to_reactant_mapping = self.product.GetSubstructMatch(reactant)
 
         # Trying new get substruct match method
-        product_to_reactant_mapping: Dict[int,int] = self.use_fmcs(reactant)
+        product_to_reactant_mapping: Dict[int, int] = self.use_fmcs(reactant)
 
         attachment_idxs_list = []
         for bond in self.product.GetBonds():
@@ -96,13 +191,13 @@ class Reaction():
             j_inSub = j in product_to_reactant_mapping.keys()
             if int(i_inSub) + int(j_inSub) == 1:
                 if i_inSub:
-                    product_idx = i # This is the attachment point within product
+                    product_idx = i  # This is the attachment point within product
                     try:
                         reactant_idx = product_to_reactant_mapping[i]
                     except (ValueError, KeyError):
                         reactant_idx = None
                 else:
-                    product_idx = j # This is the attachment point within product
+                    product_idx = j  # This is the attachment point within product
                     try:
                         reactant_idx = product_to_reactant_mapping[j]
                     except (ValueError, KeyError):
@@ -161,31 +256,47 @@ class Reaction():
 
         return exact_attachment
 
-    def find_attachment_ids_for_all_reactants(self) -> Dict[Chem.Mol, List[Tuple[int, int]]]:
+    def find_attachment_ids_for_all_reactants(self):
         """
         This function is used to find the attachment indices of all reactants in the reaction.
         :returns a list of lists, each containing tuples of attachment indices for each reactant
         """
         all_attachments = {}
         for reactant in self.reactants:
-            attachments: List[int] = self.find_attachment_id_for_reactant(reactant)
+            attachments:  List[int] | None = self.find_attachment_id_for_reactant(reactant)
             all_attachments[reactant] = attachments
-        self.all_attach_ids = all_attachments
-        if any(len(attach_ids) == 0 for attach_ids in self.all_attach_ids.values()):
+        if any(len(attach_ids) == 0 for attach_ids in all_attachments.values()):
             raise ReactionError("No attachment points found for reaction {}".format(self.reaction_name))
-            return None
-        return self.all_attach_ids
+        self.all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
 
-    def find_reaction_atoms_for_all_reactants(self) -> List[Dict]:
+    def format_matched_smarts_to_index(self, matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]]) -> Dict[int,
+    Tuple[Chem.Mol, List[int], str]] | None:
+        """
+        Formats matched smarts to reactant by using reactant index in smarts as the key.
+        """
+        matched_smarts_index_to_reactant = {}
+        for smarts, mol_id_rname in matched_reactants.items():
+            mol, ids, _ = mol_id_rname
+            if '1' in mol_id_rname[-1]:
+                matched_smarts_index_to_reactant[1] = (mol, ids, smarts)
+            elif '2' in mol_id_rname[-1]:
+                matched_smarts_index_to_reactant[2] = (mol, ids, smarts)
+            else:
+                self.logger.error(f"Cannot correctly store matched smarts to reactant index for {self.reaction_name}.")
+                return None
+        return matched_smarts_index_to_reactant
+
+
+    def find_reaction_atoms_for_all_reactants(self):
         """
         This function is used to find the reaction atoms of both reactants. And how those atoms correspond to the SMARTS
         pattern associated with the reaction.
         """
         # check reactant smarts in both reactants
-        matched_reactants: Dict[str, Tuple[Chem.Mol, List[int]]] = self.smarts_handler.assign_reactants_w_rxn_smarts(
-            self.all_attach_ids, self.reaction_name)
+        matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] | None = (
+            self.smarts_handler.assign_reactants_w_rxn_smarts(self.all_attach_ids, self.reaction_name))
+        self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, List[int], str]] = (
+            self.format_matched_smarts_to_index(matched_reactants))
         self.matched_smarts_to_reactant = matched_reactants
         if len(self.matched_smarts_to_reactant) == 0:
             raise ReactionError("No reaction atoms found for reaction {}".format(self.reaction_name))
-            return None
-        return self.matched_smarts_to_reactant

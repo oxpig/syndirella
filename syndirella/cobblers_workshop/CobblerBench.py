@@ -18,39 +18,44 @@ class CobblerBench:
     This class is used to perform the whole process of finding analogues of reactants. Since the final elaborated products
     are 'slippers' in this analogy, the CobblerBench is where these slippers are made.
 
-    It is given a step.
+    It is given a step of a full route.
     """
     def __init__(self,
                  product: str,
-                 reactants: Tuple[str],
+                 reactants: Tuple[str] | str,
                  reaction_name: str,
                  output_dir: str,
-                 smarts_handler: SMARTSHandler,
                  id: str,
                  num_steps: int,
                  current_step: int,
-                 filter: bool):
+                 filter: bool,
+                 route_uuid: str):
         self.product: Chem.Mol = Chem.MolFromSmiles(product)
-        self.reactants: List[Chem.Mol] = self._make_reactant_mols(reactants)
+        self.reactant_smiles: Tuple[str] | str = reactants
+        self.reactants: Tuple[Chem.Mol] = self._make_reactant_mols(reactants)
         self.reaction_name: str = reaction_name
         self.output_dir: str = output_dir
-        self.smarts_handler: SMARTSHandler = smarts_handler
+        self.smarts_handler: SMARTSHandler = SMARTSHandler()
         self.id: str = id
         self.num_steps: int = num_steps
         self.current_step: int = current_step
         self.filter: bool = filter
+        self.route_uuid: str = route_uuid
         self.reaction: Reaction = None
         self.library = None
+        self.additional_reactions: List[Tuple[str, Tuple[str, str]]] = ()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def _make_reactant_mols(self, reactants) -> List[Chem.Mol]:
+        self.define_reaction() # This is where the Reaction object is created
+
+    def _make_reactant_mols(self, reactants) -> Tuple[Chem.Mol]:
         """
         This function is used to make reactant molecules from the input SMILES.
         """
         if type(reactants) == str:
-            reactant_mols = [Chem.MolFromSmiles(reactants)]
+            reactant_mols = (Chem.MolFromSmiles(reactants))
         else:
-            reactant_mols = [Chem.MolFromSmiles(reactant) for reactant in reactants]
+            reactant_mols = (Chem.MolFromSmiles(reactant) for reactant in reactants)
         return reactant_mols
 
     def check_reaction(self):
@@ -60,27 +65,50 @@ class CobblerBench:
         if self.reaction_name not in self.smarts_handler.reaction_smarts.keys():
             self.logger.error("Reaction name not found in SMARTS handler.")
             raise ReactionError("Reaction name not found in SMARTS handler.")
-        reaction = Reaction(self.product,
-                            self.reactants,
-                            self.reaction_name,
-                            self.smarts_handler)
+        reaction = Reaction(product=self.product,
+                            reactants=self.reactants,
+                            reaction_name=self.reaction_name,
+                            smarts_handler=self.smarts_handler)
         return reaction
+
+    def define_reaction(self):
+        """
+        This function is used to define the reaction and finding ids and attachment atoms.
+        """
+        self.reaction = self.check_reaction()
+        # Find attachment ids -- before finding reaction atoms
+        self.reaction.find_attachment_ids_for_all_reactants()
+        # Find reaction atoms
+        self.reaction.find_reaction_atoms_for_all_reactants()
+
+    def get_additional_reactions(self) -> bool:
+        """
+        Gets the additional reaction by outputting edited reactants via SMARTS and new reaction names all controlled
+        by the Reaction class.
+        """
+        new_reactions: List[Tuple[str, Tuple[str, str]]] = self.reaction.get_additional_reactions()
+        if len(new_reactions) == 0:
+            self.logger.info(f"No additional reactions found for {self.reaction_name}. Continuing with original.")
+            return False
+        self.additional_reactions = new_reactions
+        return True
+
 
     def find_analogues(self):
         """
         This function is used to find analogues of any step along the route.
         """
-        self.reaction = self.check_reaction()
-        # Find attachment ids for all reactants
-        self.reaction.find_attachment_ids_for_all_reactants()
-        # Find reaction atoms for all reactants
-        self.reaction.find_reaction_atoms_for_all_reactants()
+        # If having problems might have to define_reaction here again (tried to do it when bench is created)
+        #self.define_reaction()
         # Find the analogues of reactants
-        self.library = Library(self.reaction,
-                               self.output_dir,
-                               self.id,
-                               self.num_steps,
-                               self.current_step,
-                               self.filter)
+        self.library = Library(reaction=self.reaction,
+                               output_dir=self.output_dir,
+                               id=self.id,
+                               num_steps=self.num_steps,
+                               current_step=self.current_step,
+                               filter=self.filter,
+                               route_uuid=self.route_uuid)
         self.library.create_library()
         return self.library
+
+

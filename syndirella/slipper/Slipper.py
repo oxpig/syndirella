@@ -57,13 +57,13 @@ class Slipper:
                                            self.atoms_ids_expansion,
                                            self.additional_info)
         self.products: pd.DataFrame = slipper_synth.get_products()
-        uuid = slipper_synth.uuid
+        route_uuid = self.library.route_uuid
         if self.atoms_ids_expansion is not None:
             slipper_synth.label_products()
         slipper_synth.save_products()
         self.final_products_pkl_path: str = slipper_synth.final_products_pkl_path
         self.final_products_csv_path: str = slipper_synth.final_products_csv_path
-        return self.products, uuid
+        return self.products, route_uuid
 
     def place_products(self):
         """
@@ -208,7 +208,7 @@ class Slipper:
                                  how='right')
             # Update the last step dataframe
             hippo_df_step_last = result_df
-        # add base compound smiles as first column, get from Inchi Key
+        # add scaffold compound smiles as first column, get from Inchi Key
         base_compound_smiles: str = Chem.MolToSmiles(self.library.reaction.product)
         hippo_df_step_last.insert(0, 'base_compound_smiles', base_compound_smiles)
         return hippo_df_step_last

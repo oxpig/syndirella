@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Goal: Profile on 3 different base compounds placing 100 elaborations each to get good statistics on the pipeline.
+Goal: Profile on 3 different scaffold compounds placing 100 elaborations each to get good statistics on the pipeline.
 
 """
 import argparse
@@ -39,7 +39,7 @@ def main():
 
     # Syndirella path
     sys.path.append(os.environ['SYNDIRELLA_BASE_PATH'])
-    # Get the base path and construct the full path to the module
+    # Get the scaffold path and construct the full path to the module
     syndirella_path = os.environ['SYNDIRELLA_BASE_PATH']
     pipeline_module_path = os.path.join(syndirella_path, 'syndirella/pipeline.py')
     # Load the module specified by the path

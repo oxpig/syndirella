@@ -14,15 +14,15 @@ class DatabaseSearch(ABC):
     This class contains information about the database search. It will perform the database search using the
     database_search_function. It will also store the results of the database search as a .csv file.
     """
-    def __init__(self, reaction: Reaction, output_dir: str, search_type: str):
-        self.reaction = reaction
-        self.output_dir = output_dir
-        self.search_type = search_type
+    def __init__(self):
         self.url = None
         self.api_key = None
 
     @abstractmethod
-    def perform_database_search(self, reactant: Chem.Mol):
+    def perform_database_search(self,
+                                reactant: Chem.Mol,
+                                reaction_name: str,
+                                search_type: str):
         """
         This function is used to perform the database search using the database_search_function.
         """

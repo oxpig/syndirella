@@ -11,7 +11,7 @@ import requests
 import json
 import time
 import logging
-from syndirella.Fairy import Fairy
+import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
 from syndirella.cobblers_workshop.Reaction import Reaction
 
@@ -21,28 +21,54 @@ class Postera(DatabaseSearch):
     This class contains information about the Postera search. It will perform the Postera search using the
     perform_database_search function. It will also store the results of the Postera search as a .csv file.
     """
-    def __init__(self, reaction: Reaction, output_dir: str, search_type: str):
-        super().__init__(reaction, output_dir, search_type)
+    def __init__(self):
+        super().__init__()
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
-        self.search_type = search_type
-        self.fairy = Fairy()
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
 
-    def perform_database_search(self, reactant: Chem.Mol):
+    def perform_route_search(self,
+                             compound: str,
+                             max_pages: int = 10) -> List[Dict[str, List[Dict[str, str]]]]:
+        """
+        This function is used to perform the route query.
+        """
+        self.logger.info(f"Running retrosynthesis analysis for {compound}...")
+        if not isinstance(compound, str):
+            self.logger.error("Smiles must be a string.")
+            raise TypeError("Smiles must be a string.")
+        retro_hits: List[Dict] = Postera.get_search_results(
+            url=f'{self.url}/api/v1/retrosynthesis/',
+            api_key=self.api_key,
+            data={
+                'smiles': compound,
+                "withPurchaseInfo": True,
+                "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
+            },
+            max_pages=max_pages,
+        )
+        return retro_hits
+
+    def perform_database_search(self,
+                                reactant: Chem.Mol,
+                                reaction_name: str,
+                                search_type: str = "superstructure") -> Dict[str, float]:
         """
         This function is used to perform the Postera search using the database_search_function.
         """
         # 1. Get additional similar reactant if reaction is one with additional reactants
-        reactants: List[str] = self.fairy.find(reactant, self.reaction.reaction_name)
+        reactant_filters = fairy.load_reactant_filters()
+        reactants: List[str] = fairy.find_similar_reactants(reactant=reactant,
+                                                            reaction_name=reaction_name,
+                                                            reactant_filters=reactant_filters)
         # 2. Perform the search for all
         hits_all: List[Tuple[str, float]] = []
         for smiles in reactants:
-            if self.search_type == "superstructure":
+            if search_type == "superstructure":
                 hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles)
                 self.logger.info(f'Found {len(hits)} hits for {smiles} before filtering.')
                 hits_all.extend(hits)
-        filtered_hits: Dict[str, float] = self.fairy.filter(hits_all)
+        filtered_hits: Dict[str, float] = fairy.filter_molecules(hits=hits_all)
         return filtered_hits
 
     def perform_superstructure_search(self,

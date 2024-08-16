@@ -32,18 +32,18 @@ class Labeler:
 
     def show_atoms_to_expand_and_not_expand(self):
         """
-        This will save a png of the base compound with atoms to expand colored in green and not to expand colored in
+        This will save a png of the scaffold compound with atoms to expand colored in green and not to expand colored in
         red.
         """
-        # get base compound
+        # get scaffold compound
         base_compound: Chem.Mol = self.library.reaction.product
         # label atom ids
         for i, atom in enumerate(base_compound.GetAtoms()):
             atom_index = atom.GetIdx()
             atom.SetProp("molAtomMapNumber", str(atom_index))
-        # assert that atom ids are in the base compound
+        # assert that atom ids are in the scaffold compound
         assert all([atom_id in [atom.GetIdx() for atom in base_compound.GetAtoms()] for atom_id in
-                    self.atom_ids_expansion.keys()]), "Atom ids to expand are not in the base compound."
+                    self.atom_ids_expansion.keys()]), "Atom ids to expand are not in the scaffold compound."
         atom_ids: List[int] = [atom_id for atom_id in self.atom_ids_expansion.keys() if
                                self.atom_ids_expansion[atom_id] is True or self.atom_ids_expansion[atom_id] is False]
         green = (0, 1, 0)

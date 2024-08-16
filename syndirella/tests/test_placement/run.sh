@@ -10,7 +10,7 @@
 #: << INSTALLATION #############
 #export PIP_NO_USER=1; # gets ignored.
 #export PYTHONUSERBASE=$CONDA_PREFIX; # double tap
-#conda install -y -n base -c conda-forge openbabel plip;
+#conda install -y -n scaffold -c conda-forge openbabel plip;
 #pip install -q fragmenstein
 #pip install -q pyrosetta-help
 #PYROSETTA_USERNAME=levinthal PYROSETTA_PASSWORD=paradox install_pyrosetta

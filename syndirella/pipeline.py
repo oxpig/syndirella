@@ -5,7 +5,7 @@ syndirella.run_pipeline.py
 This script contains the main pipeline for syndirella.
 """
 import os
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple
 import pandas as pd
 from rdkit import Chem
 import datetime, time
@@ -18,14 +18,15 @@ from syndirella.Cobbler import Cobbler
 from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
-from syndirella.Fairy import Fairy
-from syndirella.error import ScaffoldPlacementError
+import syndirella.fairy as fairy
+from syndirella.error import ScaffoldPlacementError, NoSynthesisRoute, NoReactants
 import syndirella.check_inputs as check_inputs
 
 logger = logging.getLogger(__name__)
 
+# TODO: Check if these functions are still needed after making check_inputs.py
 
-def _get_template_path(template_dir: str, template: str) -> str:
+def get_template_path(template_dir: str, template: str) -> str:
     """
     Get the template path from the template directory.
     """
@@ -42,7 +43,7 @@ def _get_template_path(template_dir: str, template: str) -> str:
     return template_path[0]
 
 
-def _assert_scaffold_placement(scaffold: str,
+def assert_scaffold_placement(scaffold: str,
                                template_path: str,
                                hits_path: str,
                                hits_names: List[str],
@@ -62,7 +63,7 @@ def _assert_scaffold_placement(scaffold: str,
         raise ScaffoldPlacementError(scaffold)
 
 
-def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
+def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                                       template_path: str,
                                       hits_path: str,
                                       hits: List[str],
@@ -83,7 +84,7 @@ def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                               batch_num=batch_num, additional_info=additional_info)
             _, uuid = slipper.get_products()
             slipper.place_products()
-            slipper.write_products_to_hippo(uuid=uuid)  # only write at the end after placement, to get correct uuid
+            slipper.write_products_to_hippo(uuid=uuid)  # only write at the end after placement, to get correct route_uuid
             slipper.clean_up_placements()
         except Exception as e:
             tb = traceback.format_exc()
@@ -91,7 +92,46 @@ def _elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
             continue
 
 
-def _elaborate_compound_with_manual_routes(product: str,
+# def get_alternative_routes(product: str,
+#                            reaction_names: List[str],
+#                            reactants: List[Tuple[str, str]],
+#                            num_steps: int,
+#                            output_dir: str) -> CobblersWorkshop | None:
+#     if fairy.do_i_need_alterative_route(reaction_names):
+#         logger.info(f"Found the need for an alternative route for compound {product}.")
+#         try:
+#             cobbler = Cobbler(scaffold_compound=product, output_dir=output_dir)
+#             cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
+#             cobbler_workshops = [workshop for workshop in cobbler_workshops if
+#                                  workshop.reaction_names != reaction_names]
+#             workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
+#                                         num_steps=num_steps, output_dir=output_dir, filter=True)
+#         except Exception as e:
+#             tb = traceback.format_exc()
+#             logger.error(f"Error finding alternative route for compound {product}. {tb}")
+
+def start_elaboration(product: str,
+                      template_path: str,
+                      hits_path: str,
+                      hits: List[str],
+                      output_dir: str,
+                      additional_info=None):
+    """
+    Starts the elaboration of a single compound by checking if it can be placed.
+    """
+    if additional_info is None:
+        additional_info = []
+    logger.info(f'Running pipeline for: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
+    start_time = time.time()
+    mol = Chem.MolFromSmiles(product)
+    if not mol:
+        logger.error(f"Could not create a molecule from the smiles {product}.")
+        raise ValueError(f"Could not create a molecule from the smiles {product}.")
+    assert_scaffold_placement(scaffold=product, template_path=template_path, hits_path=hits_path, hits_names=hits,
+                              output_dir=output_dir)
+    return start_time
+
+def elaborate_compound_with_manual_routes(product: str,
                                            reactants: List[Tuple[str, str]],
                                            reaction_names: List[str],
                                            num_steps: int,
@@ -104,38 +144,17 @@ def _elaborate_compound_with_manual_routes(product: str,
     """
     This function is used to elaborate a single compound using a manually defined route.
     """
-    if additional_info is None:
-        additional_info = []
-    logger.info(f'Running pipeline for: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
-    start_time = time.time()
-    fairy = Fairy()
-    mol = Chem.MolFromSmiles(product)
-    if not mol:
-        logger.error(f"Could not create a molecule from the smiles {product}.")
-        raise ValueError(f"Could not create a molecule from the smiles {product}.")
-    _assert_scaffold_placement(scaffold=product, template_path=template_path, hits_path=hits_path, hits_names=hits,
-                               output_dir=output_dir)
-
+    start_time: float = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
+                                          hits=hits, output_dir=output_dir, additional_info=additional_info)
     workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                 num_steps=num_steps, output_dir=output_dir, filter=False)
-    cobbler_workshops = []
-    if fairy.do_i_need_alterative_route(reaction_names):
-        logger.info(f"Found the need for an alternative route for compound {product}.")
-        try:
-            cobbler = Cobbler(scaffold_compound=product, output_dir=output_dir)
-            cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
-            cobbler_workshops = [workshop for workshop in cobbler_workshops if
-                                 workshop.reaction_names != reaction_names]
-            workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
-                                        num_steps=num_steps, output_dir=output_dir, filter=True)
-        except Exception as e:
-            tb = traceback.format_exc()
-            logger.error(f"Error finding alternative route for compound {product}. {tb}")
-            cobbler_workshops = []
-    cobbler_workshops.insert(0, workshop)
-    _elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
-                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
-                                      additional_info=additional_info)
+    cobblers_workshops = [workshop]
+    alternative_routes: List[CobblersWorkshop] | None = workshop.get_additional_routes(edit_route=True)
+    if alternative_routes is not None:
+        cobblers_workshops = [workshop] + alternative_routes
+    elaborate_from_cobbler_workshops(cobbler_workshops=cobblers_workshops, template_path=template_path,
+                                     hits_path=hits_path, hits=hits, batch_num=batch_num,
+                                     additional_info=additional_info)
     end_time = time.time()
     elapsed_time = end_time - start_time
     logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
@@ -143,7 +162,7 @@ def _elaborate_compound_with_manual_routes(product: str,
     logger.info("")
 
 
-def _elaborate_compound_full_auto(product: str,
+def elaborate_compound_full_auto(product: str,
                                   hits: List[str],
                                   template_path: str,
                                   hits_path: str,
@@ -153,22 +172,13 @@ def _elaborate_compound_full_auto(product: str,
     """
     This function is used to elaborate a single compound.
     """
-    if additional_info is None:
-        additional_info = []
-    logger.info(f'Running pipeline for: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
-    start_time = time.time()
-    mol = Chem.MolFromSmiles(product)
-    if not mol:
-        logger.error(f"Could not create a molecule from the smiles {product}.")
-        raise ValueError(f"Could not create a molecule from the smiles {product}.")
-    _assert_scaffold_placement(scaffold=product, template_path=template_path, hits_path=hits_path, hits_names=hits,
-                               output_dir=output_dir)
-
-    cobbler = Cobbler(scaffold_compound=product, output_dir=output_dir)
+    start_time: float = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
+                                          hits=hits, output_dir=output_dir, additional_info=additional_info)
+    cobbler = Cobbler(scaffold_compound=product, output_dir=output_dir) # check that output_dirs can be made for different routes
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
-    _elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
-                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
-                                      additional_info=additional_info)
+    elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
+                                     hits_path=hits_path, hits=hits, batch_num=batch_num,
+                                     additional_info=additional_info)
     end_time = time.time()
     elapsed_time = end_time - start_time
     logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
@@ -202,11 +212,17 @@ def run_pipeline(*,
                 template_path: str = check_inputs.get_template_path(template_dir=template_dir, template=row['template'],
                                                                     metadata_path=metadata_path)
                 hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path)
-                _elaborate_compound_full_auto(product=row['smiles'], hits=hits, template_path=template_path,
-                                              hits_path=hits_path, batch_num=batch_num, output_dir=output_dir,
-                                              additional_info=additional_info)
+                elaborate_compound_full_auto(product=row['smiles'], hits=hits, template_path=template_path,
+                                             hits_path=hits_path, batch_num=batch_num, output_dir=output_dir,
+                                             additional_info=additional_info)
             except ScaffoldPlacementError:
                 logger.warning(f"scaffold compound {row['smiles']} could not be placed successfully. Skipping...")
+                continue
+            except NoSynthesisRoute:
+                logger.warning(f"No synthesis route found for compound {row['smiles']}. Skipping...")
+                continue
+            except NoReactants:
+                logger.warning(f"No reactants found for compound {row['smiles']}. Skipping...")
                 continue
     else:
         logger.info("Running the pipeline with manual routes.")
@@ -217,15 +233,19 @@ def run_pipeline(*,
                                                                     metadata_path=metadata_path)
                 reactants, reaction_names, num_steps = check_inputs.format_manual_route(row)
                 hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path)
-                _elaborate_compound_with_manual_routes(product=row['smiles'],
-                                                       reactants=reactants,
-                                                       reaction_names=reaction_names,
-                                                       num_steps=num_steps, hits=hits,
-                                                       template_path=template_path, hits_path=hits_path,
-                                                       batch_num=batch_num, output_dir=output_dir,
-                                                       additional_info=additional_info)
+                elaborate_compound_with_manual_routes(product=row['smiles'], reactants=reactants,
+                                                      reaction_names=reaction_names, num_steps=num_steps, hits=hits,
+                                                      template_path=template_path, hits_path=hits_path,
+                                                      batch_num=batch_num, output_dir=output_dir,
+                                                      additional_info=additional_info)
             except ScaffoldPlacementError:
                 logger.warning(f"scaffold compound {row['smiles']} could not be placed successfully. Skipping...")
+                continue
+            except NoSynthesisRoute:
+                logger.warning(f"No synthesis route found for compound {row['smiles']}. Skipping...")
+                continue
+            except NoReactants:
+                logger.warning(f"No reactants found for compound {row['smiles']}. Skipping...")
                 continue
 
     logger.info("Pipeline complete.")

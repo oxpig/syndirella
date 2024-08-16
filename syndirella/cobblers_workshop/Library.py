@@ -20,14 +20,13 @@ import logging
 from .Reaction import Reaction
 from syndirella.Postera import Postera
 import syndirella
-from syndirella.Fairy import Fairy
+import syndirella.fairy as fairy
 
 
 class Library:
     """
     This class contains information about the analogue library. It will create the analogue library from the Reaction
     object. It will also store the analogue library as a .pkl file.
-
     """
     def __init__(self,
                  reaction: Reaction,
@@ -35,7 +34,8 @@ class Library:
                  id: str,
                  num_steps: int,
                  current_step: int,
-                 filter: bool):
+                 filter: bool,
+                 route_uuid: str):
         self.reaction: Reaction = reaction
         self.id: str = id
         self.output_dir: str = f"{output_dir}/{self.id}"
@@ -44,8 +44,8 @@ class Library:
         self.current_step: int = current_step
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
         self.filter: bool = filter
+        self.route_uuid: str = route_uuid
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
         self.r1 = None
         self.r2 = None
 
@@ -72,9 +72,11 @@ class Library:
                                                                  internal_step)
             analogues: List[str] = list(analogues_full.keys())
         else: # perform database search
-            postera_search = Postera(self.reaction, self.output_dir, search_type="superstructure")
+            postera_search = Postera()
             # returns a dictionary of analogues where values = min lead time found
-            analogues_full: Dict[str, float] = postera_search.perform_database_search(reactant)
+            analogues_full: Dict[str, float] = postera_search.perform_database_search(reactant=reactant,
+                                                                                      reaction_name=self.reaction.reaction_name,
+                                                                                      search_type="superstructure")
             analogues: List[str] = list(analogues_full.keys())
         processed_analogues_df, analogue_columns = (
             self.process_analogues(analogues,
@@ -98,8 +100,8 @@ class Library:
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
         """
         analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
-        analogues_mols: List[Chem.Mol] = Fairy.remove_chirality(analogues_mols)
-        analogues_mols: List[Chem.Mol] = Fairy.remove_repeat_mols(analogues_mols)
+        analogues_mols: List[Chem.Mol] = fairy.remove_chirality(analogues_mols)
+        analogues_mols: List[Chem.Mol] = fairy.remove_repeat_mols(analogues_mols)
         self.print_diff(analogues, analogues_mols, analogue_prefix)
         if self.filter:
             analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
@@ -213,6 +215,7 @@ class Library:
         """
         This function is used to check if the analogue library has already been created and saved as a .pkl file.
         """
+        # TODO: Add route_uuid to the pkl name.
         internal_step = False
         if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
             self.logger.info('Since this is an internal or final step looking for the products .pkl from previous step...')
@@ -245,7 +248,7 @@ class Library:
         .pkl.gz file.
         """
         pkl: List[str] = glob.glob(f"{self.extra_dir_path}/"
-                                   f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_"
+                                   f"{self.id}_{self.route_uuid}_{self.reaction.reaction_name}_{analogue_prefix}_"
                                    f"{self.current_step}of{self.num_steps}.pkl.gz")
         if len(pkl) == 1:
             self.logger.info(f"Found {pkl[0]} as the analogue library .pkl from previous step.")
@@ -257,7 +260,7 @@ class Library:
         bit vector similarity.
         """
         product_pkls: List[str] = glob.glob(f"{self.extra_dir_path}/"
-                                            f"{self.id}_*products_{self.current_step-1}of"
+                                            f"{self.id}_{self.route_uuid}_*products_{self.current_step - 1}of"
                                             f"{self.num_steps}.pkl.gz")
         for i, path in enumerate(product_pkls):
             # Find if the reactant is the same as the product
@@ -280,7 +283,7 @@ class Library:
         This function is used to save the analogue library as a .pkl file in self.extra_dir_path
         """
         os.makedirs(f"{self.extra_dir_path}", exist_ok=True)
-        pkl_name = f"{self.id}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.pkl.gz"
+        pkl_name = f"{self.id}_{self.route_uuid}_{self.reaction.reaction_name}_{analogue_prefix}_{self.current_step}of{self.num_steps}.pkl.gz"
         self.logger.info(f"Saving {analogue_prefix} analogue library to {self.extra_dir_path}/{pkl_name} \n")
         df.to_pickle(f"{self.extra_dir_path}/{pkl_name}")
 
