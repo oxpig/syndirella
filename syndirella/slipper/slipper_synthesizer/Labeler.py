@@ -11,7 +11,7 @@ from rdkit.Chem import rdFMCS
 from typing import (List, Dict, Tuple, Union, Optional)
 import pandas as pd
 from rdkit.Chem.Draw import rdMolDraw2D
-from syndirella.cobblers_workshop.Library import Library
+from syndirella.route.Library import Library
 import time
 
 class Labeler:

@@ -8,13 +8,13 @@ from typing import (List, Dict, Tuple, Union, Optional)
 from fragmenstein import Laboratory, Wictor, Igor
 import pandas as pd
 from fragmenstein.laboratory.validator import place_input_validator
-from rdkit import Chem
-from rdkit.Chem import rdinchi
 import os, logging
 import time
 from syndirella.slipper import intra_geometry, flatness
+import syndirella.fairy as fairy
 import datetime
-import logging
+from syndirella.error import *
+
 
 class SlipperFitter:
     """
@@ -25,11 +25,16 @@ class SlipperFitter:
                  template_path: str,
                  hits_path: str,
                  hits_names: List[str],
-                 output_dir: str):
+                 output_dir: str,
+                 id: str | None = None,
+                 route_uuid: str | None = None):
         self.template_path: str = template_path
         self.hits_path: str = hits_path
         self.hits_names: List[str] = hits_names
         self.output_dir: str = output_dir
+        self.id: str | None = id
+        self.route_uuid: str | None = route_uuid
+
         self.num_atom_diff_limit: int = 10
         self.final_products_csv_path: str = None
         self.final_products_pkl_path: str = None
@@ -41,7 +46,12 @@ class SlipperFitter:
         # Placements variables set
         self.n_cores: int = 8
         self.timeout: int = 240
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
+
+        # variables for output
+        self.num_placed: int | None = None
+        self.num_successful: int | None = None
+        self.total_products_before_cutting: int | None = None
 
 
     def fit_products(self):
@@ -63,7 +73,7 @@ class SlipperFitter:
         If it cannot be minimised after 3 attempts, returns False.
         """
         input_df: pd.DataFrame = self._prep_scaffold_input_df(scaffold)
-        id = generate_inchi_ID(Chem.MolToSmiles(scaffold))
+        id = fairy.generate_inchi_ID(Chem.MolToSmiles(scaffold))
         output_path: str = os.path.join(self.output_dir, f'{id}-scaffold-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
         num_attempts = 2
@@ -93,16 +103,16 @@ class SlipperFitter:
         This function checks the intramolecular geometry and flatness results and returns True if all are True.
         """
         if not geometries['results']['bond_lengths_within_bounds']:
-            self.logger.info('Mol could not pass bond length checks.')
+            #self.logger.info('Mol could not pass bond length checks.')
             return False
         if not geometries['results']['bond_angles_within_bounds']:
-            self.logger.info('Mol could not pass bond angle checks.')
+            #self.logger.info('Mol could not pass bond angle checks.')
             return False
         if not geometries['results']['no_internal_clash']:
-            self.logger.info('Mol could not pass internal clash checks.')
+            #self.logger.info('Mol could not pass internal clash checks.')
             return False
         if not flat_results['results']['flatness_passes']:
-            self.logger.info('Mol could not pass flatness checks.')
+            #self.logger.info('Mol could not pass flatness checks.')
             return False
         return True
 
@@ -136,7 +146,10 @@ class SlipperFitter:
         input_df = input_df.astype({'name': str, 'smiles': str})
         # Check if there are any duplicates in the input_df
         if input_df.duplicated(subset='name').any():
-            raise ValueError('There are duplicates of names in the product dataframe to place.')
+            self.logger.critical('There are duplicates of names in the product dataframe to place.')
+            raise PlacementError(message='There are duplicates of names in the product dataframe to place.',
+                                 inchi=self.id,
+                                 route_uuid=self.route_uuid)
         return input_df
 
     def _prepare_input_df(self) -> pd.DataFrame:
@@ -147,6 +160,8 @@ class SlipperFitter:
         input_df: pd.DataFrame = self.final_products.copy(deep=True)
         # drop duplicates of names
         input_df = input_df.drop_duplicates(subset='name')
+        self.logger.info(f"Total number of unique products found before cutting: {len(input_df)}")
+        self.total_products_before_cutting = len(input_df)
         # cut rows with number of atoms difference greater than num_atom_diff_limit
         self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
         input_df = input_df[input_df['num_atom_diff'] <= self.num_atom_diff_limit]
@@ -182,7 +197,7 @@ class SlipperFitter:
         """
         # load hits_path either from mol or sdf
         if os.path.splitext(self.hits_path)[1] == '.mol':
-            self.logger.info('This is a mol file')
+            self.logger.info('Loading hits from a mol file.')
             hits: List[Chem.Mol] = [Chem.MolFromMolFile(self.hits_path.strip())] # single hit
         else:
             with Chem.SDMolSupplier(self.hits_path.strip()) as sd:
@@ -202,8 +217,11 @@ class SlipperFitter:
                                              timeout=self.timeout)
         try:
             scaffold: Chem.Mol = placements.at[0, 'minimized_mol']
-        except Exception:
-            scaffold = None
+        except KeyError:
+            self.logger.critical('Scaffold could not be minimised.')
+            raise ScaffoldPlacementError(message='Scaffold could not be minimised.',
+                                         inchi=self.id,
+                                         route_uuid=self.route_uuid)
         return scaffold
 
     def place_products(self, input_df: pd.DataFrame) -> pd.DataFrame:
@@ -220,6 +238,7 @@ class SlipperFitter:
         end_time = time.time()  # End timing
         elapsed_time = end_time - start_time  # Calculate elapsed time
         self.logger.info(f"Placing {len(input_df)} run time: {datetime.timedelta(seconds=elapsed_time)}")
+        self.num_placed = len(input_df)
         return placements
 
     def check_intra_geometry(self,
@@ -288,19 +307,19 @@ class SlipperFitter:
         This function edits the placements.
         """
         self.placements.loc[(self.placements['∆∆G'] < 0) & (self.placements['comRMSD'] < 2), 'outcome'] = 'acceptable'
-        self.placements.loc[(self.placements['∆∆G'] > -1) &
-                            (self.placements.outcome == 'acceptable'), 'outcome'] = 'weak'
         self.placements['unminimized_mol'] = self.placements.unminimized_mol.fillna(Chem.Mol())
         self.fix_intxns()
         if self.placements.outcome.value_counts().get('acceptable') is None:
             num_success = 0
             percent_success = 0
         else:
-            num_success = self.placements.outcome.value_counts()['acceptable']
+            filtered_df = self.placements[self.placements['intra_geometry_pass'] == True]
+            num_success = filtered_df['outcome'].value_counts().get('acceptable', 0)
             percent_success = round((self.placements.outcome.value_counts()['acceptable'] / len(self.placements) * 100)
                                     , 2)
         self.logger.info(f'{num_success} ({percent_success}%) successful placements '
-              f'where ∆∆G < -1 and RMSD < 2 Å.')
+              f'where ∆∆G < 0 and RMSD < 2 Å and passed intramolecular geometry checks.')
+        self.num_successful = num_success
 
     def fix_intxns(self):
         intxn_names: List[tuple] = [c for c in self.placements.columns if isinstance(c, tuple)]
@@ -322,24 +341,17 @@ class SlipperFitter:
         merged_placements = pd.merge(self.final_products, self.placements, on='name', how='left')
         return merged_placements
 
-    def save_placements(self):
+    def save_placements(self, id: str, route_uuid: str):
         """
         This function saves the placements as a .pkl.gz and .csv file.
         """
-        self.placements.to_pickle(os.path.join(self.output_dir, 'fragmenstein_placements.pkl.gz'))
-        self.placements.to_csv(os.path.join(self.output_dir, 'fragmenstein_placements.csv'))
+        self.placements.to_pickle(os.path.join(self.output_dir,
+                                               f'{id}_{route_uuid}_fragmenstein_placements.pkl.gz'))
+        self.placements.to_csv(os.path.join(self.output_dir,
+                                            f'{id}_{route_uuid}_fragmenstein_placements.csv'))
         # get final name same as final products csv
         merged_placements_csv_path = self.final_products_csv_path.split('.')[0] + '_placements.csv'
         merged_placements_pkl_path = self.final_products_pkl_path.split('.')[0] + '_placements.pkl.gz'
         self.merged_placements.to_csv(merged_placements_csv_path)
         self.merged_placements.to_pickle(merged_placements_pkl_path)
 
-
-def generate_inchi_ID(smiles: str) -> str:
-    """
-    This function is used to generate a unique id for the route just using the product.
-    """
-    assert Chem.MolFromSmiles(smiles), f"Could not create a molecule from the smiles {smiles}."
-    ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
-    id = rdinchi.InchiToInchiKey(ID[0])
-    return id

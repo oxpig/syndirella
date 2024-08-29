@@ -7,12 +7,10 @@ This module contains the functions used to check the inputs for running the pipe
 import os
 import logging
 import glob2
-import ast
 import pandas as pd
 from typing import List, Dict, Set, Tuple, Any
 
-from numpy import ndarray, dtype
-from pandas import Series
+import numpy as np
 from rdkit import Chem
 from Bio.PDB import PDBParser
 
@@ -90,7 +88,7 @@ def check_route(i: int, row: pd.Series) -> None:
     Checks that the route is in the correct format and fills in missing products if needed.
     """
     # fill series with nan if missing
-    row = row.fillna('nan')
+    row = row.fillna(value='None')
     # find what number of steps the route is
     try:
         steps = [int(list(col.split('_')[-1])[-1]) for col in row.index if 'reaction_name' in col]
@@ -102,7 +100,7 @@ def check_route(i: int, row: pd.Series) -> None:
     found = False
     last_step = max(steps)
     while found is False:
-        if row[f'reaction_name_step{last_step}'] != 'nan':  # use last filled reaction_name_stepX to find last step
+        if row[f'reaction_name_step{last_step}'] != 'None':  # use last filled reaction_name_stepX to find last step
             found = True
         else:
             last_step -= 1
@@ -271,15 +269,17 @@ def format_manual_route(row: pd.Series) -> Tuple[List[Tuple[Any, Any]], List[Any
     """
     Format route to output reactants, reaction names, and products.
     """
+    # fill nan values
+    row = row.fillna(value='None')
     # get the number of steps
     steps = [int(list(col.split('_')[-1])[-1]) for col in row.index if 'reaction_name' in col]
     found = False
     last_step: int = max(steps)
     while found is False:
-        if row[f'reaction_name_step{last_step}'] != 'nan':  # use last filled reaction_name_stepX to find last step
-            found = True
-        else:
+        if row[f'reaction_name_step{last_step}'] == 'None':  # use last filled reaction_name_stepX to find last step
             last_step -= 1
+        else:
+            found = True
     # format reactants
     reactants = []
     reaction_names = []

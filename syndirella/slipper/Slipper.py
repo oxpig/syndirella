@@ -8,13 +8,12 @@ product of a reaction.
 from typing import List, Dict, Optional
 import pandas as pd
 from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
-from syndirella.cobblers_workshop.Library import Library
+from syndirella.route.Library import Library
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.slipper._placement_data import get_placement_data
 import os, shutil
 import glob
 from rdkit import Chem
-from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit.Chem import AllChem, inchi
 import logging
 
@@ -23,6 +22,7 @@ class Slipper:
     """
     This class is instantiated to represent all products for a step in a route.
     """
+
     def __init__(self,
                  *,
                  library: Library,
@@ -34,19 +34,26 @@ class Slipper:
                  additional_info: dict = None):
         self.products: pd.DataFrame = None
         self.library: Library = library
+        self.route_uuid: str = library.route_uuid
         self.output_dir: str = library.output_dir
         self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
         # need Fragmenstein information
-        self.template: str = template # path to pdb file
-        self.hits_path: str = hits_path # path to .sdf or .mol file
-        self.hits_names: List[str] = hits_names # name of fragments
+        self.template: str = template  # path to pdb file
+        self.hits_path: str = hits_path  # path to .sdf or .mol file
+        self.hits_names: List[str] = hits_names  # name of fragments
         self.batch_num: int = batch_num
         self.atoms_ids_expansion: dict = atoms_ids_expansion
         self.placements: pd.DataFrame = None
         self.output_path: str = None
         self.additional_info: dict = additional_info
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
+
+        # stats for output
+        self.num_placed: int | None = None
+        self.num_successful: int | None = None
+        self.to_hippo_path: str | None = None
+        self.total_products_before_cutting: int | None = None
 
     def get_products(self) -> pd.DataFrame and str:
         """
@@ -57,13 +64,12 @@ class Slipper:
                                            self.atoms_ids_expansion,
                                            self.additional_info)
         self.products: pd.DataFrame = slipper_synth.get_products()
-        route_uuid = self.library.route_uuid
         if self.atoms_ids_expansion is not None:
             slipper_synth.label_products()
         slipper_synth.save_products()
         self.final_products_pkl_path: str = slipper_synth.final_products_pkl_path
         self.final_products_csv_path: str = slipper_synth.final_products_csv_path
-        return self.products, route_uuid
+        return self.products
 
     def place_products(self):
         """
@@ -72,18 +78,22 @@ class Slipper:
         slipper_fitter = SlipperFitter(template_path=self.template,
                                        hits_path=self.hits_path,
                                        hits_names=self.hits_names,
-                                       output_dir=self.output_dir)
+                                       output_dir=self.output_dir,
+                                       route_uuid=self.route_uuid,
+                                       id=self.library.id)
         slipper_fitter.final_products = self.products
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path
         slipper_fitter.final_products_csv_path = self.final_products_csv_path
         self.placements: pd.DataFrame = slipper_fitter.fit_products()
-        slipper_fitter.save_placements()
+        slipper_fitter.save_placements(id=self.library.id, route_uuid=self.route_uuid)
         self.output_path: str = slipper_fitter.output_path
+        self.num_placed = slipper_fitter.num_placed
+        self.num_successful = slipper_fitter.num_successful
+        self.total_products_before_cutting = slipper_fitter.total_products_before_cutting
         return self.placements
 
-    def write_products_to_hippo(self,
-                                uuid) -> str:
+    def write_products_to_hippo(self) -> str:
         """
         Writes a dataframe that contains the values needed for HIPPO db input.
 
@@ -100,7 +110,7 @@ class Slipper:
         # cut placements to those that were placed by batch_num
         placements: pd.DataFrame = self.placements.iloc[:self.batch_num]
 
-        hippo_path: str = self.output_dir + f'/{self.library.id}_{uuid}_to_hippo.pkl.gz'
+        hippo_path: str = self.output_dir + f'/{self.library.id}_{self.route_uuid}_to_hippo.pkl.gz'
         # get all products dfs in /extra
         products_files: List[str] = glob.glob(f"{self.output_dir}/extra/*products*.pkl*")
         product_dfs: Dict[int, pd.DataFrame] = self._load_products_dfs(products_files)
@@ -114,6 +124,7 @@ class Slipper:
         # save the dataframe
         hippo_df.to_pickle(hippo_path)
         self.logger.info(f"Saved HIPPO output to {hippo_path}")
+        self.to_hippo_path = hippo_path
         return hippo_path
 
     def _load_products_dfs(self, products_files: List[str]) -> Dict[int, pd.DataFrame]:
@@ -125,7 +136,7 @@ class Slipper:
             df = pd.read_pickle(file)
             step = df['step'].iloc[0]
             product_dfs[step] = df
-        if len(product_dfs) != self.library.num_steps-1:
+        if len(product_dfs) != self.library.num_steps - 1:
             self.logger.error("Not all steps have products dataframes.")
             return None
         return product_dfs
@@ -158,31 +169,20 @@ class Slipper:
         similarity = 1 if inchi1 == inchi2 else 0
         return similarity
 
-    def calculate_tanimoto(self,
-                           smiles1,
-                           smiles2):
-        mol1 = Chem.MolFromSmiles(smiles1)
-        mol2 = Chem.MolFromSmiles(smiles2)
-        if mol1 is None or mol2 is None:
-            return 0
-        fp1 = AllChem.GetMorganFingerprint(mol1, 2)
-        fp2 = AllChem.GetMorganFingerprint(mol2, 2)
-        return TanimotoSimilarity(fp1, fp2)
-
     # Function to find matches
     def find_matches(self,
-                     row, # row of current step
+                     row,  # row of current step
                      step,
                      df_previous_step: pd.DataFrame) -> List[str]:
         product_matches = None  # Store matching product names
         for _, product_row in df_previous_step.iterrows():
-            similarity = self.calculate_inchi_similarity(row[f'{step + 1}_r{row[f"{step + 1}_r_previous_product"]}_smiles'],
-                                                         product_row[f'{step}_product_smiles'])
+            similarity = self.calculate_inchi_similarity(
+                row[f'{step + 1}_r{row[f"{step + 1}_r_previous_product"]}_smiles'],
+                product_row[f'{step}_product_smiles'])
             if similarity == 1:
                 product_matches = product_row[f'{step}_product_name']
                 break
         return product_matches
-
 
     def _put_hippo_dfs_together(self,
                                 hippo_dfs: Dict[int, pd.DataFrame]) -> pd.DataFrame:
@@ -191,14 +191,14 @@ class Slipper:
         """
         # get the last step's dataframe
         hippo_df_step_last = hippo_dfs[self.library.num_steps]
-        for step in range(1, self.library.num_steps)[::-1]: # iterate through the steps in reverse
+        for step in range(1, self.library.num_steps)[::-1]:  # iterate through the steps in reverse
             # get the step's dataframe
             hippo_df_stepx = hippo_dfs[step]
             # Find the matching product names for the reactant in this new step
             hippo_df_step_last[f'{step}_product_name'] = hippo_df_step_last.apply(self.find_matches,
-                                                                                      step=step,
-                                                                                      df_previous_step=hippo_df_stepx,
-                                                                                      axis=1)
+                                                                                  step=step,
+                                                                                  df_previous_step=hippo_df_stepx,
+                                                                                  axis=1)
             # What happens if there are null product names?... Still keep row with null product name
             # Join on the product names, has to be right merge because we only care about the products from the last step
             result_df = pd.merge(hippo_df_stepx,
@@ -212,7 +212,6 @@ class Slipper:
         base_compound_smiles: str = Chem.MolToSmiles(self.library.reaction.product)
         hippo_df_step_last.insert(0, 'base_compound_smiles', base_compound_smiles)
         return hippo_df_step_last
-
 
     def _structure_step_for_hippo(self,
                                   step: int,
@@ -261,13 +260,13 @@ class Slipper:
             num_atom_diff: List[None] = [None] * len(products_df)
         # make HIPPO output dataframe
         hippo_df_step = pd.DataFrame({f'{step}_reaction': reaction,
-                                     f'{step}_r1_smiles': r1_smiles,
-                                     f'{step}_r2_smiles': r2_smiles,
-                                     f'{step}_r_previous_product': r_previous_product,
-                                     f'{step}_product_smiles': product_smiles,
-                                     f'{step}_product_name': product_names,
-                                     f'{step}_num_atom_diff': num_atom_diff,
-                                     f'{step}_flag': flags})
+                                      f'{step}_r1_smiles': r1_smiles,
+                                      f'{step}_r2_smiles': r2_smiles,
+                                      f'{step}_r_previous_product': r_previous_product,
+                                      f'{step}_product_smiles': product_smiles,
+                                      f'{step}_product_name': product_names,
+                                      f'{step}_num_atom_diff': num_atom_diff,
+                                      f'{step}_flag': flags})
         if step == self.library.num_steps:
             hippo_df_step[f'{step}_stereoisomer'] = stereoisomer
             hippo_df_step[f'error'] = error
@@ -341,5 +340,3 @@ class Slipper:
             return None
         self.placements = get_placement_data(self.products, self.output_path, self.output_dir)
         return self.placements
-
-

@@ -4,7 +4,7 @@ DatabaseSearch.py
 
 This module contains the functionality for a database search. Can do it via Postera or another database (smallworld, etc.).
 """
-from syndirella.cobblers_workshop.Reaction import Reaction
+from syndirella.route.Reaction import Reaction
 from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple, Optional)
 from rdkit import Chem
 from abc import ABC, abstractmethod

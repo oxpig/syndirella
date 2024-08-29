@@ -48,6 +48,7 @@ def config_parser():
     parser.add_argument('--compound_set', action='store_true', help="Include values in compound_set column in the "
                                                                                       "output.")
     parser.add_argument('--manual', action='store_true', help="Use manual routes for processing.")
+    parser.add_argument('--new_input_from_errors', action='store_true', help="Make a new .csv with .")
     return parser
 
 
@@ -56,6 +57,9 @@ def run_pipeline(settings: Dict[str, Any], pipeline):
     Run the pipeline with the given settings.
     """
     logging.info('Running the pipeline...')
+
+    if settings['compound_set']:
+        settings['additional_columns'] = ['compound_set']
 
     pipeline.run_pipeline(csv_path=settings['input'],
                           output_dir=settings['output'],

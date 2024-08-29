@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop.CobblersWorkshop.py
+syndirella.route.CobblersWorkshop.py
 
 This module contains the CobblersWorkshop class. One instance of this object is used to describe a full route.
 """
 
 from .CobblerBench import CobblerBench
 from typing import (List, Tuple)
-from syndirella.cobblers_workshop.Library import Library
+from syndirella.route.Library import Library
 from syndirella.SMARTSHandler import SMARTSHandler
 from rdkit import Chem
-from rdkit.Chem import rdinchi
 from syndirella.slipper.Slipper import Slipper
-import traceback
+from syndirella.error import SMARTSError, MolError
 import logging
 import itertools
 import shortuuid
@@ -30,61 +29,83 @@ class CobblersWorkshop():
                  num_steps: int,
                  output_dir: str,
                  filter: bool,
+                 id: str,
                  atoms_ids_expansion: dict = None):
-        self.product: str = product
-        self.id: str = CobblersWorkshop.generate_inchi_ID(self.product)
-        self.reactants: List[Tuple[str]] = reactants
-        self.reaction_names: List[str] = reaction_names
+        self.logger = logging.getLogger(f"{__name__}")
+        self.route_uuid: str = shortuuid.ShortUUID().random(length=6)
+        self.product: str = self.check_product(product)
+        self.id: str = id
+        self.reactants: List[Tuple[str]] = self.check_reactants(reactants)
+        self.reaction_names: List[str] = self.check_reaction_names(reaction_names)
         self.num_steps: int = num_steps
         self.output_dir: str = output_dir
-        self.smarts_handler = SMARTSHandler()
         self.filter: bool = filter
         self.atoms_ids_expansion: dict = atoms_ids_expansion  # should only be internal step
-        self.uuid: str = shortuuid.ShortUUID().random(length=6)
         self.cobbler_benches: List[CobblerBench] = []  # To store instances for each step
         self.first_library: Library = None
         self.final_library: Library = None
-        self.logger = logging.getLogger(f"{__name__}")
+
+
+    def check_product(self, product: str) -> str:
+        """
+        Checks product can be converted to a molecule and can be sanitized. If not, logs an error.
+        """
+        if Chem.MolFromSmiles(product) is None:
+            self.logger.error(f"Could not create a molecule from the smiles {product}.")
+            raise MolError(smiles=product,
+                           inchi=self.id,
+                           route_uuid=self.route_uuid,
+                           message=f"Could not create a molecule from the smiles {product}.")
+        return product
+
+    def check_reactants(self, reactants: List[Tuple[str]]) -> List[Tuple[str]]:
+        """
+        Checks reactants can be converted to molecules and can be sanitized. If not, logs an error.
+        """
+        for reactants_step in reactants:
+            for reactant in reactants_step:
+                if Chem.MolFromSmiles(reactant) is None:
+                    self.logger.error(f"Could not create a molecule from the smiles {reactant}.")
+                    raise MolError(smiles=reactant,
+                                   inchi=self.id,
+                                   route_uuid=self.route_uuid,
+                                   message=f"Could not create a molecule from the smiles {reactant}.")
+        return reactants
+
+    def check_reaction_names(self, reaction_names: List[str]) -> List[str]:
+        """
+        Checks reaction names are valid. If not, logs an error.
+        """
+        # replace spaces with underscores if they exist
+        reaction_names = [name.replace(" ", "_") for name in reaction_names]
+        smarts_handler = SMARTSHandler()
+        for reaction_name in reaction_names:
+            if reaction_name not in smarts_handler.reaction_smarts.keys():
+                self.logger.error(f"Reaction name {reaction_name} not found in SMARTS handler.")
+                raise SMARTSError(message=f"Reaction name {reaction_name} not found in SMARTS handler.",
+                                  smiles=self.product,
+                                  inchi=self.id,
+                                  route_uuid=self.route_uuid)
+        return reaction_names
 
     def get_cobbler_bench(self, step: int) -> CobblerBench:
         """
         This function is used to get the cobbler bench for a specific step.
         """
         reactants = self.reactants[step]
-        reaction_name = self.reaction_names[step].replace(" ", "_")
+        reaction_name = self.reaction_names[step]
         cobbler_bench = CobblerBench(product=self.product,
                                      reactants=reactants,
                                      reaction_name=reaction_name,
                                      output_dir=self.output_dir,
                                      id=self.id,
                                      num_steps=self.num_steps,
-                                     current_step= + 1,
+                                     current_step= step + 1,
                                      filter=self.filter,
-                                     route_uuid=self.uuid)
+                                     route_uuid=self.route_uuid)
         return cobbler_bench
 
-    def get_final_library(self):
-        """
-        This function is used to get the final library of products. It dynamically handles any number of steps.
-        """
-        try:
-            # TODO: Might not need to get_cobbler_benches again after doing define_reaction
-            current_library = None
-            for step in range(self.num_steps):
-                self.logger.info(f"Step {step + 1} in this route using {self.reaction_names[step]}")
-                cobbler_bench = self.get_cobbler_bench(step)
-                self.cobbler_benches.append(cobbler_bench)
-                current_library = cobbler_bench.find_analogues()
-                if step + 1 < self.num_steps:  # you're not at the last step
-                    slipper = Slipper(library=current_library, atoms_ids_expansion=self.atoms_ids_expansion)
-                    slipper.get_products()
-                # Update the final library at each step
-                self.final_library = current_library
-            return self.final_library
-        except Exception as e:
-            tb = traceback.format_exc()
-            self.logger.error(f"An error occurred in the route elaboration: {tb}")
-            return None
+
 
     def define_reaction(self):
         """
@@ -113,6 +134,7 @@ class CobblersWorkshop():
                                                 num_steps=num_steps,
                                                 output_dir=self.output_dir,
                                                 filter=self.filter,
+                                                id=self.id,
                                                 atoms_ids_expansion=self.atoms_ids_expansion)
             workshops.append(cobbler_workshop)
         if len(workshops) == 0:
@@ -153,8 +175,7 @@ class CobblersWorkshop():
         self.define_reaction()
         reaction_names_to_replace = []
         for bench in self.cobbler_benches:
-            if bench.get_additional_reactions():  # Checks if alternative reaction is possible and get its
-                self.logger.info(f"Alternative reaction(s) found for {bench.reaction_name}.")
+            if bench.get_additional_reactions():  # Checks if alternative reaction is possible and get it
                 reaction_names_to_replace.append(bench.reaction_name)
         if len(reaction_names_to_replace) == 0:
             self.logger.info(f"No alternative reactions found for {self.product}.")
@@ -162,15 +183,27 @@ class CobblersWorkshop():
         additional_routes: List[CobblersWorkshop] = self.configure_additional_routes(reaction_names_to_replace)
         return additional_routes
 
-    @staticmethod
-    def generate_inchi_ID(smiles: str) -> str:
+#################################################
+
+    def get_final_library(self):
         """
-        This function is used to generate a unique id for the route just using the product.
+        This function is used to get the final library of products. It dynamically handles any number of steps.
         """
-        if Chem.MolFromSmiles(smiles) is None:
-            logger = logging.getLogger(f"{__name__}.{CobblersWorkshop.__name__}")
-            logger.error(f"Could not create a molecule from the smiles {smiles}.")
-            return None
-        ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
-        id = rdinchi.InchiToInchiKey(ID[0])
-        return id
+        for step in range(self.num_steps):
+            self.logger.info(f"Step {step + 1} in this route using {self.reaction_names[step]}")
+            if len(self.cobbler_benches) == 0 or step >= len(self.cobbler_benches):
+                # if no cobbler bench or step is not in cobbler benches
+                cobbler_bench = self.get_cobbler_bench(step)
+                self.cobbler_benches.append(cobbler_bench)
+            else:
+                cobbler_bench = self.cobbler_benches[step]
+            current_library = cobbler_bench.find_analogues()
+            if step + 1 < self.num_steps:  # you're not at the last step
+                slipper = Slipper(library=current_library, atoms_ids_expansion=self.atoms_ids_expansion)
+                slipper.get_products()
+            # Update the final library at each step
+            self.final_library = current_library
+        return self.final_library
+
+
+

@@ -1,6 +1,6 @@
 #!venv/bin/env python3
 """
-syndirella.cobblers_workshop.Library.py
+syndirella.route.Library.py
 
 This module contains the Library class. This class contains information about the analogue library. It will create the
 analogue library from the Reaction object. It will also store the analogue library as a .pkl file.
@@ -8,19 +8,16 @@ analogue library from the Reaction object. It will also store the analogue libra
 
 import pandas as pd
 from rdkit.Chem.FilterCatalog import *
-
 from typing import (List, Dict, Tuple)
 import os
 from rdkit import DataStructs
-from rdkit.Chem import AllChem
 import glob
 import pickle
 import logging
-
 from .Reaction import Reaction
 from syndirella.Postera import Postera
-import syndirella
 import syndirella.fairy as fairy
+from syndirella.error import SMARTSError
 
 
 class Library:
@@ -45,7 +42,7 @@ class Library:
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
         self.filter: bool = filter
         self.route_uuid: str = route_uuid
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
         self.r1 = None
         self.r2 = None
 
@@ -148,10 +145,14 @@ class Library:
         num = [len(analogue.GetSubstructMatches(reactant_smarts_mol)) for analogue in analogues_mols]
         if len(matching) != len(analogues_mols):
             self.logger.error("Problem with finding matches.")
-            raise ValueError("Problem with finding matches.")
+            raise SMARTSError(message="Problem with finding SMARTS matches to analogues.",
+                              mol=self.reaction.product,
+                              route_uuid=self.route_uuid)
         if len(num) != len(analogues_mols):
             self.logger.error("Problem with finding number of matches.")
-            raise ValueError("Problem with finding number of matches.")
+            raise SMARTSError(message="Problem with finding number of matches.",
+                              mol=self.reaction.product,
+                              route_uuid=self.route_uuid)
         return matching, num
 
     def filter_analogues(self, analogues: List[str], analogue_prefix: str) -> List[str]:
@@ -199,13 +200,15 @@ class Library:
         self.logger.info('Checking if analogues contain SMARTS pattern of other reactant...')
         other_reactant_smarts_pattern = [smarts for smarts in self.reaction.matched_smarts_to_reactant.keys() if not smarts == reactant_smarts][0]
         if other_reactant_smarts_pattern is None:
-            self.logger.error("Other reactant SMARTS pattern not found.")
-            raise ValueError("Other reactant SMARTS pattern not found.")
+            self.logger.error(f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.")
+            raise SMARTSError(message=f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.",
+                              mol=self.reaction.product,
+                              route_uuid=self.route_uuid)
         other_reactant_prefix = self.reaction.matched_smarts_to_reactant[other_reactant_smarts_pattern][2]
         other_reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(other_reactant_smarts_pattern)
         return [bool(analogue.GetSubstructMatches(other_reactant_smarts_mol)) for analogue in analogues_mols], other_reactant_prefix
 
-    def check_analogue_contains_all_smarts_patterns(self, analogues_mols: List[Chem.Mol]) -> List[bool]:
+    def check_analogue_contains_all_smarts_patterns(self, analogues_mols: List[Chem.Mol]) -> List[bool] | NotImplementedError:
         """
         This function is used to check if the analogues contains all the SMARTS patterns of the other reactants.
         """
@@ -215,7 +218,6 @@ class Library:
         """
         This function is used to check if the analogue library has already been created and saved as a .pkl file.
         """
-        # TODO: Add route_uuid to the pkl name.
         internal_step = False
         if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
             self.logger.info('Since this is an internal or final step looking for the products .pkl from previous step...')
@@ -270,8 +272,8 @@ class Library:
                 product_mol = Chem.MolFromSmiles(product)
                 # Calculate similarity score
                 similarity_score = DataStructs.FingerprintSimilarity(
-                    AllChem.GetMorganFingerprintAsBitVect(reactant, 2),
-                    AllChem.GetMorganFingerprintAsBitVect(product_mol, 2))
+                    fairy.get_morgan_fingerprint(reactant),
+                    fairy.get_morgan_fingerprint(product_mol))
                 # If a perfect match is found, return the path
                 if similarity_score == 1:
                     self.logger.info(f"Found {path} as the products .pkl from previous step.")
@@ -327,7 +329,7 @@ class Library:
         # get all .pkl in output_dir.
         library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
         # get id from product SMILES
-        id = syndirella.cobblers_workshop.CobblersWorkshop.generate_inchi_ID(product)
+        id = fairy.generate_inchi_ID(product)
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)
             if library.id == id and library.num_steps == library.current_step: # return the final library

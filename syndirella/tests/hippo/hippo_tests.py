@@ -9,9 +9,9 @@ import pandas as pd
 import pickle
 from rdkit import Chem
 
-from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.Cobbler import Cobbler
-from syndirella.cobblers_workshop.Library import Library
+from syndirella.route.Library import Library
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.pipeline import run_pipeline
@@ -27,7 +27,7 @@ class TestBasicPipeline(unittest.TestCase):
         self.manual_routes = True
 
     def test_pipeline(self):
-        run_pipeline(csv_path=self.test_csv, output_dir=self.output_dir, template_dir=, hits_path=self.hits_path,
+        run_pipeline(csv_path=self.test_csv, output_dir=self.output_dir, template_dir='/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/hippo/', hits_path=self.hits_path,
                      metadata_path=str, batch_num=self.batch_num, additional_columns=self.additional_info,
                      manual_routes=self.manual_routes)
 

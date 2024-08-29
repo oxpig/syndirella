@@ -8,12 +8,16 @@ import json
 import logging
 from collections import OrderedDict
 from rdkit import Chem, DataStructs
-from rdkit.Chem import rdMolDescriptors, Mol
+from rdkit.Chem import Mol
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from typing import (Set, List, Dict, Tuple, Any)
 from .cli_defaults import cli_default_settings
+import syndirella.fairy as fairy
+from .error import SMARTSError
+
 
 class SMARTSHandler:
+
     def __init__(self):
         with open(cli_default_settings['rxn_smarts_path']) as f:
             reaction_smarts = json.load(f)
@@ -39,7 +43,7 @@ class SMARTSHandler:
         REACTANT1_PREFIX = self.fromReactionFullNameToReactantName("", 1)
         REACTANT2_PREFIX = self.fromReactionFullNameToReactantName("", 2)
         REACTIONS_NAMES = list(reaction_smarts.keys())
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
 
     def fromReactionFullNameToReactantName(self, reactionName, reactantNum):
         return ("react%d_" + reactionName.replace(" ", "_")) % reactantNum
@@ -50,31 +54,36 @@ class SMARTSHandler:
     def from_SMARTS_to_patterns(self, smarts_dict):
         return tuple([(key, Chem.MolFromSmarts(val)) for key, val in smarts_dict.items() if val is not None])
 
-    def assign_reactants_w_rxn_smarts(self, reactant_attach_ids: Dict[Chem.Mol, List[Tuple[int, int]]],
-                                      reaction_name: str) -> None | Dict[str, Tuple[Mol, list[int], str]] | Dict[
-        Any | None, None]:
+    def assign_reactants_w_rxn_smarts(self,
+                                      product: Chem.Mol,
+                                      reactant_attach_ids: Dict[Chem.Mol, List[Tuple[int, int]]],
+                                      reaction_name: str) -> dict[
+                                                                 str, tuple[Mol, list[int], str]] | None | dict[
+                                                                 Any | None, None]:
         """
         This function is used to assign the reactant number to input reactants using the reaction SMARTS. For now it
         only supports bimolecular reactions.
         """
-        if len(reactant_attach_ids) == 1: # Performing for one reactant
+        if len(reactant_attach_ids) == 1:  # Performing for one reactant
             patt = self.reactant1_dict[reaction_name]
-            attach_ids = set(next(iter(reactant_attach_ids.values()))) # get first and only value
-            reactant_mol = next(iter(reactant_attach_ids.keys())) # get first and only key
+            attach_ids = set(next(iter(reactant_attach_ids.values())))  # get first and only value
+            reactant_mol = next(iter(reactant_attach_ids.keys()))  # get first and only key
             self.matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] = (
                 self.format_matched_reactant_for_one(reactant_mol, attach_ids, patt))
             if len(self.matched_reactants) == 0:
-                self.logger.critical("Reactant could not be matched to only reactant SMARTS in reaction.")
-                return None
+                message = "Reactant could not be matched to only reactant SMARTS in reaction."
+                self.logger.critical(message)
+                raise SMARTSError(mol=product, message=message)
             return self.matched_reactants
         r1: Chem.Mol = list(reactant_attach_ids.keys())[0]
         r2: Chem.Mol = list(reactant_attach_ids.keys())[1]
         # Check to make sure they are not the same
-        similarity = DataStructs.FingerprintSimilarity(rdMolDescriptors.GetMorganFingerprintAsBitVect(r1, 2),
-                                                       rdMolDescriptors.GetMorganFingerprintAsBitVect(r2, 2))
+        similarity = DataStructs.FingerprintSimilarity(fairy.get_morgan_fingerprint(r1),
+                                                       fairy.get_morgan_fingerprint(r2))
         if similarity == 1.0:
-            self.logger.warning(f"The two reactants are the same.")
-            return None
+            message = "The two reactants are the same."
+            self.logger.critical(message)
+            raise SMARTSError(mol=product, message=message)
         r1_attach_ids: Set[Tuple[int, int]] = set(reactant_attach_ids[r1])
         r2_attach_ids: Set[Tuple[int, int]] = set(reactant_attach_ids[r2])
         patt1 = self.reactant1_dict[reaction_name]
@@ -83,28 +92,35 @@ class SMARTSHandler:
         found_1: Dict[str, bool] = self.find_matching_atoms(r1, patt1, patt2, r1_attach_ids)
         found_2: Dict[str, bool] = self.find_matching_atoms(r2, patt1, patt2, r2_attach_ids)
         # Check that both reactants have been found
-        if not self.check_found_reactants(found_1, found_2, reaction_name, r1, r2):
+        if not self.check_found_reactants(product, found_1, found_2, reaction_name, r1, r2):
             return None
         return self.matched_reactants
 
     def check_found_reactants(self,
+                              product: Chem.Mol,
                               found_1: Dict[str, bool],
-                              found_2: Dict[str, bool], reaction_name: str,
-                              r1: Chem.Mol, r2: Chem.Mol) -> bool:
+                              found_2: Dict[str, bool],
+                              reaction_name: str,
+                              r1: Chem.Mol,
+                              r2: Chem.Mol) -> bool:
         """
         This function checks that both reactants have been found. It raises a warning if both reactants are matched
         to the same reactant SMARTS.
         """
         if not found_1["r1"] and not found_2["r1"]:
             self.logger.critical(f"The reactants do not match the reaction SMARTS in reaction {reaction_name} in "
-                              f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}.")
-            return False
+                                 f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}.")
+            raise SMARTSError(message=f"The reactants do not match the reaction SMARTS in reaction {reaction_name} in "
+                                      f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}.", mol=product)
 
         if not found_1["r2"] and not found_2["r2"]:
             self.logger.critical(
                 f"No atoms found involved in reaction {reaction_name} in "
                 f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}")
-            return False
+            raise SMARTSError(message=
+                              f"No atoms found involved in reaction {reaction_name} in "
+                              f"mol {Chem.MolToSmiles(r1)} and {Chem.MolToSmiles(r2)}",
+                              mol=product)
 
         if found_1["r1"] and found_2["r1"]:
             self.logger.warning(
@@ -152,8 +168,3 @@ class SMARTSHandler:
                 matched_reactants[patt] = (reactant_mol, match, 'r1')
                 break
         return matched_reactants
-
-
-
-    
-

@@ -7,13 +7,13 @@ Postera searches, including multiple elaboration searches.
 """
 import os
 from typing import (List, Dict)
-from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.Postera import Postera
 from syndirella.SMARTSHandler import SMARTSHandler
-import syndirella.fairy as fairy
 from syndirella.error import NoSynthesisRoute
 import logging
 from rdkit import Chem
+import syndirella.fairy as fairy
 
 class Cobbler:
     """
@@ -23,13 +23,14 @@ class Cobbler:
                  scaffold_compound: str,
                  output_dir: str):
         self.scaffold_compound: str = scaffold_compound
+        self.id: str = fairy.generate_inchi_ID(self.scaffold_compound)
         # Manifold API
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.n_reactants_per_reaction = SMARTSHandler().n_reactants_per_reaction
         self.output_dir = output_dir
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
 
     def get_routes(self) -> List[CobblersWorkshop]:
         """
@@ -53,12 +54,6 @@ class Cobbler:
         cobblers_workshop: CobblersWorkshop = self.create_cobblers_workshop_from_Postera(route)
         return cobblers_workshop
 
-    def get_additional_cobblers_workshops(self, route: CobblersWorkshop) -> List[CobblersWorkshop]:
-        """
-        This function is used to get additional cobblers workshops if specified in fairy filters.
-        """
-        # TODO: Implement. Need to make sure that getting the new CobblersWorkshop is output from a CobblersWorkshop function.
-
 
     def create_cobblers_workshop_from_Postera(self, route: List[Dict]) -> CobblersWorkshop:
         """
@@ -74,6 +69,7 @@ class Cobbler:
             reaction_names=reaction_names,
             num_steps=len(reaction_names),
             output_dir=self.output_dir,
+            id=self.id,
             filter=False,
             atoms_ids_expansion=None
         )
@@ -118,14 +114,15 @@ class Cobbler:
         """
         Gets first route from List if all the reaction names are allowed and if doesn't contain a single atom as reactant.
         """
-        # TODO: Implement. Also need to add single atom reactant check that the main logic could be done by fairy (if makes sense??)
         passing_routes: List[List[Dict]] = self.get_passing_routes(routes)
         filtered_routes: List[List[Dict]] = self.filter_routes(passing_routes)
         # there were no passing routes
         final_route = filtered_routes[0] if len(filtered_routes) > 0 else []
         if len(final_route) == 0:
             self.logger.critical(f"No routes found for {self.scaffold_compound}.")
-            raise NoSynthesisRoute()
+            raise NoSynthesisRoute(message=f"No routes found for {self.scaffold_compound}.",
+                                   inchi=self.id,
+                                   smiles=self.scaffold_compound)
         return final_route
 
     def _get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
@@ -141,7 +138,6 @@ class Cobbler:
         additional_routes: List[CobblersWorkshop] | None = first_route.get_additional_routes(edit_route=True)
         if additional_routes is not None:
             final_routes: List[CobblersWorkshop] = [first_route] + additional_routes
-
         return final_routes
 
     def _create_cobblers_workshops(self, final_routes: List[List[Dict]]) -> List[CobblersWorkshop]:
@@ -170,6 +166,7 @@ class Cobbler:
                 reaction_names=reaction_names,
                 num_steps=len(reaction_names),
                 output_dir=self.output_dir,
+                id=self.id,
                 filter=False,
                 atoms_ids_expansion=None
             )

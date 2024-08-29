@@ -9,9 +9,10 @@ from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
 from rdkit import Chem
 from .Reaction import Reaction
 from .Library import Library
-from ..error import ReactionError
+from ..error import ReactionError, SMARTSError
 from ..SMARTSHandler import SMARTSHandler
 import logging
+from syndirella.PipelineOutput import PipelineOutput
 
 class CobblerBench:
     """
@@ -44,7 +45,7 @@ class CobblerBench:
         self.reaction: Reaction = None
         self.library = None
         self.additional_reactions: List[Tuple[str, Tuple[str, str]]] = ()
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
 
         self.define_reaction() # This is where the Reaction object is created
 
@@ -63,23 +64,37 @@ class CobblerBench:
         This function is used to check the reaction is valid.
         """
         if self.reaction_name not in self.smarts_handler.reaction_smarts.keys():
-            self.logger.error("Reaction name not found in SMARTS handler.")
-            raise ReactionError("Reaction name not found in SMARTS handler.")
+            self.logger.error(f"Reaction name {self.reaction_name} not found in SMARTS handler.")
+            raise SMARTSError(message=f"Reaction name {self.reaction_name} not found in SMARTS handler.",
+                              smiles=self.product,
+                              route_uuid=self.route_uuid,
+                              inchi=self.id)
         reaction = Reaction(product=self.product,
                             reactants=self.reactants,
                             reaction_name=self.reaction_name,
-                            smarts_handler=self.smarts_handler)
+                            smarts_handler=self.smarts_handler,
+                            route_uuid=self.route_uuid)
         return reaction
 
     def define_reaction(self):
         """
         This function is used to define the reaction and finding ids and attachment atoms.
         """
-        self.reaction = self.check_reaction()
-        # Find attachment ids -- before finding reaction atoms
-        self.reaction.find_attachment_ids_for_all_reactants()
-        # Find reaction atoms
-        self.reaction.find_reaction_atoms_for_all_reactants()
+        try:
+            self.reaction = self.check_reaction()
+            # Find attachment ids -- before finding reaction atoms
+            self.reaction.find_attachment_ids_for_all_reactants()
+            # Find reaction atoms
+            self.reaction.find_reaction_atoms_for_all_reactants()
+        except ValueError or SMARTSError as e:
+            self.logger.error(f"Reaction {self.reaction_name} could not be defined.")
+            if isinstance(e, ValueError): message = e.args[0]
+            elif isinstance(e, SMARTSError): message = e.message
+            else: message = f"Reaction {self.reaction_name} could not be defined."
+            raise ReactionError(message=message,
+                                smiles=self.product,
+                                route_uuid=self.route_uuid,
+                                inchi=self.id)
 
     def get_additional_reactions(self) -> bool:
         """

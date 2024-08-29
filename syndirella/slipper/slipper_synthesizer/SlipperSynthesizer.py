@@ -7,17 +7,15 @@ This module contains the SlipperSynthesizer class.
 from typing import (List, Dict, Tuple)
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
-from rdkit.Chem import AllChem
 from rdkit import DataStructs
-from syndirella.cobblers_workshop.Library import Library
+from syndirella.route.Library import Library
 from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
+import syndirella.fairy as fairy
 import pandas as pd
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 import os
-import shortuuid
 import logging
-from syndirella.error import NoReactants
-import numpy as np
+from syndirella.error import *
 
 
 class SlipperSynthesizer:
@@ -34,6 +32,7 @@ class SlipperSynthesizer:
                  output_dir: str,
                  atom_ids_expansion: dict = None,
                  additional_info: dict = None):
+        self.route_uuid: str = library.route_uuid
         self.library = library
         self.output_dir = output_dir
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
@@ -46,7 +45,7 @@ class SlipperSynthesizer:
         self.additional_info = additional_info
         self.current_step: int = library.current_step
         self.num_steps: int = library.num_steps
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}")
 
     def get_products(self) -> pd.DataFrame:
         """
@@ -78,13 +77,13 @@ class SlipperSynthesizer:
             pkl_path = os.path.join(self.output_dir, 'extra', pkl_name)
             if os.path.exists(pkl_path):
                 self.logger.info(f"Products already exist at {pkl_path}. "
-                      f"Loading from file...")
+                                 f"Loading from file...")
                 return True
         else:
             final_pkl_path = os.path.join(self.output_dir, pkl_name)
             if os.path.exists(final_pkl_path):
                 self.logger.info(f"Products already exist at {final_pkl_path}. "
-                      f"Loading from file...")
+                                 f"Loading from file...")
                 return True
         return False
 
@@ -130,7 +129,7 @@ class SlipperSynthesizer:
         self.logger.info(f"Ordering analogues of {reactant_prefix} before finding products...")
         # Add num_atom_diff to scaffold reactant, which is the first reactant
         base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
-        df[f'{reactant_prefix}_num_atom_diff'] = (
+        df.loc[:, f'{reactant_prefix}_num_atom_diff'] = (
             df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
         # get columns to sort by
         ordered_columns = [f'{reactant_prefix}_lead_time', f'{reactant_prefix}_num_atom_diff', 'num_matches']
@@ -164,9 +163,10 @@ class SlipperSynthesizer:
         self.logger.info(f'Filtered {num_filtered} rows ({percent_diff}%) from {reactant_prefix} dataframe.')
         if len(df) == 0:
             self.logger.critical(f"All reactants were filtered for {reactant_prefix}. No products will be found.")
-            raise NoReactants()
+            raise NoReactants(message=f"All reactants were filtered for {reactant_prefix}. No products will be found.",
+                              route_uuid=self.route_uuid,
+                              mol=self.library.reaction.product)
         return df
-
 
     def filter_analogues_by_size(self):
         """
@@ -197,7 +197,7 @@ class SlipperSynthesizer:
         elif lengths[1] > max_length_each and lengths[0] <= max_length_each:
             # Cut the second dataframe
             analogue_prefix = list(self.analogues_dataframes_to_react.keys())[1]
-            self.logger.info(f"Too many analogues for r{analogue_prefix}.")
+            self.logger.info(f"Too many analogues for {analogue_prefix}.")
             analogue_df = self.analogues_dataframes_to_react[analogue_prefix]
             shortened_analogue_df = self.cut_analogues(analogue_df, max_length_each, analogue_prefix)
             self.analogues_dataframes_to_react[analogue_prefix] = shortened_analogue_df
@@ -214,7 +214,7 @@ class SlipperSynthesizer:
         This function is used to cut the analogues dataframes to max_length_each by just taking the head.
         """
         self.logger.info(f"Cutting {len(df) - max_length_each} analogues from "
-              f"{analogue_prefix} dataframe.")
+                         f"{analogue_prefix} dataframe.")
         return df.head(max_length_each)
 
     def cluster_analogues(self, df: pd.DataFrame, max_length_each: int, analogue_prefix: int) -> pd.DataFrame:
@@ -223,12 +223,22 @@ class SlipperSynthesizer:
         The number of clusters is the number max length each. Might be too much...
         """
         self.logger.info(f"K-means clustering and sampling {len(df) - max_length_each} analogues from "
-              f"r{analogue_prefix} dataframe.")
+                         f"r{analogue_prefix} dataframe.")
         # cluster
         df = self.cluster_analogues_on_fingerprint(df)
         # sample
         df = self.sample_analogues(df, max_length_each)
         return df
+
+    # Combine 'flag' columns
+    def combine_flags(self, row) -> Tuple[str] | None:
+        flags = []
+        if pd.notna(row['flag_x']):
+            flags.append(row['flag_x'])
+        if pd.notna(row['flag_y']):
+            flags.append(row['flag_y'])
+        flags = tuple(flags)  # make sure it's hashable
+        return flags if flags else None
 
     def combine_analogues(self):
         """
@@ -249,16 +259,9 @@ class SlipperSynthesizer:
         # drop extra columns
         combinations.drop(['r1', 'r2'], axis=1, inplace=True)
         combinations.reset_index(drop=True, inplace=True)
-        # Combine 'flag' columns
-        def combine_flags(row):
-            flags = []  # TODO: Change to tuple
-            if pd.notna(row['flag_x']):
-                flags.append(row['flag_x'])
-            if pd.notna(row['flag_y']):
-                flags.append(row['flag_y'])
-            return flags if flags else np.nan
+        # add flag
         if 'flag' in r1.columns and 'flag' in r2.columns:
-            combinations['flag'] = combinations.apply(combine_flags, axis=1)
+            combinations['flag']: Tuple[str] | None = combinations.apply(self.combine_flags, axis=1)
         elif 'flag' in r1.columns:
             combinations['flag'] = combinations['flag_x']
         elif 'flag' in r2.columns:
@@ -276,13 +279,16 @@ class SlipperSynthesizer:
         # Apply reaction to reactant combinations
         products: pd.DataFrame = self.reactant_combinations.apply(self.apply_reaction, axis=1)
         try:
-            products = products.explode('combined').reset_index(drop=True)
-            # Attempt to split the 'combined' column
-            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'], index=products.index)
+            products = products.explode('combined').reset_index(drop=True)  # multiple products from one combination
+            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'],
+                                       index=products.index)
             products[['smiles', 'num_atom_diff']] = new_columns
             products.drop('combined', axis=1, inplace=True)
         except ValueError as e:
-            self.logger.error(e)
+            self.logger.critical(e.args[0])
+            raise ProductFormationError(message=e.args[0],
+                                        mol=self.library.reaction.product,
+                                        route_uuid=self.route_uuid)
         # Filter products
         products = self.filter_products(products)
         # Add metadata
@@ -302,11 +308,15 @@ class SlipperSynthesizer:
         try:
             products = products.explode('combined').reset_index(drop=True)
             # Attempt to split the 'combined' column
-            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'], index=products.index)
+            new_columns = pd.DataFrame(products['combined'].tolist(), columns=['smiles', 'num_atom_diff'],
+                                       index=products.index)
             products[['smiles', 'num_atom_diff']] = new_columns
             products.drop('combined', axis=1, inplace=True)
         except ValueError as e:
-            self.logger.error(f"Error: {e}")
+            self.logger.critical(e.args[0])
+            raise ProductFormationError(message=e.args[0],
+                                        mol=self.library.reaction.product,
+                                        route_uuid=self.route_uuid)
         # Filter products
         products = self.filter_products(products)
         # Add metadata
@@ -340,9 +350,9 @@ class SlipperSynthesizer:
             for product in products:
                 if self.can_be_sanitized(product[0]):
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
+                    row_num_atom_diff.append(
+                        self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
                 if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
-                    #self.logger.info(f"Found multiple products at {row.name}. Flagging...")
                     if 'one_of_multiple_products' not in flags:
                         flags.append('one_of_multiple_products')
                 row['combined'] = list(zip(row_smiles, row_num_atom_diff))
@@ -366,7 +376,7 @@ class SlipperSynthesizer:
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
-        flags = row['flag'] if isinstance(row['flag'], list) else []
+        flags = list(row['flag']) if isinstance(row['flag'], tuple) else []  # turn into list to append to
         products = reaction.RunReactants((r1, r2))
         if len(products) == 0:
             row['flag'] = flags if flags else None
@@ -380,7 +390,8 @@ class SlipperSynthesizer:
             for product in products:
                 if self.can_be_sanitized(product[0]):  # only keep products that can be sanitized
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
+                    row_num_atom_diff.append(
+                        self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
             if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
                 if 'one_of_multiple_products' not in flags:
                     flags.append('one_of_multiple_products')
@@ -430,6 +441,8 @@ class SlipperSynthesizer:
         removes duplicates.
         """
         products.dropna(subset=['smiles'], inplace=True, axis=0, how='any')
+        # Convert 'flag' column to tuple ot be hashable
+        products['flag'] = products['flag'].apply(lambda x: tuple(x) if isinstance(x, list) else x)
         products.drop_duplicates(inplace=True, ignore_index=True)
         # reorder by num_atom_diff if calculated
         if 'num_atom_diff' in products.columns:
@@ -441,7 +454,7 @@ class SlipperSynthesizer:
         """Calculate morgan fingerprints for each molecule."""
         products['mol'] = products['smiles'].apply(lambda x: Chem.MolFromSmiles(x) if pd.notnull(x) else None)
         products['fp'] = products['mol'].apply(
-            lambda x: AllChem.GetMorganFingerprintAsBitVect(x, 2, nBits=1024) if x is not None else None)
+            lambda x: fairy.get_morgan_fingerprint(x) if x is not None else None)
         return products
 
     def find_similarity_groups(self, products: pd.DataFrame) -> (pd.DataFrame, int):
@@ -453,7 +466,7 @@ class SlipperSynthesizer:
         fps = products['fp'].tolist()
         n = len(fps)
         # Calculate the fingerprint for the library's reaction product
-        product_fp = AllChem.GetMorganFingerprintAsBitVect(self.library.reaction.product, 2, nBits=1024)
+        product_fp = fairy.get_morgan_fingerprint(self.library.reaction.product)
         groups = {}
         existing_group_ids = set(products['group_id'])
         group_id = max(existing_group_ids) + 1 if existing_group_ids else 0
@@ -502,7 +515,7 @@ class SlipperSynthesizer:
 
     def assign_names_based_on_groups(self, products: pd.DataFrame, library_id: str, base_group_id: int) -> pd.DataFrame:
         """Assign names to products based on their group ID, ensuring duplicates have the same name."""
-        base_name = f"{library_id}-{self.uuid}-scaffold"
+        base_name = f"{library_id}-{self.route_uuid}-scaffold"
         unique_groups = products['group_id'].unique()
         # Assign names based on group ID
         for group in unique_groups:
@@ -515,7 +528,7 @@ class SlipperSynthesizer:
             if not group_members.empty:
                 first_name = group_members.iloc[0]['name'] \
                     if pd.notnull(group_members.iloc[0]['name']) \
-                    else f"{library_id}-{self.uuid}-{int(group)}"
+                    else f"{library_id}-{self.route_uuid}-{int(group)}"
                 products.loc[products['group_id'] == group, 'name'] = first_name
         return products
 
@@ -558,7 +571,10 @@ class SlipperSynthesizer:
                     new_row['stereoisomer'] = chr(65 + i)
                     new_rows.append(new_row)
             except:
-                self.logger.info(f"Could not enumerate stereoisomers for {row['smiles']}.")
+                self.logger.critical(f"Could not enumerate stereoisomers for {row['smiles']}.")
+                raise ProductFormationError(message=f"Could not enumerate stereoisomers for {row['smiles']}.",
+                                            mol=self.library.reaction.product,
+                                            route_uuid=self.route_uuid)
         new_df = pd.DataFrame(new_rows)
         # remove NaNs
         new_df = new_df.dropna(subset=['smiles'])
@@ -583,7 +599,8 @@ class SlipperSynthesizer:
         csv_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.csv")
         if self.library.num_steps != self.library.current_step:
-            self.logger.info("Since these products are not the final products they will be saved in the /extra folder. \n")
+            self.logger.info(
+                "Since these products are not the final products they will be saved in the /extra folder. \n")
             self.logger.info(f"Saving products to {self.output_dir}/extra/{pkl_name} \n")
             os.makedirs(f"{self.output_dir}/extra/", exist_ok=True)
             self.products.to_pickle(f"{self.output_dir}/extra/{pkl_name}")

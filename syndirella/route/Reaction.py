@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop.Reaction.py
+syndirella.route.Reaction.py
 
 This module contains the Reaction class. One instance of this object is used to describe a single reaction.
 """
@@ -24,7 +24,9 @@ class Reaction():
                  product: Chem.Mol,
                  reactants: List[Chem.Mol],
                  reaction_name: str,
-                 smarts_handler: SMARTSHandler):
+                 smarts_handler: SMARTSHandler,
+                 route_uuid: str):
+        self.route_uuid: str = route_uuid
         self.logger = logging.getLogger(f"{__name__}")
         self.product: Chem.Mol = product
         self.reactants: List[Chem.Mol] = reactants
@@ -65,7 +67,7 @@ class Reaction():
                         reaction_name: str = alt_rxn['replace_with']
                         can_react: bool = self.check_reaction_can_produce_product(new_reactant, other_reactant, reaction_name)
                         if can_react:
-                            self.logger.info(f"Additional reaction {reaction_name} for {self.reaction_name} found and"
+                            self.logger.info(f"Additional reaction {reaction_name} for {self.reaction_name} found and "
                                              f"validated.")
                             new_reactant: str = Chem.MolToSmiles(new_reactant)
                             other_reactant: str = Chem.MolToSmiles(other_reactant)
@@ -106,6 +108,10 @@ class Reaction():
                                                                      replacementConnectionPoint=replacement_connecting_atom_id,
                                                                      replaceAll=True)
         for replaced_reactant in replaced_reactants:
+            # check mol can be sanitized
+            if not fairy.check_mol_sanity(replaced_reactant):
+                self.logger.error(f"Cannot sanitize new reactant for reaction {self.reaction_name}")
+                return None
             # get attach ids
             attach_ids: List[int] = []
             for mol in self.all_attach_ids.keys():
@@ -116,6 +122,13 @@ class Reaction():
                 return None
             # get atom ids that match new smarts pattern
             matched_atoms: Tuple[int] = replaced_reactant.GetSubstructMatch(to_replace_with)
+            # get all atoms that matched atoms are bonded to since SMARTS might not match attachment points
+            for atom in matched_atoms:
+                for bond in replaced_reactant.GetAtomWithIdx(atom).GetBonds():
+                    if bond.GetBeginAtomIdx() in matched_atoms:
+                        attach_ids.append(bond.GetEndAtomIdx())
+                    elif bond.GetEndAtomIdx() in matched_atoms:
+                        attach_ids.append(bond.GetBeginAtomIdx())
             if any(atom in matched_atoms for atom in attach_ids): # If any attach ids are in the SMARTS of the new reactant
                 return replaced_reactant
         return None
@@ -266,7 +279,9 @@ class Reaction():
             attachments:  List[int] | None = self.find_attachment_id_for_reactant(reactant)
             all_attachments[reactant] = attachments
         if any(len(attach_ids) == 0 for attach_ids in all_attachments.values()):
-            raise ReactionError("No attachment points found for reaction {}".format(self.reaction_name))
+            raise ReactionError(message=f"No attachment points found for reaction {self.reaction_name}",
+                                mol=self.product,
+                                route_uuid=self.route_uuid)
         self.all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
 
     def format_matched_smarts_to_index(self, matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]]) -> Dict[int,
@@ -294,9 +309,13 @@ class Reaction():
         """
         # check reactant smarts in both reactants
         matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] | None = (
-            self.smarts_handler.assign_reactants_w_rxn_smarts(self.all_attach_ids, self.reaction_name))
+            self.smarts_handler.assign_reactants_w_rxn_smarts(product=self.product,
+                                                              reactant_attach_ids=self.all_attach_ids,
+                                                              reaction_name=self.reaction_name))
         self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, List[int], str]] = (
             self.format_matched_smarts_to_index(matched_reactants))
         self.matched_smarts_to_reactant = matched_reactants
         if len(self.matched_smarts_to_reactant) == 0:
-            raise ReactionError("No reaction atoms found for reaction {}".format(self.reaction_name))
+            raise ReactionError(message=f"No reaction atoms found for reaction {self.reaction_name}",
+                                mol=self.product,
+                                route_uuid=self.route_uuid)

@@ -14,7 +14,6 @@ syndirella_base_path = os.environ['SYNDIRELLA_BASE_PATH']
 print(syndirella_base_path)
 rxn_smarts_path = os.path.join(syndirella_base_path, "syndirella/constants/RXN_SMARTS_CONSTANTS.json")
 reactant_filters_path = os.path.join(syndirella_base_path, "syndirella/constants/REACTANT_FILTER_CONSTANTS.json")
-#additional_rxn_options_path = os.path.join(syndirella_base_path, "syndirella/constants/ADDITIONAL_RXN_OPTIONS.json")
 additional_rxn_options_path = os.path.join(syndirella_base_path, "syndirella/constants/ADDITIONAL_RXN_OPTIONS_V2.json")
 
 cli_default_settings = dict(

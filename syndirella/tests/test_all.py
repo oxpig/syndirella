@@ -7,14 +7,51 @@ import unittest
 
 import pandas as pd
 from rdkit import Chem
+import os
 
-from syndirella.cobblers_workshop.CobblersWorkshop import CobblersWorkshop
+from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.Cobbler import Cobbler
-from ..cobblers_workshop.Library import Library
+from ..route.Library import Library
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
-from syndirella.pipeline import run_pipeline
+from syndirella.pipeline import run_pipeline, elaborate_compound_with_manual_routes
 import syndirella.check_inputs as check_inputs
+import syndirella.fairy as fairy
+import logging
+
+class TestErrorHandlingPipeline(unittest.TestCase):
+    def setUp(self):
+        self.reactants = [('CCOC(=O)Cc1cncc(N)c1', 'CC(=O)Cl'), ('NCC(N)c1ccc2ccccc2c1', 'CCOC(=O)Cc1cncc(NC(C)=O)c1'),
+                          ('O=C(Cl)CCl', 'CC(=O)Nc1cncc(CC(=O)NC(CN)c2ccc3ccccc3c2)c1')]
+        self.product = 'CC(=O)Nc1cncc(CC(=O)NC(CNC(=O)CCl)c2ccc3ccccc3c2)c1'
+        self.reaction_names = ['Amide_Schotten-Baumann_with_amine', 'Ester_amidation',
+                               'Amide_Schotten-Baumann_with_amine']
+        self.num_steps = 3
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_errors'
+        self.hits_names = ['A71EV2A-x1346_A_250_1_A71EV2A-x0526+A+147+1']
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
+        self.template_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates/Ax1346a_apo-desolv.pdb'
+        self.additional_info = {'compound_set': 'test'}
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_errors/test.csv'
+
+    def test_elaborate_compound_with_manual_routes(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        elaborate_compound_with_manual_routes(product=self.product,
+                                              reactants=self.reactants,
+                                              reaction_names=self.reaction_names,
+                                              num_steps=self.num_steps,
+                                              output_dir=self.output_dir,
+                                              hits=self.hits_names,
+                                              hits_path=self.hits_path,
+                                              batch_num=3,
+                                              template_path=self.template_path,
+                                              additional_info=self.additional_info,
+                                              csv_path=self.csv_path)
+
 
 class TestAdditionalReaction(unittest.TestCase):
     def setUp(self):
@@ -26,10 +63,16 @@ class TestAdditionalReaction(unittest.TestCase):
         self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/additional_reaction'
         self.filter = False
         self.hits = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/additional_reaction/hits.sdf'
+        self.id = fairy.generate_inchi_ID(self.product)
 
     def test_get_additional_route(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
         workshop = CobblersWorkshop(self.product, self.reactants, self.reaction_names, self.num_steps,
-                                             self.output_dir, self.filter)
+                                             self.output_dir, self.filter, id=self.id)
         routes = workshop.get_additional_routes(edit_route=True)
         self.assertIsInstance(routes, list)
 
@@ -50,7 +93,7 @@ class TestCheckInputs(unittest.TestCase):
         self.metadata = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/metadata.csv'
         self.holo_template = '/Users/kate_fieseler/Downloads/A71EV2A (6)/aligned_files/Ax1445a/Ax1445a.pdb'
         self.apo_template = '/Users/kate_fieseler/Downloads/A71EV2A (6)/aligned_files/Ax1445a/Ax1445a_apo.pdb'
-        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/check_inputs'
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/check_inputs_auto'
         self.batch_num = 5
 
     def test_check_manual(self):
@@ -80,6 +123,7 @@ class TestCheckInputs(unittest.TestCase):
                      batch_num=self.batch_num, additional_columns=self.additional_info)
 
     def test_check_pipeline_manual(self):
+        # remove all files in output_dir
         run_pipeline(csv_path=self.manual_csv_path, template_dir=self.template_dir,
                      hits_path=self.hits_path, metadata_path=self.metadata,
                      manual_routes=True, output_dir=self.output_dir,

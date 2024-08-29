@@ -13,7 +13,7 @@ import time
 import logging
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
-from syndirella.cobblers_workshop.Reaction import Reaction
+from syndirella.route.Reaction import Reaction
 
 
 class Postera(DatabaseSearch):
@@ -156,34 +156,6 @@ class Postera(DatabaseSearch):
                 break  # Exit the loop on non-recoverable errors
 
         return None
-
-    # @staticmethod
-    # def get_resp_json(url: str,
-    #                   api_key: str,
-    #                   data: Dict = None) -> Optional[Dict]:
-    #     """
-    #     Directly get the response json from a request.
-    #     """
-    #     response = requests.post(
-    #         url,
-    #         headers={
-    #             'X-API-KEY': api_key,
-    #             'Content-Type': 'application/json',
-    #         },
-    #         data=json.dumps(data),
-    #     )
-    #     response.raise_for_status()
-    #     try:
-    #         resp_json = response.json()
-    #     except requests.exceptions.HTTPError as err:
-    #         print(f"HTTP error: {err}")
-    #     except requests.exceptions.ConnectionError as err:
-    #         print(f"Connection error: {err}")
-    #     except requests.exceptions.Timeout as err:
-    #         print(f"Timeout error: {err}")
-    #     except requests.exceptions.RequestException as err:
-    #         print(f"Error: {err}")
-    #     return resp_json
 
     @staticmethod
     def get_search_results(url: str,

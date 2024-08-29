@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-syndirella.cobblers_workshop.fairy.py
+syndirella.route.fairy.py
 
-This module provides functions to find similar cheaper reactants or filter out
-reactants based on simple filters.
+This module provides functions to find similar cheaper reactants, filter out
+reactants based on simple filters, fingerprint generation, and others...
 """
 
 from typing import Any, List, Dict, Tuple, Optional
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, rdinchi
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
 from syndirella.cli_defaults import cli_default_settings
@@ -16,6 +16,7 @@ from rdkit.Chem import rdMolDescriptors
 from rdkit import DataStructs
 import logging
 from rdkit.Chem import rdFingerprintGenerator
+from syndirella.error import *
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -188,66 +189,15 @@ def print_diff(hits: List[Tuple[str, float]], valid_mols: List[Chem.Mol], desc: 
     percent_diff = round((num_filtered / len(hits)) * 100, 2)
     logger.info(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
 
-
-def get_final_routes(routes: List[List[Dict]], additional_rxn_options: Dict[str, str]) -> List[List[Dict]]:
-    """
-    Return the final routes to elaborate on.
-    """
-    reaction_names = [[reaction['name'].replace(" ", "_") for reaction in route] for route in routes]
-    first_route_names = reaction_names[0]
-
-    if len(first_route_names) == 1:
-        logger.info(f"The route found is {len(first_route_names)} step. "
-                    f"The forward synthesis is: {first_route_names[::-1]}")
-    else:
-        logger.info(f"The first route found is {len(first_route_names)} steps. "
-                    f"The forward synthesis is: {first_route_names[::-1]}")
-
-    final_routes = get_additional_routes(first_route_names, routes, additional_rxn_options)
-    return final_routes
-
-
-def get_additional_routes(first_route_names: List[str], routes: List[List[Dict]],
-                          additional_rxn_options: Dict[str, str]) -> List[List[Dict]]:
-    """Get additional routes if specified in filters."""
-    additional_route = None
-
-    for reaction_name in first_route_names:
-        if reaction_name in additional_rxn_options:
-            additional_reaction_name = additional_rxn_options[reaction_name]
-            logger.info(f"Additional reaction for '{reaction_name}' found in filters. "
-                        f"Getting additional routes containing '{additional_reaction_name}'...")
-            additional_route = [route for route in routes if
-                                any(additional_reaction_name in reaction['name'] for reaction in route)]
-            if additional_route:
-                additional_route = additional_route[0]
-
-    final_route = [routes[0]]
-    if additional_route and additional_route != final_route:
-        final_route.append(additional_route)
-
-    return final_route
-
 def calculate_tanimoto(mol1: Chem.Mol,
                        mol2: Chem.Mol) -> float:
     if mol1 is None or mol2 is None:
         return 0
     # do full circle back to smiles to mol
     mol1, mol2 = Chem.MolFromSmiles(Chem.MolToSmiles(mol1)), Chem.MolFromSmiles(Chem.MolToSmiles(mol2))
-    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
-    fp1 = mfpgen.GetFingerprint(mol1)
-    fp2 = mfpgen.GetFingerprint(mol2)
+    fp1 = get_morgan_fingerprint(mol1)
+    fp2 = get_morgan_fingerprint(mol2)
     return TanimotoSimilarity(fp1, fp2)
-
-
-# def define_reactions(workshop: CobblersWorkshop) -> CobblersWorkshop:
-#     """
-#     Define the reactions in the workshop.
-#     """
-#     for step in range(workshop.num_steps):
-#         cobbler_bench = workshop.get_cobbler_bench(step)
-#         cobbler_bench.define_reaction()
-#     return workshop
 
 
 def find_reaction_by_name(reaction_name: str, additional_rxn_options: List[Dict[str, str]]) -> Optional[Dict[str, Any]]:
@@ -259,37 +209,35 @@ def find_reaction_by_name(reaction_name: str, additional_rxn_options: List[Dict[
             return reaction
     return None
 
-
-def get_additional_reactants(bench, additional_reaction: Dict[str, Any]) -> Tuple[str, str]:
-    """Edit the reactants."""
-    # Implementation goes here
-
-
-# def get_additional_route_from_workshop(workshop: CobblersWorkshop, additional_rxn_options: List[Dict[str, str]]) -> Optional[Any]:
-#     """
-#     Get an additional route from a workshop object where the reactions have all been defined and checked.
-#     """
-#     additional_route = None
-#     reactants: List[Tuple[str, str]] = []
-#     reaction_names: List[str] = []
-#
-#     for bench in workshop.cobbler_benches:
-#         if bench.reaction_name in additional_rxn_options:
-#             additional_reaction = find_reaction_by_name(bench.reaction_name, additional_rxn_options)
-#             logger.info(f"Additional reaction for '{bench.reaction_name}' found in filters. "
-#                         f"Getting additional routes containing '{additional_reaction['name']}'...")
-#             new_reactants, new_reaction_name = get_additional_reactants(bench, additional_reaction)
-#
-#     return additional_route
+def get_morgan_fingerprint(mol: Chem.Mol) -> rdFingerprintGenerator.MorganFP:
+    """
+    Get the fingerprint of a molecule.
+    """
+    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+    return mfpgen.GetFingerprint(mol)
 
 
-# def get_additional_route(workshop: CobblersWorkshop, additional_rxn_options: List[Dict[str, str]]) -> CobblersWorkshop:
-#     """
-#     Get an alternative route if it contains specified reactions.
-#     """
-#     if do_i_need_alternative_route(workshop.reaction_names, additional_rxn_options):
-#         logger.info(f"Found the need for an alternative route for compound {workshop.product}.")
-#         workshop: CobblersWorkshop = define_reactions(workshop)
-#         additional_route: CobblersWorkshop = get_additional_route_from_workshop(workshop, additional_rxn_options)
-#         return additional_route
-#     return None
+def generate_inchi_ID(smiles: str) -> str | MolError:
+    """
+    This function is used to generate a unique id for the route just using the product.
+    """
+    if Chem.MolFromSmiles(smiles) is None:
+        logger.critical(f"Could not create a molecule from the smiles {smiles}.")
+        return MolError(message=f"Could not create a molecule from the smiles {smiles}.",
+                        smiles=smiles)
+    ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
+    id = rdinchi.InchiToInchiKey(ID[0])
+    return id
+
+def check_mol_sanity(mol: Chem.Mol) -> Chem.Mol | None:
+    """
+    Check if the molecule can be sanitized.
+    """
+    if mol is None:
+        return None
+    try:
+        Chem.SanitizeMol(mol)
+        return mol
+    except ValueError:
+        return None
+
