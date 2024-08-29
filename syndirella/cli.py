@@ -43,7 +43,7 @@ def config_parser():
                                                                                    "template(s).")
     parser.add_argument('--hits_path', type=str, required=True, help="Absolute path to hits_path for placements (.sdf or .mol).")
     parser.add_argument('--metadata', type=str, required=True, help="Absolute path to metadata for placements.")
-    parser.add_argument('--products', type=str, required=True, help="Absolute path to products for placements.")
+    parser.add_argument('--products', type=str, required=False, help="Absolute path to products for placements.")
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--compound_set', action='store_true', help="Include values in compound_set column in the "
                                                                                       "output.")
