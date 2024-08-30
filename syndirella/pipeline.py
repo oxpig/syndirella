@@ -217,7 +217,10 @@ def run_pipeline(*,
                 error=e,
                 csv_path=csv_path,
                 output_dir=output_dir,
-                smiles=row['smiles']
+                smiles=row['smiles'],
+                template_path=template_path,
+                hits=hits,
+                additional_info=additional_info
             )
 
     # Validate inputs

@@ -38,36 +38,42 @@ def add_route_info(reaction_names: List[str],
     return route
 
 
-def add_outcome_info(slipper: Slipper) -> Dict[str, Any]:
+def add_outcome_info(slipper: Slipper | None = None,
+                     template_path: str | None = None,
+                     hits_names: List[str] | None = None) -> Dict[str, Any]:
     """
     This function adds placement information (None if not attempted).
     """
     num_placed: int | None = None
     num_successful: int | None = None
     to_hippo_path: str | None = None
-    template: str | None = None
+    template: str | None = template_path
     total_num_unique_products: int | None = None
     total_num_products_enumstereo: int | None = None
-    hits_names: List[str] = slipper.hits_names
-    try:
-        template = slipper.template
-        num_placed = slipper.num_placed
-        num_successful = slipper.num_successful
-        to_hippo_path = slipper.to_hippo_path
-        total_num_unique_products = slipper.num_unique_products
-        total_num_products_enumstereo = slipper.num_products_enumstereo
-    except AttributeError:
-        pass
-    outcome: Dict = {'total_num_unique_products': total_num_unique_products,
-                     'total_num_products_enumstereo': total_num_products_enumstereo,
-                     'num_placed': num_placed,
-                     'num_successful': num_successful,
-                     'to_hippo': to_hippo_path,
-                     'template': template}
+    hits_names: List[str] = hits_names if hits_names is not None else []
+
+    if slipper:
+        template = getattr(slipper, 'template', template_path)
+        num_placed = getattr(slipper, 'num_placed', None)
+        num_successful = getattr(slipper, 'num_successful', None)
+        to_hippo_path = getattr(slipper, 'to_hippo_path', None)
+        total_num_unique_products = getattr(slipper, 'num_unique_products', None)
+        total_num_products_enumstereo = getattr(slipper, 'num_products_enumstereo', None)
+        hits_names = getattr(slipper, 'hits_names', hits_names)
+
+    outcome: Dict[str, Any] = {
+        'total_num_unique_products': total_num_unique_products,
+        'total_num_products_enumstereo': total_num_products_enumstereo,
+        'num_placed': num_placed,
+        'num_successful': num_successful,
+        'to_hippo': to_hippo_path,
+        'template': template
+    }
+
     for i, hit in enumerate(hits_names):
         outcome[f"hit{i + 1}"] = hit
-    return outcome
 
+    return outcome
 
 def get_output_df(csv_path: str,
                   output_dir: str) -> Tuple[pd.DataFrame, str | None]:
@@ -251,7 +257,8 @@ def save_output_df(output_df: pd.DataFrame, output_dir: str, csv_path: str):
 
 
 def structure_route_outputs(error_message: str | None, error_type: str | None, output_df: pd.DataFrame,
-                            workshop: CobblersWorkshop | None, slipper: Slipper | None, scaffold: str) -> pd.DataFrame:
+                            workshop: CobblersWorkshop | None, slipper: Slipper | None, scaffold: str,
+                            template_path: str | None, hits: List[str] | None, additional_info: Dict | None) -> pd.DataFrame:
     """
     This function structures the route outputs as a single row in the output dataframe.
     """
@@ -265,12 +272,19 @@ def structure_route_outputs(error_message: str | None, error_type: str | None, o
                                                     reactants=workshop.reactants,
                                                     route_uuid=workshop.route_uuid)
         row.update(reaction_info)
+
     if check_placement_to_add(slipper):  # True if slipper exists and at least contains hits_names
-        placement_info: Dict = add_outcome_info(slipper)
-        row.update(placement_info)
+        placement_info: Dict = add_outcome_info(slipper=slipper)
+    else:
+        placement_info: Dict = add_outcome_info(template_path=template_path, hits_names=hits)
+    row.update(placement_info)
+
     if check_additional_info_to_add(slipper):  # True if slipper contains additional info
         additional_info: Dict = slipper.additional_info
-        row.update(additional_info)
+    elif additional_info is not None:  # True if additional info is passed in
+        additional_info: Dict = additional_info
+    row.update(additional_info)
+
     output_df: pd.DataFrame = add_new_route_to_output_df(output_df=output_df, row=row)
     return output_df
 
@@ -282,7 +296,10 @@ def structure_pipeline_outputs(error: Exception | None,
                                output_dir: str,
                                workshop: CobblersWorkshop | None = None,
                                slipper: Slipper | None = None,
-                               smiles: str | None = None):
+                               smiles: str | None = None,
+                               template_path: str | None = None,
+                               hits: List[str] | None = None,
+                               additional_info: Dict | None = None):
     """
     Structure outputs of pipeline.
     """
@@ -302,7 +319,10 @@ def structure_pipeline_outputs(error: Exception | None,
                                                           output_df=output_df,
                                                           workshop=workshop,
                                                           slipper=slipper,
-                                                          scaffold=scaffold)
+                                                          scaffold=scaffold,
+                                                          template_path=template_path,
+                                                          hits=hits,
+                                                          additional_info=additional_info)
         if past_csv_path is not None:
             os.remove(past_csv_path) # delete previous output csv
             logger.info(f"Deleted previous output csv at {past_csv_path}")
@@ -311,63 +331,3 @@ def structure_pipeline_outputs(error: Exception | None,
         logger.error(f"Could not structure pipeline outputs.")
         logger.error(traceback.format_exc())
         # don't raise error, just log it
-
-
-"""
-TODO:
-    Handle different structures of product (mol, smiles, inchi). 
-    Handle message to put in error output. 
-    Handle different levels of route matching:
-        1. route_uuid
-        2. inchi
-        3. mol
-        4. smiles
-    Handle any different error. 
-        Can still get message from error if not custom. 
-
-Each row is a route. 
-
-Cases to handle:
-1. First finished route --> make new output csv
-2. Not first finished route --> read in previous output csv, save new one
-
-Columns (required)
-    smiles: 
-        Error.mol
-        Error.smiles
-        smiles (if not None)
-        --> cannot get smiles from inchi
-    inchi_key: 
-        
-    route_uuid: 
-    error_type: None if hippo df is saved
-    error_message: None if hippo df is saved
-    num_placed: None if not attempted
-    num_successful: None if not attempted / failed halfway
-        Defined as ddG <0 , RMSD <2, passed PB
-    reaction_name_step1: 
-    reactant_step1:
-    reactant2_step1:
-    hit1:
-    template: path
-    [additional_info]:
-
-# last step ends at reactant
-
-Columns (not required):
-    reaction_name_stepX:
-    reactant_stepX:
-    product_stepX:
-    hitX: 
-
-Places when this will be created:
-    Fully successful, hippo df saved
-    Failed in placement
-    Failed by finding no stereoisomers
-    Failed by finding no analogues --> no products
-    Failed by SMARTS
-    Failed by reaction
-    Failed by creating route
-    Failed by finding no routes
-    Failed by couldn't read in smiles to mol
-"""
