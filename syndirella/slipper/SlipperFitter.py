@@ -36,12 +36,12 @@ class SlipperFitter:
         self.route_uuid: str | None = route_uuid
 
         self.num_atom_diff_limit: int = 10
-        self.final_products_csv_path: str = None
-        self.final_products_pkl_path: str = None
-        self.batch_num: int = None
-        self.final_products: pd.DataFrame = None
-        self.placements: pd.DataFrame = None
-        self.merged_placements: pd.DataFrame = None
+        self.final_products_csv_path: str | None = None
+        self.final_products_pkl_path: str | None = None
+        self.batch_num: int | None = None
+        self.final_products: pd.DataFrame | None = None
+        self.placements: pd.DataFrame | None = None
+        self.merged_placements: pd.DataFrame | None = None
         self.output_path = None
         # Placements variables set
         self.n_cores: int = 8
@@ -51,7 +51,6 @@ class SlipperFitter:
         # variables for output
         self.num_placed: int | None = None
         self.num_successful: int | None = None
-        self.total_products_before_cutting: int | None = None
 
 
     def fit_products(self):
@@ -157,15 +156,14 @@ class SlipperFitter:
         Creates the input dataframe for the placements. Will remove duplicates of names and other metadata from
         synthesizer step.
         """
-        input_df: pd.DataFrame = self.final_products.copy(deep=True)
+        final_products: pd.DataFrame = self.final_products.copy(deep=True)
         # drop duplicates of names
-        input_df = input_df.drop_duplicates(subset='name')
-        self.logger.info(f"Total number of unique products found before cutting: {len(input_df)}")
-        self.total_products_before_cutting = len(input_df)
+        final_products = final_products.drop_duplicates(subset='name')
+        self.logger.info(f"Total number of products with enumerated stereoisomers found before cutting: {len(final_products)}")
         # cut rows with number of atoms difference greater than num_atom_diff_limit
         self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
-        input_df = input_df[input_df['num_atom_diff'] <= self.num_atom_diff_limit]
-        self._print_diff(self.final_products, input_df, verb='Kept')
+        input_df = final_products[final_products['num_atom_diff'] <= self.num_atom_diff_limit]
+        self._print_diff(final_products, input_df, verb='Kept')
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
         # place number in batch
@@ -173,7 +171,7 @@ class SlipperFitter:
             self.logger.info(f'Even after cutting products, the number of products is over {self.batch_num}.'
                   f' Only placing the top {self.batch_num} products.')
             input_df = input_df.iloc[:self.batch_num]
-        self._print_diff(self.final_products, input_df, verb='Placing')
+        self._print_diff(final_products, input_df, verb='Placing')
         return input_df
 
     def _print_diff(self,
@@ -188,7 +186,8 @@ class SlipperFitter:
             self.logger.error("Problem with finding unique analogues. There are more than were in the original list of "
                               "analogues.")
         percent = round(((len(input_df) / len(orig_df)) * 100), 2)
-        self.logger.info(f'{verb} {len(input_df)} ({percent}%) unique analogues out of {len(orig_df)} analogues.')
+        self.logger.info(f'{verb} {len(input_df)} ({percent}%) enumerated analogue stereoisomers out of {len(orig_df)} '
+                         f'enumerated analogue stereoisomers.')
 
     def add_hits(self, input_df: pd.DataFrame) -> pd.DataFrame:
         """

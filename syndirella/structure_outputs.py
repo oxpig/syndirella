@@ -45,17 +45,20 @@ def add_outcome_info(slipper: Slipper) -> Dict[str, Any]:
     num_successful: int | None = None
     to_hippo_path: str | None = None
     template: str | None = None
-    total_products_before_cutting: int | None = None
+    total_num_unique_products: int | None = None
+    total_num_products_enumstereo: int | None = None
     hits_names: List[str] = slipper.hits_names
     try:
         template = slipper.template
         num_placed = slipper.num_placed
         num_successful = slipper.num_successful
         to_hippo_path = slipper.to_hippo_path
-        total_products_before_cutting = slipper.total_products_before_cutting
+        total_num_unique_products = slipper.num_unique_products
+        total_num_products_enumstereo = slipper.num_products_enumstereo
     except AttributeError:
         pass
-    outcome: Dict = {'num_total_products_before_cutting': total_products_before_cutting,
+    outcome: Dict = {'total_num_unique_products': total_num_unique_products,
+                     'total_num_products_enumstereo': total_num_products_enumstereo,
                      'num_placed': num_placed,
                      'num_successful': num_successful,
                      'to_hippo': to_hippo_path,
@@ -66,12 +69,13 @@ def add_outcome_info(slipper: Slipper) -> Dict[str, Any]:
 
 
 def get_output_df(csv_path: str,
-                  output_dir: str) -> pd.DataFrame:
+                  output_dir: str) -> Tuple[pd.DataFrame, str | None]:
     """
     Given the csv_path and output_dir, checks and reads in the most recent previous output df.
 
     Format of output csv name: [name_of_input_csv]_output_YYYYMMDD_HHMM.csv
     """
+    past_csv_path: str | None = None
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Could not find csv file at {csv_path}")
     csv_name: str = os.path.basename(csv_path).split('.')[0]
@@ -82,7 +86,7 @@ def get_output_df(csv_path: str,
         df = pd.DataFrame(columns=['smiles', 'inchi_key', 'route_uuid', 'error_type', 'error_message',
                                    'num_placed', 'num_successful', '1_reaction', '1_r1_smiles', 'hit1', 'template',
                                    'to_hippo'])
-        return df
+        return df, past_csv_path
     else:
         # Sort files by their date and time in the filename
         output_csvs.sort(
@@ -91,11 +95,12 @@ def get_output_df(csv_path: str,
     # make sure pandas can read in the csv
     try:
         df = pd.read_csv(output_csvs[0])
+        past_csv_path: str = output_csvs[0]
     except pd.errors.EmptyDataError:
         df = pd.DataFrame(columns=['smiles', 'inchi_key', 'route_uuid', 'error_type', 'error_message',
                                    'num_placed', 'num_successful', '1_reaction', '1_r1_smiles', 'hit1', 'template',
                                    'to_hippo'])
-    return df
+    return df, past_csv_path
 
 
 def get_scaffold_smiles(error: Exception | None, smiles: str | None, workshop: CobblersWorkshop | None) -> str:
@@ -281,7 +286,7 @@ def structure_pipeline_outputs(error: Exception | None,
     Structure outputs of pipeline.
     """
     try:
-        output_df: pd.DataFrame = get_output_df(csv_path=csv_path, output_dir=output_dir)
+        output_df, past_csv_path = get_output_df(csv_path=csv_path, output_dir=output_dir)
         error_type, error_message, custom_error = get_error_info(error=error)
         if custom_error:
             scaffold: str = get_scaffold_smiles(error=error,
@@ -298,6 +303,9 @@ def structure_pipeline_outputs(error: Exception | None,
                                                           slipper=slipper,
                                                           scaffold=scaffold)
         save_output_df(output_df=output_df, output_dir=output_dir, csv_path=csv_path)
+        if past_csv_path is not None:
+            os.remove(past_csv_path) # delete previous output csv
+            logger.info(f"Deleted previous output csv at {past_csv_path}")
     except (TypeError, ValueError, FileNotFoundError):
         logger.error(f"Could not structure pipeline outputs.")
         logger.error(traceback.format_exc())

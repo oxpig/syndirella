@@ -166,6 +166,10 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
                             f"update the hit name in the input csv to be more specific.")
             raise ValueError(f"Multiple matches found for '{name}': {matches}")
         if len(matches) == 0:
+            # could be an exact name for LongCode
+            if name in sdf_names:
+                hit_longcodes.append(name)
+                continue
             logger.critical(f"No matches found in {metadata_path} using 'Code' for '{name}'. Please update the hit "
                             f"name in the input csv.")
             raise ValueError(f"No matches found for '{name}'")
@@ -175,8 +179,9 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
     if not all([longcode in sdf_names for longcode in hit_longcodes]):
         logger.critical(f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
                         f" from Fragalysis.")
-        raise ValueError(f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
-                         f" from Fragalysis.")
+        raise ValueError(
+            f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
+            f" from Fragalysis.")
 
 
 def check_apo_template(template_path: str) -> None:
@@ -210,7 +215,7 @@ def format_additional_info(row: pd.Series,
     return additional_info
 
 
-def get_exact_hit_names(row: pd.Series, metadata_path: str) -> List[str]:
+def get_exact_hit_names(row: pd.Series, metadata_path: str, hits_path: str) -> List[str]:
     """
     Get the exact hit name to use for placement.
     """
@@ -218,17 +223,27 @@ def get_exact_hit_names(row: pd.Series, metadata_path: str) -> List[str]:
     hit_cols = [col for col in row.index if 'hit' in col]
     hit_names = row[hit_cols].values.flatten()
     hit_names = [name.strip() for name in hit_names if str(name) != 'nan']
+    sdf = Chem.SDMolSupplier(hits_path)
+    sdf_names = [mol.GetProp('_Name') for mol in sdf]
     hit_longcodes = []
     for name in hit_names:
         matches = [code_dict[key] for key in code_dict if name.lower() in key.lower()]
         if len(matches) > 1:
             logger.critical(f"Multiple matches found in {metadata_path} using 'Code' for '{name}': {matches}. Please "
                             f"update the hit name in the input csv to be more specific.")
-            raise ValueError(f"Multiple matches found for '{name}': {matches}")
+            raise ValueError(f"Multiple matches found in {metadata_path} using 'Code' for '{name}': {matches}. Please "
+                             f"update the hit name in the input csv to be more specific.")
         if len(matches) == 0:
-            logger.critical(f"No matches found in {metadata_path} using 'Code' for '{name}'. Please update the hit "
-                            f"name in the input csv.")
-            raise ValueError(f"No matches found for '{name}'")
+            # could be an exact name for LongCode
+            if name in sdf_names:
+                hit_longcodes.append(name)
+                continue
+            logger.critical(
+                f"No matches found in {metadata_path} using 'Code' or in the hits SDF provided for '{name}'."
+                f" Please update the hit name in the input csv.")
+            raise ValueError(
+                f"No matches found in {metadata_path} using 'Code' or in the hits SDF provided for '{name}'."
+                f" Please update the hit name in the input csv.")
         else:
             hit_longcodes.append(matches[0])
     return hit_longcodes
@@ -265,6 +280,7 @@ def check_additional_columns(csv_path: str, additional_columns: List[str]) -> No
             logger.critical(f"The csv must contain the column {col} to add your desired metadata.")
             raise ValueError(f"The csv must contain the column {col} to add your desired metadata.")
 
+
 def format_manual_route(row: pd.Series) -> Tuple[List[Tuple[Any, Any]], List[Any], int]:
     """
     Format route to output reactants, reaction names, and products.
@@ -289,7 +305,7 @@ def format_manual_route(row: pd.Series) -> Tuple[List[Tuple[Any, Any]], List[Any
             reactants.append(reactants_step)
         else:
             # one reactant is product of previous step
-            reactants_step = (row[f'product_step{step-1}'], row[f'reactant_step{step}'])
+            reactants_step = (row[f'product_step{step - 1}'], row[f'reactant_step{step}'])
             reactants.append(reactants_step)
         reaction_names.append(row[f'reaction_name_step{step}'])
     if len(reactants) != last_step:
@@ -299,6 +315,7 @@ def format_manual_route(row: pd.Series) -> Tuple[List[Tuple[Any, Any]], List[Any
         logger.critical(f"The number of reaction names found does not match the number of steps in route for {row}.")
         raise ValueError(f"The number of reaction names found does not match the number of steps in route for {row}.")
     return reactants, reaction_names, last_step
+
 
 ###############################################
 

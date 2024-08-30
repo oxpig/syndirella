@@ -47,6 +47,10 @@ class SlipperSynthesizer:
         self.num_steps: int = library.num_steps
         self.logger = logging.getLogger(f"{__name__}")
 
+        # variables for output
+        self.num_unique_products: int = 0
+        self.num_products_enumstereo: int = 0
+
     def get_products(self) -> pd.DataFrame:
         """
         This function is used to find the products of the analogues of reactants. It is the main function that is
@@ -129,6 +133,7 @@ class SlipperSynthesizer:
         self.logger.info(f"Ordering analogues of {reactant_prefix} before finding products...")
         # Add num_atom_diff to scaffold reactant, which is the first reactant
         base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
+        # TODO: Fix this setting with a copy warning
         df.loc[:, f'{reactant_prefix}_num_atom_diff'] = (
             df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
         # get columns to sort by
@@ -560,6 +565,7 @@ class SlipperSynthesizer:
         if self.library.num_steps != self.library.current_step:
             return products
         self.logger.info("Enumerating stereoisomers since this is the final step...")
+        self.num_unique_products = len(set(list(products['name']))) # unique products before stereoisomer enumeration
         new_rows = []
         for index, row in products.iterrows():
             try:
@@ -579,6 +585,7 @@ class SlipperSynthesizer:
         # remove NaNs
         new_df = new_df.dropna(subset=['smiles'])
         new_df.reset_index(drop=True, inplace=True)
+        self.num_products_enumstereo = len(set(list(new_df['name']))) # number of products after stereoisomer enumeration
         return new_df
 
     def find_stereoisomers(self, smiles: str) -> list():

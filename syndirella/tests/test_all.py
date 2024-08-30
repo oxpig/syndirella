@@ -33,6 +33,9 @@ class TestErrorHandlingPipeline(unittest.TestCase):
         self.template_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates/Ax1346a_apo-desolv.pdb'
         self.additional_info = {'compound_set': 'test'}
         self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_errors/test.csv'
+        self.manual_csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/pipeline_errors/test_manual_diff_steps.csv'
+        self.template_dir = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates/'
+        self.metadata_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/metadata.csv'
 
     def test_elaborate_compound_with_manual_routes(self):
         logging.basicConfig(
@@ -51,6 +54,21 @@ class TestErrorHandlingPipeline(unittest.TestCase):
                                               template_path=self.template_path,
                                               additional_info=self.additional_info,
                                               csv_path=self.csv_path)
+
+    def test_from_pipeline(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        run_pipeline(csv_path=self.manual_csv_path,
+                     output_dir=self.output_dir,
+                     template_dir=self.template_dir,
+                     hits_path=self.hits_path,
+                     metadata_path=self.metadata_path,
+                     batch_num=3,
+                     additional_columns=['compound_set'],
+                     manual_routes=True)
 
 
 class TestAdditionalReaction(unittest.TestCase):

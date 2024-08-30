@@ -170,8 +170,7 @@ def run_pipeline(*,
                  metadata_path: str,
                  batch_num: int,
                  additional_columns: List[str],
-                 manual_routes: bool,
-                 new_input_from_errors: bool = False):
+                 manual_routes: bool):
     """
     Run the whole syndirella pipeline! 👑
     """
@@ -182,7 +181,7 @@ def run_pipeline(*,
             template=row['template'],
             metadata_path=metadata_path
         )
-        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path)
+        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path, hits_path=hits_path)
 
         try:
             if manual_routes:

@@ -183,12 +183,26 @@ class CobblersWorkshop():
         additional_routes: List[CobblersWorkshop] = self.configure_additional_routes(reaction_names_to_replace)
         return additional_routes
 
+    def log_route(self):
+        """
+        This function is used to log the route.
+        """
+        route_message = f"""
+        
+        Syndirella 👑 will elaborate the following route for {self.product} | {self.id}:
+        Route UUID: {self.route_uuid}
+        Reaction Names: {self.reaction_names}
+        Number of Steps: {self.num_steps}
+        """
+        self.logger.info(route_message)
+
 #################################################
 
     def get_final_library(self):
         """
         This function is used to get the final library of products. It dynamically handles any number of steps.
         """
+        self.log_route()
         for step in range(self.num_steps):
             self.logger.info(f"Step {step + 1} in this route using {self.reaction_names[step]}")
             if len(self.cobbler_benches) == 0 or step >= len(self.cobbler_benches):
