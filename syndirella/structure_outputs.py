@@ -230,9 +230,12 @@ def add_new_route_to_output_df(output_df: pd.DataFrame, row: Dict) -> pd.DataFra
     row_df = row_df.reindex(columns=combined_columns)
     # Check for duplicate entries
     for i, r in output_df.iterrows():
-        if r['smiles'] == row['smiles'] and r['route_uuid'] == row['route_uuid']:
-            logger.info(f"Route already exists in output csv, replacing.")
-            output_df.drop(i, inplace=True)
+        try:
+            if r['inchi_key'] == row['inchi_key'] and r['route_uuid'] == row['route_uuid']:
+                logger.info(f"Route already exists in output csv, replacing.")
+                output_df.drop(i, inplace=True)
+        except KeyError:
+            pass
     # Append the new row to output_df
     output_df = pd.concat([output_df, row_df], ignore_index=True)
 
