@@ -5,6 +5,7 @@ syndirella.structure_outputs.py
 This module contains the functions used to structure the pipeline outputs.
 """
 import logging
+from argparse import ArgumentError
 from typing import *
 import glob2
 import pandas as pd
@@ -108,15 +109,15 @@ def get_scaffold_smiles(error: Exception | None, smiles: str | None, workshop: C
     This function gets the scaffold smiles from the error, smiles, or workshop.
     """
     if error is not None:  # highest level of detail
-        try:
-            scaffold = Chem.MolToSmiles(error.mol)
-            return scaffold
-        except AttributeError:
+        if error.mol is not None:
             try:
-                scaffold = error.smiles
+                scaffold = Chem.MolToSmiles(error.mol)
                 return scaffold
-            except AttributeError:
+            except ArgumentError:
                 pass
+        elif error.smiles is not None:
+            scaffold = error.smiles
+            return scaffold
     if workshop is not None:  # next level of detail
         try:
             scaffold = workshop.product

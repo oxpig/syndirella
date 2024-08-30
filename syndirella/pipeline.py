@@ -73,7 +73,7 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
             slipper.clean_up_placements()
         except Exception as e:
             tb = traceback.format_exc()
-            logger.error(f"Error elaborating compound {workshop.product}. {tb}")
+            logger.critical(f"Error elaborating compound {workshop.product}. {tb}")
             structure_outputs.structure_pipeline_outputs(error=e,
                                                          csv_path=csv_path,
                                                          output_dir=output_dir,
@@ -212,7 +212,7 @@ def run_pipeline(*,
                 )
         except Exception as e:
             tb = traceback.format_exc()
-            logger.error(f"Error elaborating compound {row['smiles']}. {tb}")
+            logger.critical(f"Error elaborating compound {row['smiles']}. {tb}")
             structure_outputs.structure_pipeline_outputs(
                 error=e,
                 csv_path=csv_path,
