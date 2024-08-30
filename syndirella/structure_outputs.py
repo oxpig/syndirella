@@ -303,10 +303,10 @@ def structure_pipeline_outputs(error: Exception | None,
                                                           workshop=workshop,
                                                           slipper=slipper,
                                                           scaffold=scaffold)
-        save_output_df(output_df=output_df, output_dir=output_dir, csv_path=csv_path)
         if past_csv_path is not None:
             os.remove(past_csv_path) # delete previous output csv
             logger.info(f"Deleted previous output csv at {past_csv_path}")
+        save_output_df(output_df=output_df, output_dir=output_dir, csv_path=csv_path)
     except (TypeError, ValueError, FileNotFoundError):
         logger.error(f"Could not structure pipeline outputs.")
         logger.error(traceback.format_exc())
