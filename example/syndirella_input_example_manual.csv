@@ -1,0 +1,4 @@
+﻿smiles,reaction_name_step1,reactant_step1,reactant2_step1,product_step1,reaction_name_step2,reactant_step2,product_step2,reaction_name_step3,reactant_step3,hit1,hit2,hit3,template,compound_set
+CCOC(=O)c1cc(NC(=O)CC#N)n(C)n1,Amide Schotten-Baumann with amine,N#CCC(=O)Cl,CCOC(=O)c1cc(N)n(C)n1,,,,,,,Ax0556a ,Ax0310a,,Ax0310a,syndirella_manual
+CC(=O)N(C)c1ccc(NCc2cccc(C(C)C)c2)cn1,Amide Schotten-Baumann with amine,CNc1ccc(I)cn1,CC(=O)Cl,CC(=O)N(C)c1ccc(I)cn1,N-nucleophilic aromatic substitution,CC(C)c1cccc(CN)c1,,,,Ax0310a ,Ax0365a,,Ax0310a,syndirella_manual
+CC(=O)Nc1c(CC(=O)NC(CNC(=O)CCl)c2ccc3ccccc3c2)c(C)nn1C,Amidation,O=C(O)CB(O)O,NCC(N)c1ccc2ccccc2c1,NCC(NC(=O)CB(O)O)c1ccc2ccccc2c1,Amidation,O=C(O)CCl,O=C(CCl)NCC(NC(=O)CB(O)O)c1ccc2ccccc2c1,Sp3-sp2 Suzuki coupling,CC(=O)Nc1c(Br)c(C)nn1C,x1346,,,x1346,syndirella_manual

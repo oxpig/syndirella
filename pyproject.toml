@@ -17,13 +17,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "rdkit == 2023.09.5",
+    "rdkit >= 2024.03.1",
     "jupyter",
-    "numpy",
+    "numpy<2",
     "glob2",
     "requests",
     "pillow",
-    "fragmenstein",
+    "fragmenstein>=1.0.7",
     "shortuuid",
     "pandas",
     "biopython"

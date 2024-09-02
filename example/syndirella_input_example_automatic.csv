@@ -1,0 +1,4 @@
+﻿smiles,hit1,hit2,hit3,template,compound_set
+CCCC(=O)NC1CCN(C(=O)NC2CC(CC#N)C2)CC1,Ax0556a,Ax0310a,,Ax0310a,syndirella_auto_1
+CC1(NC(=O)Nc2ccccc2CS(N)(=O)=O)CCC1,Ax0884a ,Ax0719a,,310,syndirella_auto_1
+O=C(Cc1cn[nH]c1CC(=O)N1CCCC(C(F)(F)F)C1)NC1CC1,X0926,x1346,x1019,X0926,syndirella_auto_1

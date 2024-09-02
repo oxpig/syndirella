@@ -1,10 +1,10 @@
 python>=3.10
 pandas
-numpy
+numpy<2
 glob2
-rdkit==2023.09.5
+rdkit>=2024.03.1
 requests
 pillow
-fragmenstein
+fragmenstein>=1.0.8
 shortuuid
 jupyter

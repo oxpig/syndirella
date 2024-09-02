@@ -82,9 +82,11 @@ def main():
     parser = config_parser()
     args = parser.parse_args()
 
-    syndirella_base_path = os.getenv('SYNDIRELLA_BASE_PATH')
-    if not syndirella_base_path:
-        logging.error("Environment variable 'SYNDIRELLA_BASE_PATH' is not set.")
+    syndirella_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+    # check for MANIFOLD API key
+    if not os.environ.get('MANIFOLD_API_KEY'):
+        logging.error("MANIFOLD_API_KEY environment variable not set.")
         sys.exit(1)
 
     # Load the pipeline module

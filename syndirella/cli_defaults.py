@@ -8,7 +8,8 @@ import os
 
 # Get the scaffold path for the syndirella package from an environment variable
 # If the environment variable is not set, a default path is used
-syndirella_base_path = os.environ['SYNDIRELLA_BASE_PATH']
+# syndirella_base_path = os.environ['SYNDIRELLA_BASE_PATH']
+syndirella_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 # Append the specific paths to the scaffold path
 print(syndirella_base_path)
