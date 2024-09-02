@@ -86,7 +86,7 @@ def main():
         sys.exit(1)
 
     # Load the pipeline module
-    pipeline = load_pipeline_module(syndirella_base_path, 'syndirella/pipeline.py')
+    pipeline = load_pipeline_module(syndirella_base_path, 'pipeline.py')
 
     # Convert argparse Namespace to dictionary
     settings = vars(args)
