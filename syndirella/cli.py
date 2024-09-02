@@ -90,10 +90,6 @@ def main():
 
     # Convert argparse Namespace to dictionary
     settings = vars(args)
-    if settings['compound_set']:
-        settings['additional_columns'] = ['compound_set']
-    else:
-        settings['additional_columns'] = []
 
     # Run the pipeline
     try:
