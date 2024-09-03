@@ -56,7 +56,7 @@ export OUTPUT="/opt/xchem-fragalysis-2/kfieseler/syndirella_profiling/";
 export TEMPLATES="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/templates";
 export HITS="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf";
 export METADATA="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/metadata.csv";
-export BATCH_NUM=10;
+export BATCH_NUM=100;
 
 echo "Running base1_new_pipeline.csv";
 
