@@ -56,6 +56,8 @@ export INPUT="/opt/xchem-fragalysis-2/kfieseler/syndirella/syndirella/tests/prof
 export OUTPUT="/opt/xchem-fragalysis-2/kfieseler/syndirella_profiling/";
 export TEMPLATES="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/templates";
 export HITS="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf";
+export METADATA="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/metadata.csv";
+export BATCH_NUM=10;
 
 echo "Running base1_new_pipeline.csv";
 
@@ -64,6 +66,8 @@ nice -19 python -m syndirella \
 --output $OUTPUT \
 --templates $TEMPLATES \
 --hits $HITS \
+--metadata $METADATA \
+--batch_num $BATCH_NUM \
 --profile;
 
 echo 'COMPLETE'
