@@ -60,7 +60,7 @@ class SlipperSynthesizer:
         if self.check_product_pkl_exists():
             self.load_products()
             return self.products
-        # Filter analogues
+        # Filter analogues and cut if too many
         self.filter_analogues()
         if len(self.analogues_dataframes_to_react) == 1:
             self.products = self.get_products_from_single_reactant()
@@ -464,7 +464,7 @@ class SlipperSynthesizer:
 
     def find_similarity_groups(self, products: pd.DataFrame) -> (pd.DataFrame, int):
         """
-        This is an intensive function to find all the similarity groups of the products. Could probably be optimized.
+        This is an intensive function to find all the similarity groups of the products. Could definitely be optimized.
         """
         if 'group_id' not in products.columns:
             products['group_id'] = -1  # Initialize all to -1 to indicate no group yet

@@ -87,7 +87,7 @@ class Slipper:
                                        output_dir=self.output_dir,
                                        route_uuid=self.route_uuid,
                                        id=self.library.id)
-        slipper_fitter.final_products = self.products
+        slipper_fitter.final_products = self.products # products with enumerated stereoisomers from final library
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path
         slipper_fitter.final_products_csv_path = self.final_products_csv_path

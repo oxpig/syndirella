@@ -8,7 +8,7 @@
 #SBATCH --partition=main
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=<memory>
+#SBATCH --mem=10G
 ##SBATCH --time=01:00:00
 
 # extras
@@ -47,23 +47,22 @@ echo -e "\nconda info: "
 conda activate syndirella
 conda info
 # -------------------------------------------------------
-
-cd $HOME2/syndirella/syndirella/tests/profiling
+cd $HOME2/syndirella
 
 pwd;
-export SYNDIRELLA_BASE_PATH='/opt/xchem-fragalysis-2/kfieseler/syndirella'
-export INPUT='base1.csv'
-export OUTPUT='profiling_output_base1.txt'
-export BASE_DIR='/opt/xchem-fragalysis-2/kfieseler/syndirella/syndirella/tests/profiling'
 
-echo "Running profile_pipeline.py";
-echo "INPUT: $INPUT"
-echo "OUTPUT: $OUTPUT"
-echo "BASE_DIR: $BASE_DIR"
+export INPUT="/opt/xchem-fragalysis-2/kfieseler/syndirella/syndirella/tests/profiling/base1_new_pipeline.csv";
+export OUTPUT="/opt/xchem-fragalysis-2/kfieseler/syndirella_profiling/";
+export TEMPLATES="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/templates";
+export HITS="/opt/xchem-fragalysis-2/kfieseler/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf";
 
-nice -19 python profile_pipeline.py \
+echo "Running base1_new_pipeline.csv";
+
+nice -19 python -m syndirella \
 --input $INPUT \
 --output $OUTPUT \
---base_dir $BASE_DIR;
+--templates $TEMPLATES \
+--hits $HITS \
+--profile;
 
 echo 'COMPLETE'

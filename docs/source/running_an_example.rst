@@ -47,5 +47,16 @@ Optional columns:
 
 5. Run!
 
+6. Analyze output
+
+total_num_products_enumstereo:
+    Total number of products enumerated with stereochemistry in the final step. This is counting the number of unique
+    products with stereochemistry, so if a product with stereochemistry is generated multiple times via different routes
+    it will only be counted once.
+
+total_num_unique_products:
+    Total number of unique products without stereochemistry in the final step. If a product is generated multiple times
+    by different routes it will only be counted once.
+
 
 

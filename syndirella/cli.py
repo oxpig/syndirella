@@ -9,6 +9,7 @@ import importlib.util
 import logging
 from typing import Dict, Any
 import traceback
+import cProfile
 
 def setup_logging(level=logging.INFO):
     """
@@ -48,6 +49,7 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--products', type=str, required=False, help="Absolute path to products for placements.")
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--manual', action='store_true', help="Use manual routes for processing.")
+    parser.add_argument('--profile', action='store_true', help="Run the pipeline with profiling.")
 
     return parser
 
@@ -91,13 +93,22 @@ def main():
     # Convert argparse Namespace to dictionary
     settings = vars(args)
 
-    # Run the pipeline
-    try:
+    if settings['profile']:
+        profiler = cProfile.Profile()
+        profiler.enable()
         run_pipeline(settings, pipeline)
-    except Exception as e:
-        tb = traceback.format_exc()
-        logging.error(f"An error occurred during pipeline execution: {tb}")
-        sys.exit(1)
+        profiler.disable()
+        profiler.print_stats(sort='time')
+        print('\n\n')
+        profiler.print_stats(sort='cumtime')
+    else:
+        # Run the pipeline
+        try:
+            run_pipeline(settings, pipeline)
+        except Exception as e:
+            tb = traceback.format_exc()
+            logging.error(f"An error occurred during pipeline execution: {tb}")
+            sys.exit(1)
 
 
 if __name__ == '__main__':

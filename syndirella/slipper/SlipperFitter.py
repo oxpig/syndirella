@@ -157,9 +157,8 @@ class SlipperFitter:
         synthesizer step.
         """
         final_products: pd.DataFrame = self.final_products.copy(deep=True)
-        # drop duplicates of names
-        final_products = final_products.drop_duplicates(subset='name')
-        self.logger.info(f"Total number of products with enumerated stereoisomers found before cutting: {len(final_products)}")
+        final_products = final_products.drop_duplicates(subset='name') # drop duplicates of names first
+        self.logger.info(f"Total number of products with enumerated stereoisomers (unique name) found before cutting: {len(final_products)}")
         # cut rows with number of atoms difference greater than num_atom_diff_limit
         self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
         input_df = final_products[final_products['num_atom_diff'] <= self.num_atom_diff_limit]
