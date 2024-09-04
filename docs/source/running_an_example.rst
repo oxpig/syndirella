@@ -1,13 +1,20 @@
+
+==================
 Running an example
-===============
+==================
 
-This guide will walk you through an example to run Syndirella's pipeline.
+This guide will walk you through an example to run Syndirella's pipeline. All resources to run this example are found here.
 
-.. contents::
-   :local:
-   :depth: 2
+Preparing the inputs
+====================
 
-1. Make Input CSV
+I carry out these same steps in the example jupyter notebook.
+
+Fragments and templates
+
+Follow-up designs
+
+Make input csv
 
 First we need to prepare our inputs into a .csv file. I usually do this using a combination of Postera's Manifold
 (to draw structures in, label designs with their fragment inspiration, and download CSV) and excel to further edit.
@@ -39,15 +46,16 @@ Optional columns:
 
 :code:`compound_set`:
 
-2. Prepare templates
+Structure directories
 
-3. Structure directories
+Run
+Using job script
+Locally
 
-4. Prepare job script
+Analysing the outputs
+=====================
 
-5. Run!
-
-6. Analyze output
+Structure of _output_YYYYMMDD_HHMM.csv
 
 total_num_products_enumstereo:
     Total number of products enumerated with stereochemistry in the final step. This is counting the number of unique
@@ -58,5 +66,5 @@ total_num_unique_products:
     Total number of unique products without stereochemistry in the final step. If a product is generated multiple times
     by different routes it will only be counted once.
 
-
+Understanding structure of output directory
 

@@ -6,3 +6,4 @@ Syndirella is a tool for generating and scoring synthetically practical elaborat
 https://syndirella.readthedocs.io/
 
 [![Documentation Status](https://readthedocs.org/projects/syndirella/badge/?version=latest)](https://syndirella.readthedocs.io/en/latest/?badge=latest)
+![Code Climate Maintainability](https://img.shields.io/codeclimate/maintainability/kate-fie/syndirella)

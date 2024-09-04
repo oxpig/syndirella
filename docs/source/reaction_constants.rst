@@ -1,5 +1,7 @@
-Constants
-===============
+
+==================
+Reaction Constants
+==================
 
 Syndirella uses SMARTS to define reactions and alternative reaction options. You can edit these constants to suit your needs.
 
