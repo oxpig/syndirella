@@ -59,7 +59,7 @@ You can provide alternatives for reactions based on preference. Add them in
 If there are reactants for certain reactions that you prefer to use, you can add them in
 `REACTANT_FILTER_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/13f73d8beda750c023739729d2681f5939d29e29/syndirella/constants/REACTANT_FILTER_CONSTANTS.json>`_.
 
-Please find more details and specification on editing these files in Reaction Constants <reaction_constants>.
+Please find more details and specification on editing these files in Reaction Constants.
 
 Basic Usage
 ===========
@@ -73,7 +73,7 @@ Download the fragment hits from Fragalysis. In the download folder the important
 
 ::
 
-    metadata.csv # short code and long code matching
+    metadata.csv # contains short and long codes
     target_name_combined.sdf # fragment poses with long code names
     /aligned_files/fragment_name/fragment_name_apo-desolv.pdb # apo pdb used for placement
 
@@ -86,7 +86,7 @@ Syndirella can be run either in *automatic* or *manual* mode.
     Scaffolds can be elaborated by routes automatically proposed by Manifold.
     An example template is at ``syndirella/syndirella_input_template.csv``.
 
-    The input csv required headers:
+Required headers:
 
     ``smiles``:
         smiles string of scaffold.
@@ -97,7 +97,7 @@ Syndirella can be run either in *automatic* or *manual* mode.
     ``compound_set``:
         string or int identifier.
 
-    Not required headers:
+Not required headers:
 
     ``hitX``:
         string of short code of additional fragment inspiring hit.
@@ -112,7 +112,7 @@ Syndirella can be run either in *automatic* or *manual* mode.
     You can set the exact route to elaborate the scaffold with the reaction names, exact reactants, and number of steps in the route.
     An example template is at ``syndirella/syndirella_input_template_manual.csv``.
 
-    The input csv required headers:
+Required headers:
 
     ``smiles``:
         smiles string of scaffold.
@@ -127,7 +127,7 @@ Syndirella can be run either in *automatic* or *manual* mode.
     ``reactant_step1``:
         smiles string of reactant.
 
-    Additional columns:
+Not required headers:
 
     ``reactant2_step1``:
         smiles string of second reactant in reaction step 1.
@@ -159,7 +159,7 @@ Run pipeline in *manual* mode:
 Command Line Interface
 ======================
 
-.. code-block:: bash
+.. code-block::
 
     usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA
                   [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual]
