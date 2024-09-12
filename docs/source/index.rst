@@ -21,4 +21,5 @@ Syndirella (Synthetically Directed Elaborations) is a tool for generating and sc
    User guide <user_guide>
    Running an example <running_an_example>
    Reaction constants <reaction_constants>
+   Definitions <definitions>
 

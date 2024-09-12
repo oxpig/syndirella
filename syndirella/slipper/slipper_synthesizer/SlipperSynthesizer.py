@@ -588,13 +588,17 @@ class SlipperSynthesizer:
         self.num_products_enumstereo = len(set(list(new_df['name']))) # number of products after stereoisomer enumeration
         return new_df
 
-    def find_stereoisomers(self, smiles: str) -> list():
+    def find_stereoisomers(self, smiles: str) -> List[Chem.Mol]:
         # This function should return a list of stereoisomers for the given SMILES string.
         mol = Chem.MolFromSmiles(smiles)
         # Generate all stereoisomers
-        opts = StereoEnumerationOptions(unique=True)
-        isomers = list(EnumerateStereoisomers(mol, options=opts))
-        isomer_list = [Chem.MolToSmiles(isomer, isomericSmiles=True) for isomer in isomers]
+        try:
+            opts = StereoEnumerationOptions(unique=True)
+            isomers = list(EnumerateStereoisomers(mol, options=opts))
+            isomer_list = [Chem.MolToSmiles(isomer, isomericSmiles=True) for isomer in isomers]
+        except RuntimeError:
+            self.logger.warning(f"Could not enumerate stereoisomers for {smiles}. Returning original SMILES.")
+            isomer_list = [smiles]
         return isomer_list
 
     def save_products(self):
