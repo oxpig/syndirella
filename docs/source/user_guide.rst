@@ -89,7 +89,7 @@ Syndirella can be run either in *automatic* or *manual* mode.
 Required headers:
 
     ``smiles``:
-        smiles string of scaffold.
+        smiles string of :term:`scaffold`.
     ``hit1``:
         string of short code (or any substring of short code found in the metadata.csv) of 1 fragment inspiring hit.
     ``template``:
@@ -154,6 +154,69 @@ Run pipeline in *automatic* mode:
 
 Run pipeline in *manual* mode:
     Add ``--manual`` flag.
+
+4. Outputs
+----------
+
+**Output directory structure:**
+
+🔑🔑🔑: Inchi key of scaffold. Example: ``ZJENMQHSGLZNHL-UHFFFAOYSA-N``
+
+.. code-block::
+
+    output_dir
+    ├── 🔑🔑🔑-scaffold-check # scaffold check directory per scaffold
+    │   └── scaffold-check
+    │       ├── scaffold-check.holo_minimised.pdb
+    │       ├── scaffold-check.minimised.json
+    │       └── scaffold-check.minimised.mol
+    ├── 🔑🔑🔑 # directory per scaffold
+    │   ├── extra
+    │   │   ├── 🔑🔑🔑_[route_uuid]_[rxn_name]_r[reactant_num]_[step_num]of[total_steps].pkl.gz # reactants for step
+    │   │   └── continued for all steps...
+    │   ├── output
+    │   │   ├── 🔑🔑🔑_[route_uuid]_[num]-[stereoisomer]
+    │   │   │   ├── 🔑🔑🔑_[route_uuid]_[num]-[stereoisomer].mol
+    │   │   │   ├── 🔑🔑🔑_[route_uuid]_[num]-[stereoisomer].json # energy values
+    │   │   └── continued for all products...
+    │   ├── 🔑🔑🔑_[route_uuid]_[rxn_name]_products_[last_step]of[total_steps].pkl.gz & .csv # final products
+    │   ├── 🔑🔑🔑_[route_uuid]_[rxn_name]_products_[last_step]of[total_steps]_placements.pkl.gz & .csv # merged placements with products info
+    │   ├── 🔑🔑🔑_[route_uuid]_fragmenstein_placements.pkl.gz & .csv # fragmenstein output
+    │   └── 🔑🔑🔑_[route_uuid]_to_hippo.pkl.gz # full routes and placements
+    ├── continued for all scaffolds...
+    └── [input_csv]_output_YYYYMMDD_HHMM.csv # summary stats of all scaffolds
+
+**Important output files:**
+
+**[input_csv]_output_YYYYMMDD_HHMM.csv:**
+    Summary stats of all scaffolds. Most columns are self-explanatory. The following columns might need clarification:
+
+    ``total_num_products_enumstereo``:
+        Total number of products enumerated with stereochemistry in the final step. This is counting the number of unique
+        products with stereochemistry, so if a product with same stereochemistry is generated multiple times via different routes
+        it will only be counted once.
+
+    ``total_num_unique_products``:
+        Total number of unique products without stereochemistry in the final step. If a product is generated multiple times
+        by different routes it will only be counted once.
+
+**🔑🔑🔑_[route_uuid]_[rxn_name]_products_[last_step]of[total_steps]_placements.pkl.gz & .csv:**
+    Merged placements with products info. Structure of pkl.gz
+
+**🔑🔑🔑_[route_uuid]_to_hippo.pkl.gz:**
+    Full routes and placements. Structure of pkl.gz
+
+.. note::
+
+    Placements of products are labeled succesful if:
+        1. ΔΔG < 0.
+        2. comRMSD < 2.0 Å.
+        3. Pose of product passes `PoseBusters <https://github.com/maabuu/posebusters>`_ intrageometry checks:
+            - Bond lengths: The bond lengths in the input molecule are within 0.75 of the lower and 1.25 of the upper bounds determined by distance geometry.
+            - Bond angles: The angles in the input molecule are within 0.75 of the lower and 1.25 of the upper bounds determined by distance geometry.
+            - Planar aromatic rings: All atoms in aromatic rings with 5 or 6 members are within 0.25 Å of the closest shared plane.
+            - Planar double bonds: The two carbons of aliphatic carbon–carbon double bonds and their four neighbours are within 0.25 Å of the closest shared plane.
+            - Internal steric clash: The interatomic distance between pairs of non-covalently bound atoms is above 60% of the lower bound distance apart determined by distance geometry.
 
 
 Command Line Interface

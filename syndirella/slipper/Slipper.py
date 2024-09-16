@@ -250,7 +250,7 @@ class Slipper:
             # replace nan with None
             flags = [None if pd.isna(flag) else flag for flag in flags]
         except KeyError:
-            flags: List[str] = [None] * len(products_df)
+            flags: List[str | None] = [None] * len(products_df)
         # variables for the last step
         if step == self.library.num_steps:
             num_atom_diff: List[int] = products_df['num_atom_diff'].tolist()
@@ -288,6 +288,10 @@ class Slipper:
             hippo_df_step[f'path_to_mol'] = path_to_mol
             hippo_df_step[f'intra_geometry_pass'] = intra_geometry_pass
         return hippo_df_step
+
+    def check_path_to_mol(self):
+        # This function is used to check if the path to the mol file exists.
+        return NotImplementedError
 
     def which_reactant_was_previous_product(self,
                                             r1_is_previous_product: bool,
