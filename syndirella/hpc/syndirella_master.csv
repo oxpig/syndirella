@@ -1,0 +1,6 @@
+smiles,compound_set,template,hit1,hit2
+Cn1nccc1C(=O)NCc1csc(-c2ncn[nH]2)n1,CHIKVMac-DLS-JA001,cx0281a,cx0892a,cx0281a
+Cc1nsc(N[C@@H]2CCC[C@H]2c2csc(-c3nc[nH]n3)n2)n1,CHIKVMac-DLS-JA002,cx0281a,cx0406a,cx0281a
+CCc1nc(NC(=O)c2ccnc(NC3CC=CC3)c2)no1,CHIKVMac-DLS-JA003,cx0300a,cx0441a,cx0316a
+O=C1CC[C@H](Cn2cnccc2=O)N1,CHIKVMac-DLS-JA004,cx0300a,cx0314a,cx1114a
+O=c1ccncn1C[C@H]1CCS(=O)(=O)C1,CHIKVMac-DLS-JA005,cx0300a,cx0314a,cx1182a
