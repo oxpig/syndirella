@@ -95,3 +95,13 @@ class PlacementError(ChemicalErrorBase):
                  mol: Chem.Mol | None = None):
         self.route_uuid = route_uuid
         super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)
+
+class NoScaffold(ChemicalErrorBase):
+    def __init__(self,
+                 route_uuid: str,
+                 message: str = "No scaffold could be found.",
+                 inchi: str | None = None,
+                 smiles: str | None = None,
+                 mol: Chem.Mol | None = None):
+        self.route_uuid = route_uuid
+        super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)

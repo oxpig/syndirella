@@ -4,13 +4,15 @@ syndirella.run_pipeline.py
 
 This script contains the main pipeline for syndirella.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import pandas as pd
+from numpy.lib.function_base import place
 from rdkit import Chem
 import datetime, time
 import traceback
 import logging
 from rdkit.Chem import inchi
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 
 from syndirella.Cobbler import Cobbler
 from syndirella.route.CobblersWorkshop import CobblersWorkshop
@@ -20,7 +22,6 @@ from syndirella.error import *
 import syndirella.check_inputs as check_inputs
 import syndirella.structure_outputs as structure_outputs
 import syndirella.fairy as fairy
-import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +31,28 @@ def assert_scaffold_placement(scaffold: str,
                               hits_path: str,
                               hits_names: List[str],
                               output_dir: str
-                              ):
+                              ) -> Dict[Chem.Mol, str]:
     """
-    Assert that the scaffold can be placed.
+    Assert that the scaffold can be placed for any stereoisomers. If not, raise an error.
     """
     scaffold_mol = Chem.MolFromSmiles(scaffold)
     if not scaffold_mol:
         logger.critical(f"Could not create a molecule from the smiles {scaffold}.")
         raise MolError(smiles=scaffold)
+    # enumerate stereoisomers
+    opts = StereoEnumerationOptions(unique=True)
+    isomers = list(EnumerateStereoisomers(scaffold_mol, options=opts))
     slipper_fitter = SlipperFitter(template_path, hits_path, hits_names, output_dir)
-    can_be_placed: bool = slipper_fitter.check_scaffold(scaffold_mol)
-    if not can_be_placed:
+    placements: Dict[Chem.Mol, str] = {}
+    for i, isomer in enumerate(isomers):
+        scaffold_name: str = f'scaffold-{chr(65 + i)}'
+        can_be_placed: str | None = slipper_fitter.check_scaffold(scaffold=isomer,
+                                                                  scaffold_name=scaffold_name)  # path to scaffold if successful
+        placements[isomer] = can_be_placed  # absolute path to minimised.mol scaffold, checked to exist
+    if not any(placements.items()):
         logger.critical(f"Scaffold {scaffold} could not be placed successfully.")
         raise ScaffoldPlacementError(smiles=scaffold)
+    return placements
 
 
 def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
@@ -52,6 +62,7 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                                      batch_num: int,
                                      csv_path: str,
                                      output_dir: str,
+                                     scaffold_placements: Dict[Chem.Mol, str],
                                      additional_info=None):
     """
     Does elaboration once the cobbler workshops are created.
@@ -66,7 +77,8 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                 logger.warning(f"Could not get the final library for compound {workshop.product}. Skipping...")
                 continue
             slipper = Slipper(library=final_library, template=template_path, hits_path=hits_path, hits_names=hits,
-                              batch_num=batch_num, atoms_ids_expansion=None, additional_info=additional_info)
+                              batch_num=batch_num, atoms_ids_expansion=None, additional_info=additional_info,
+                              scaffold_placements=scaffold_placements)
             slipper.get_products()
             slipper.place_products()
             slipper.write_products_to_hippo()  # only write at the end after placement, to get correct route_uuid
@@ -91,16 +103,17 @@ def start_elaboration(product: str,
                       template_path: str,
                       hits_path: str,
                       hits: List[str],
-                      output_dir: str,
-                      additional_info=None):
+                      output_dir: str) -> Tuple[float, Dict[Chem.Mol, str | None]]:
     """
     Starts the elaboration of a single compound by checking if it can be placed.
     """
     logger.info(f'Running pipeline for: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
     start_time = time.time()
-    assert_scaffold_placement(scaffold=product, template_path=template_path, hits_path=hits_path, hits_names=hits,
-                              output_dir=output_dir)
-    return start_time
+    scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
+                                                                                template_path=template_path,
+                                                                                hits_path=hits_path, hits_names=hits,
+                                                                                output_dir=output_dir)
+    return start_time, scaffold_placements
 
 
 def elaborate_compound_with_manual_routes(product: str,
@@ -117,17 +130,19 @@ def elaborate_compound_with_manual_routes(product: str,
     """
     This function is used to elaborate a single compound using a manually defined route.
     """
-    start_time: float = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
-                                          hits=hits, output_dir=output_dir, additional_info=additional_info)
+    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
+                                          hits=hits, output_dir=output_dir)
     workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
-                                num_steps=num_steps, output_dir=output_dir, filter=False, id=fairy.generate_inchi_ID(product))
+                                num_steps=num_steps, output_dir=output_dir, filter=False,
+                                id=fairy.generate_inchi_ID(product))
     cobblers_workshops = [workshop]
     alternative_routes: List[CobblersWorkshop] | None = workshop.get_additional_routes(edit_route=True)
     if alternative_routes is not None:
         cobblers_workshops = [workshop] + alternative_routes
     elaborate_from_cobbler_workshops(cobbler_workshops=cobblers_workshops, template_path=template_path,
                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
-                                     additional_info=additional_info, csv_path=csv_path, output_dir=output_dir)
+                                     additional_info=additional_info, csv_path=csv_path, output_dir=output_dir,
+                                     scaffold_placements=scaffold_placements)
     end_time = time.time()
     elapsed_time = end_time - start_time
     logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
@@ -146,19 +161,21 @@ def elaborate_compound_full_auto(product: str,
     """
     This function is used to elaborate a single compound.
     """
-    start_time: float = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
-                                          hits=hits, output_dir=output_dir, additional_info=additional_info)
+    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
+                                          hits=hits, output_dir=output_dir)
     cobbler = Cobbler(scaffold_compound=product,
                       output_dir=output_dir)  # check that output_dirs can be made for different routes
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
     elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
-                                     additional_info=additional_info, csv_path=csv_path, output_dir=output_dir)
+                                     additional_info=additional_info, csv_path=csv_path, output_dir=output_dir,
+                                     scaffold_placements=scaffold_placements)
     end_time = time.time()
     elapsed_time = end_time - start_time
     logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
                 f"after {datetime.timedelta(seconds=elapsed_time)}")
     logger.info("")
+
 
 #######################################
 
@@ -174,6 +191,7 @@ def run_pipeline(*,
     """
     Run the whole syndirella pipeline! 👑
     """
+
     def process_row(row, manual_routes):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
         template_path: str = check_inputs.get_template_path(
@@ -244,4 +262,3 @@ def run_pipeline(*,
         process_row(row, manual_routes)
 
     logger.info("Pipeline complete.")
-

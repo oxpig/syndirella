@@ -7,6 +7,8 @@ product of a reaction.
 """
 from typing import List, Dict, Optional
 import pandas as pd
+
+from syndirella.error import NoScaffold
 from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
 from syndirella.route.Library import Library
 from syndirella.slipper.SlipperFitter import SlipperFitter
@@ -31,13 +33,15 @@ class Slipper:
                  hits_names: List[str] = None,
                  batch_num: int = None,
                  atoms_ids_expansion: dict = None,
-                 additional_info: dict = None):
+                 additional_info: dict = None,
+                 scaffold_placements: Dict[Chem.Mol, str | None] = None):
         self.products: pd.DataFrame = None
         self.library: Library = library
         self.route_uuid: str = library.route_uuid
         self.output_dir: str = library.output_dir
         self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
+        self.scaffold_placements: Dict[Chem.Mol, str | None] = scaffold_placements
         # need Fragmenstein information
         self.template: str = template  # path to pdb file
         self.hits_path: str = hits_path  # path to .sdf or .mol file
@@ -86,7 +90,8 @@ class Slipper:
                                        hits_names=self.hits_names,
                                        output_dir=self.output_dir,
                                        route_uuid=self.route_uuid,
-                                       id=self.library.id)
+                                       id=self.library.id,
+                                       scaffold_placements=self.scaffold_placements)
         slipper_fitter.final_products = self.products # products with enumerated stereoisomers from final library
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path
@@ -106,10 +111,6 @@ class Slipper:
     def write_products_to_hippo(self) -> str:
         """
         Writes a dataframe that contains the values needed for HIPPO db input.
-
-        Open questions:
-        - I think it should be written at the end of each reaction step.
-        - Should be checked if the dataframe already exists and you're adding to it
 
         Returns:
             path: str : the path to the saved dataframe
@@ -135,7 +136,19 @@ class Slipper:
         hippo_df.to_pickle(hippo_path)
         self.logger.info(f"Saved HIPPO output to {hippo_path}")
         self.to_hippo_path = hippo_path
+        self.check_scaffold_in_hippo(hippo_df, hippo_path)
         return hippo_path
+
+    def check_scaffold_in_hippo(self, hippo_df: pd.DataFrame, hippo_path: str):
+        """
+        Checks if there is a scaffold in the product names of the HIPPO output.
+        """
+        if not any('scaffold' in name for name in hippo_df[f'{self.library.num_steps}_product_name']):
+            self.logger.warning("Scaffold was not found in the product names of the HIPPO output.")
+            raise NoScaffold(message=f"Scaffold was not found in the product names of the HIPPO output at {hippo_path}."
+                                     f"Most likely due to an incorrectly written SMIRKS.",
+                             route_uuid=self.route_uuid,
+                             inchi=self.library.id)
 
     def _load_products_dfs(self, products_files: List[str]) -> Dict[int, pd.DataFrame]:
         """
@@ -220,7 +233,7 @@ class Slipper:
             hippo_df_step_last = result_df
         # add scaffold compound smiles as first column, get from Inchi Key
         base_compound_smiles: str = Chem.MolToSmiles(self.library.reaction.product)
-        hippo_df_step_last.insert(0, 'base_compound_smiles', base_compound_smiles)
+        hippo_df_step_last.insert(0, 'scaffold_smiles', base_compound_smiles)
         return hippo_df_step_last
 
     def _structure_step_for_hippo(self,
@@ -262,10 +275,7 @@ class Slipper:
             comRMSD: List[float] = products_df['comRMSD'].tolist()
             regarded: List[bool] = products_df['regarded'].tolist()
             intra_geometry_pass: List[bool] = products_df['intra_geometry_pass'].tolist()
-            path_to_mol: List[Optional[str]] = [
-                f'{self.output_dir}/output/{name}/{name}.minimised.mol' if not pd.isna(ddg) else None
-                for name, ddg in zip(product_names, products_df['∆∆G'])
-            ]
+            path_to_mol: List[Optional[str]] = products_df['path_to_mol'].tolist()
         else:
             num_atom_diff: List[None] = [None] * len(products_df)
         # make HIPPO output dataframe
@@ -288,10 +298,6 @@ class Slipper:
             hippo_df_step[f'path_to_mol'] = path_to_mol
             hippo_df_step[f'intra_geometry_pass'] = intra_geometry_pass
         return hippo_df_step
-
-    def check_path_to_mol(self):
-        # This function is used to check if the path to the mol file exists.
-        return NotImplementedError
 
     def which_reactant_was_previous_product(self,
                                             r1_is_previous_product: bool,

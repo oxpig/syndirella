@@ -171,7 +171,6 @@ class CobblersWorkshop():
             If False, an additional route containing the additional reactions specified from a Postera search will be
                 returned.
         """
-        # TODO: Finish adding edit_route functionality using the fairy implementation of finding routes from Postera's output.
         self.define_reaction()
         reaction_names_to_replace = []
         for bench in self.cobbler_benches:

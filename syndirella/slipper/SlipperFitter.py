@@ -14,6 +14,8 @@ from syndirella.slipper import intra_geometry, flatness
 import syndirella.fairy as fairy
 import datetime
 from syndirella.error import *
+import json
+import syndirella.slipper._placement_data as placement_data
 
 
 class SlipperFitter:
@@ -27,13 +29,15 @@ class SlipperFitter:
                  hits_names: List[str],
                  output_dir: str,
                  id: str | None = None,
-                 route_uuid: str | None = None):
+                 route_uuid: str | None = None,
+                 scaffold_placements: Dict[Chem.Mol, str | None] = None):
         self.template_path: str = template_path
         self.hits_path: str = hits_path
         self.hits_names: List[str] = hits_names
         self.output_dir: str = output_dir
         self.id: str | None = id
         self.route_uuid: str | None = route_uuid
+        self.scaffold_placements: Dict[Chem.Mol, str | None] = scaffold_placements
 
         self.num_atom_diff_limit: int = 10
         self.final_products_csv_path: str | None = None
@@ -62,38 +66,41 @@ class SlipperFitter:
         input_df: pd.DataFrame = self.prep_products()
         placements = self.place_products(input_df)
         self.placements = self.check_intra_geometry(placements)
-        self.edit_placements()
+        self.format_placements()
         self.merged_placements = self.merge_placements()
         return self.merged_placements
 
-    def check_scaffold(self, scaffold: Chem.Mol) -> bool:
+    def check_scaffold(self,
+                       scaffold: Chem.Mol,
+                       scaffold_name: str) -> str | None:
         """
         Checks if the scaffold can be minimised (no specific stereoisomer) and passes intermolecular checks.
         If it cannot be minimised after 3 attempts, returns False.
         """
-        input_df: pd.DataFrame = self._prep_scaffold_input_df(scaffold)
-        id = fairy.generate_inchi_ID(Chem.MolToSmiles(scaffold))
+        input_df: pd.DataFrame = self._prep_scaffold_input_df(scaffold=scaffold, scaffold_name=scaffold_name)
+        id = fairy.generate_inchi_ID(Chem.MolToSmiles(scaffold, isomericSmiles=False))
         output_path: str = os.path.join(self.output_dir, f'{id}-scaffold-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
         num_attempts = 2
         for attempt in range(1, num_attempts+1):
             scaffold_placed: Chem.Mol = self._place_scaffold(lab, input_df)  # None if not minimised
             if scaffold_placed is not None:
+                paths = [os.path.join(output_path, 'output', scaffold_name, f'{scaffold_name}.minimised.mol'),
+                         os.path.join(output_path, scaffold_name, f'{scaffold_name}.minimised.mol')] # could be two output paths...
+                path_exists = [os.path.exists(path) for path in paths]
+                if not any(path_exists):
+                    self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
+                    continue
                 geometries: Dict = intra_geometry.check_geometry(scaffold_placed,
                                                                  threshold_clash=0.4) # increasing threshold for internal clash
                 flat_results: Dict = flatness.check_flatness(scaffold_placed)
                 if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
-                    return True
-                    if len(os.listdir(f'{output_path}/scaffold-check')) > 0: # last resort just check if there are files
-                            self.logger.info('scaffold could be minimised and passed intramolecular checks!')
-                            return True
-                    else:
-                        self.logger.info(f'scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
+                    return paths[0] if path_exists[0] else paths[1]
                 else:
-                    self.logger.info(f'scaffold could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
+                    self.logger.info(f'Scaffold could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
             else:
-                self.logger.info(f'scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
-        return False
+                self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
+        return None
 
     def _check_intra_geom_flatness_results(self,
                                            geometries: Dict,
@@ -115,12 +122,14 @@ class SlipperFitter:
             return False
         return True
 
-    def _prep_scaffold_input_df(self, scaffold: Chem.Mol) -> pd.DataFrame:
+    def _prep_scaffold_input_df(self,
+                                scaffold: Chem.Mol,
+                                scaffold_name: str) -> pd.DataFrame:
         """
         Prepares input dataframe to Fragmenstein for the scaffold compound.
         """
-        scaffold_df: pd.DataFrame = pd.DataFrame({'name': ['scaffold_check'],
-                                              'smiles': [Chem.MolToSmiles(scaffold)]})
+        scaffold_df: pd.DataFrame = pd.DataFrame({'name': [scaffold_name],
+                                                  'smiles': [Chem.MolToSmiles(scaffold)]})
         scaffold_df = self.add_hits(scaffold_df)
         scaffold_df = scaffold_df.astype({'name': str, 'smiles': str})
         return scaffold_df
@@ -160,8 +169,11 @@ class SlipperFitter:
         final_products = final_products.drop_duplicates(subset='name') # drop duplicates of names first
         self.logger.info(f"Total number of products with enumerated stereoisomers (unique name) found before cutting: {len(final_products)}")
         # cut rows with number of atoms difference greater than num_atom_diff_limit
-        self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit}.')
-        input_df = final_products[final_products['num_atom_diff'] <= self.num_atom_diff_limit]
+        self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit} and '
+                         f'below 0 to scaffold.')
+        input_df = final_products[
+            (final_products['num_atom_diff'] <= self.num_atom_diff_limit) &
+            (final_products['num_atom_diff'] >= 0)]
         self._print_diff(final_products, input_df, verb='Kept')
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
@@ -228,7 +240,7 @@ class SlipperFitter:
         """
         start_time = time.time()  # Start timing
         # set up Wictor
-        self.output_path: str = self.output_dir + '/output'
+        self.output_path: str = os.path.join(self.output_dir)
         lab: Laboratory = self.setup_Fragmenstein(self.output_path)
         placements: pd.DataFrame = lab.place(place_input_validator(input_df),
                                              n_cores=self.n_cores,
@@ -300,13 +312,16 @@ class SlipperFitter:
                          run_plip=False)
         return lab
 
-    def edit_placements(self):
+    def format_placements(self):
         """
-        This function edits the placements.
+        This function edits the placements by changing outcome column, adding paths to mol files, formatting scaffold
+        placements and checking intramolecular geometry.
         """
         self.placements.loc[(self.placements['∆∆G'] < 0) & (self.placements['comRMSD'] < 2), 'outcome'] = 'acceptable'
         self.placements['unminimized_mol'] = self.placements.unminimized_mol.fillna(Chem.Mol())
         self.fix_intxns()
+        self.placements = self.add_paths_to_placements(self.placements)
+        self.placements = self.format_scaffold_placements(self.placements)
         if self.placements.outcome.value_counts().get('acceptable') is None:
             num_success = 0
             percent_success = 0
@@ -324,12 +339,93 @@ class SlipperFitter:
         for intxn_name in intxn_names:
             self.placements[intxn_name] = self.placements[intxn_name].fillna(0).astype(int)
 
+    def format_scaffold_placements(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        This function checks if the scaffold placement was successful. If not, attempt to replace it with the scaffold
+        placement performed for the scaffold check. If that placement failed, don't replace.
+        """
+        placed_scaffolds = df[df['name'].str.contains('scaffold')]
+        for i, row in df.iterrows():
+            if row['name'] in placed_scaffolds['name'].values:
+                # replace with scaffold check placement if scaffold placement failed in this run
+                if row['outcome'] != 'acceptable' or row['intra_geometry_pass'] is False or row['minimized_mol'] is None:
+                    self.logger.info(f'Placement for {row["name"]} was not successful.')
+                    # match which scaffold was placed to final products
+                    placed_name: str = row['name']
+                    scaffold_mol: Chem.Mol = Chem.MolFromSmiles(row['smiles'])
+                    scaffold_path = None
+                    for scaffold_check_mol, scaffold_path in self.scaffold_placements.items():
+                        if fairy.generate_inchi_ID(mol=scaffold_mol) == fairy.generate_inchi_ID(mol=scaffold_check_mol):
+                            scaffold_path = scaffold_path
+                            break
+                    if scaffold_path is None:
+                        self.logger.warning(f'Correct scaffold for {placed_name} could not be found in scaffold-check directory. '
+                                            f'Keeping errored scaffold placement from current run.')
+                        continue
+                    # replace scaffold placement with scaffold check placement
+                    ddG, comRMSD, bound, unbound = self.get_scaffold_check_values(scaffold_path)
+                    mol = Chem.MolFromMolFile(scaffold_path)
+                    geometries: Dict = intra_geometry.check_geometry(mol,
+                                                                     threshold_clash=0.4)  # increasing threshold for internal clash
+                    flat_results: Dict = flatness.check_flatness(mol)
+                    df.at[i, '∆∆G'] = ddG
+                    df.at[i, 'comRMSD'] = comRMSD
+                    df.at[i, '∆G_bound'] = bound
+                    df.at[i, '∆G_unbound'] = unbound
+                    if ddG < 0 and comRMSD < 2:
+                        df.at[i, 'outcome'] = 'acceptable'
+                    else:
+                        df.at[i, 'outcome'] = None
+                    df.at[i, 'path_to_mol'] = scaffold_path
+                    df.at[i, 'intra_geometry_pass'] = self._check_intra_geom_flatness_results(geometries=geometries,
+                                                                                              flat_results=flat_results)
+                    # remove values from other columns to not mislead stats
+                    df.at[i, 'unminimized_mol'] = None
+                    df.at[i, 'minimized_mol'] = None
+                    df.at[i, 'error'] = None
+                    df.at[i, 'runtime'] = None
+                    df.at[i, 'LE'] = None
+                    self.logger.info(f'Replaced scaffold placement for {placed_name} with scaffold check placement at'
+                                     f'{scaffold_path}.')
+        return df
+
+    def get_scaffold_check_values(self, scaffold_path: str) -> Tuple[float, float, float, float]:
+        """
+        This function gets the ∆∆G, comRMSD, ∆G_bound and ∆G_unbound values from the placement done by scaffold check.
+        """
+        json_file_path = str.replace(scaffold_path, '.mol', '.json')
+        if not os.path.exists(json_file_path):
+            self.logger.error(f'Could not find json file for scaffold placement in {scaffold_path}.')
+            raise PlacementError(message=f'Could not find json file for scaffold placement in {scaffold_path}.',
+                                 inchi=self.id,
+                                 route_uuid=self.route_uuid)
+        with open(json_file_path, 'r') as file:
+            data = json.load(file)
+        comRMSD = data['mRMSD']
+        ddG = placement_data.get_delta_delta_G(data)
+        bound, unbound = placement_data.get_bound_unbound(data)
+        return ddG, comRMSD, bound, unbound
+
+    def add_paths_to_placements(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adds the absolutes paths to the .mol files.
+        """
+        if self.output_path is None:
+            self.logger.error(f'Output path not set for placements of {self.id}.')
+            raise PlacementError(message=f'Output path not set for placements of {self.id}.',
+                                 inchi=self.id,
+                                 route_uuid=self.route_uuid)
+        paths_to_mols = df.apply(lambda x: os.path.join(self.output_path, 'output', x['name'], f'{x["name"]}.minimised.mol'), axis=1)
+        # only add paths to mol files if they exist
+        df['path_to_mol'] = [path if os.path.exists(path) else None for path in paths_to_mols]
+        return df
+
     def merge_placements(self) -> pd.DataFrame:
         """
         This function merges the fragmenstein output with products csv.
         """
         # Define the columns to drop
-        columns_to_drop = ['smiles', 'binary_hits', 'mode', 'runtime', 'disregarded', 'unmin_binary', 'min_binary',
+        columns_to_drop = ['smiles', 'binary_hits', 'mode', 'disregarded', 'unmin_binary', 'min_binary',
                            'hit_binaries', 'unminimized_mol', 'minimized_mol', 'hit_mols', 'hit_names']
         # Filter out the columns that do not exist in merged_placements
         columns_to_drop = [col for col in columns_to_drop if col in self.placements.columns]

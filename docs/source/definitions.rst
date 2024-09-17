@@ -3,15 +3,13 @@
 Definitions
 ===========
 
-Classes
--------
-
-
-
 General Terminology
 -------------------
 
 .. glossary::
 
     Scaffold
-        Compound to elaborated from.
+        Compound to elaborate from.
+
+    Placement
+        Constrained docking to the fragment inspirations.

@@ -217,15 +217,17 @@ def get_morgan_fingerprint(mol: Chem.Mol) -> rdFingerprintGenerator.MorganFP:
     return mfpgen.GetFingerprint(mol)
 
 
-def generate_inchi_ID(smiles: str) -> str | MolError:
+def generate_inchi_ID(smiles: str | None = None, mol: Chem.Mol | None = None) -> str | MolError:
     """
     This function is used to generate a unique id for the route just using the product.
     """
-    if Chem.MolFromSmiles(smiles) is None:
+    if smiles is not None and Chem.MolFromSmiles(smiles) is None:
         logger.critical(f"Could not create a molecule from the smiles {smiles}.")
         return MolError(message=f"Could not create a molecule from the smiles {smiles}.",
                         smiles=smiles)
-    ID = rdinchi.MolToInchi(Chem.MolFromSmiles(smiles))
+    if mol is None:
+        mol = Chem.MolFromSmiles(smiles)
+    ID = rdinchi.MolToInchi(mol)
     id = rdinchi.InchiToInchiKey(ID[0])
     return id
 

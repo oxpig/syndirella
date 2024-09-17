@@ -19,6 +19,32 @@ import syndirella.check_inputs as check_inputs
 import syndirella.fairy as fairy
 import logging
 
+class TestScaffoldCheck(unittest.TestCase):
+    def setUp(self):
+        self.csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_input_template.csv'
+        self.manual_csv_path = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/syndirella_manual_input_template.csv'
+
+        self.output_dir = '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/scaffold_check'
+        self.template_dir = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/templates'
+        self.hits_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/A71EV2A_combined.sdf'
+        self.metadata_path = '/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2/fragments/metadata.csv'
+
+    def test_from_pipeline(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        run_pipeline(csv_path=self.manual_csv_path,
+                     output_dir=self.output_dir,
+                     template_dir=self.template_dir,
+                     hits_path=self.hits_path,
+                     metadata_path=self.metadata_path,
+                     batch_num=10,
+                     additional_columns=['compound_set'],
+                     manual_routes=True)
+
+
 class TestErrorHandlingPipeline(unittest.TestCase):
     def setUp(self):
         self.reactants = [('CCOC(=O)Cc1cncc(N)c1', 'CC(=O)Cl'), ('NCC(N)c1ccc2ccccc2c1', 'CCOC(=O)Cc1cncc(NC(C)=O)c1'),

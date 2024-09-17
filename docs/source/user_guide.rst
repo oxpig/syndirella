@@ -53,7 +53,7 @@ Syndirella has >20 encoded reactions which you can find in
 
 **Alternative Reactions**:
 You can provide alternatives for reactions based on preference. Add them in
-`ADDITIONAL_RXN_OPTIONS_V2.json <https://github.com/kate-fie/syndirella/blob/13f73d8beda750c023739729d2681f5939d29e29/syndirella/constants/ADDITIONAL_RXN_OPTIONS_V2.json>`_.
+`ADDITIONAL_RXN_OPTIONS.json <https://github.com/kate-fie/syndirella/blob/13f73d8beda750c023739729d2681f5939d29e29/syndirella/constants/ADDITIONAL_RXN_OPTIONS.json>`_.
 
 **Alternative Reactants**:
 If there are reactants for certain reactions that you prefer to use, you can add them in
@@ -201,10 +201,10 @@ Run pipeline in *manual* mode:
         by different routes it will only be counted once.
 
 **🔑🔑🔑_[route_uuid]_[rxn_name]_products_[last_step]of[total_steps]_placements.pkl.gz & .csv:**
-    Merged placements with products info. Structure of pkl.gz
+    Merged placements with products info.
 
 **🔑🔑🔑_[route_uuid]_to_hippo.pkl.gz:**
-    Full routes and placements. Structure of pkl.gz
+    Full routes and placements.
 
 .. note::
 
@@ -224,8 +224,7 @@ Command Line Interface
 
 .. code-block::
 
-    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA
-                  [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual]
+    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--profile]
 
     Run the Syndirella pipeline with specified configurations.
 
@@ -244,6 +243,7 @@ Command Line Interface
       --batch_num BATCH_NUM
                             Batch number for processing.
       --manual              Use manual routes for processing.
+      --profile             Run the pipeline with profiling.
 
     Syndirella is installed at [path_to_installation]
 

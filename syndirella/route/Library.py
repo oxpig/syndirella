@@ -325,7 +325,6 @@ class Library:
         This function loads the library object. Will have to load all library objects
         """
         logger = logging.getLogger(f"{__name__}.{Library.__name__}")
-        # TODO: Change this to load all library objects, but check that it contains the specific variable you want
         # get all .pkl in output_dir.
         library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
         # get id from product SMILES
