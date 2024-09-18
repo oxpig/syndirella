@@ -215,12 +215,12 @@ def run_pipeline(settings: Dict):
     # set variables
     try:
         additional_columns = ['compound_set']
-        metadata_path = settings['metadata_path']
-        template_dir = settings['template_dir']
+        metadata_path = settings['metadata']
+        template_dir = settings['templates']
         hits_path = settings['hits_path']
-        output_dir = settings['output_dir']
+        output_dir = settings['output']
         batch_num = settings['batch_num']
-        csv_path = settings['csv_path']
+        csv_path = settings['input']
         atom_diff_min = settings['atom_diff_min']
         atom_diff_max = settings['atom_diff_max']
         scaffold_place_num = settings['scaffold_place_num']
