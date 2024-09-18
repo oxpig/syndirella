@@ -125,7 +125,7 @@ class Slipper:
 
         hippo_path: str = os.path.join(self.output_dir, f'{self.library.id}_{self.route_uuid}_to_hippo.pkl.gz')
         # get all products dfs in /extra
-        products_files: List[str] = glob.glob(f"{self.output_dir}/extra/*products*.pkl*")
+        products_files: List[str] = glob.glob(f"{self.output_dir}/extra/*{self.route_uuid}*products*.pkl*")
         product_dfs: Dict[int, pd.DataFrame] = self._load_products_dfs(products_files)
         # make HIPPO output dataframe of these specific products
         hippo_df = self._structure_products_for_hippo(placements_df=placements,
@@ -159,6 +159,9 @@ class Slipper:
         product_dfs: Dict[int, pd.DataFrame] = {}
         for file in products_files:
             df = pd.read_pickle(file)
+            if len(df) == 0:
+                self.logger.info(f"Empty dataframe found in {file}. Continuing with next file to structure hippo outputs")
+                continue
             step = df['step'].iloc[0]
             product_dfs[step] = df
         if len(product_dfs) != self.library.num_steps - 1:
