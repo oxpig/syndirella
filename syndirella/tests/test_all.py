@@ -19,18 +19,18 @@ import syndirella.check_inputs as check_inputs
 import syndirella.fairy as fairy
 import logging
 
-class TestAtomDiff(unittest.TestCase):
+class TestAtomDiff_2(unittest.TestCase):
     """
     Doing Formation of urea from two amines from CHIKV-Mac
     """
 
     def setUp(self):
         self.settings= {
-            'csv_path' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/syndirella_input/syndirella_input146.csv',
-            'output_dir' : '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/atom_diff',
-            'template_dir' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/templates',
+            'input' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/syndirella_input/syndirella_input145.csv',
+            'output' : '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/atom_diff',
+            'templates' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/templates',
             'hits_path' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/CHIKV_Mac_combined.sdf',
-            'metadata_path' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/metadata.csv',
+            'metadata' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/metadata.csv',
             'batch_num' : 5,
             'atom_diff_min' : 0,
             'atom_diff_max' : 10,
@@ -44,6 +44,34 @@ class TestAtomDiff(unittest.TestCase):
             handlers=[logging.StreamHandler()]
         )
         run_pipeline(settings=self.settings)
+
+class TestAtomDiff(unittest.TestCase):
+    """
+    Doing Formation of urea from two amines from CHIKV-Mac
+    """
+
+    def setUp(self):
+        self.settings= {
+            'input' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/syndirella_input/syndirella_input146.csv',
+            'output' : '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/atom_diff',
+            'templates' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/templates',
+            'hits_path' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/CHIKV_Mac_combined.sdf',
+            'metadata' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/metadata.csv',
+            'batch_num' : 5,
+            'atom_diff_min' : 0,
+            'atom_diff_max' : 10,
+            'scaffold_place_num' : 3
+        }
+
+    def test(self):
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        run_pipeline(settings=self.settings)
+
+
 
 class TestScaffoldCheck(unittest.TestCase):
     def setUp(self):

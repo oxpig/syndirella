@@ -76,7 +76,7 @@ def check_template_paths(template_dir: str, csv_path: str, metadata_path: str) -
 
 def fill_in_product(row: pd.Series, step: int) -> None:
     """
-    Fill in the product for the given step.
+    Fill in the scaffold for the given step.
     """
     # TODO
     # Use SMARTSHandler to do this
@@ -111,10 +111,10 @@ def check_route(i: int, row: pd.Series) -> None:
                 logger.critical(f"Missing reactant for step {step} in route {i}.")
                 raise ValueError(f"Missing reactant for step {step} in route {i}.")
         if step != last_step:
-            if row[f'product_step{step}'] == 'nan':  # only internal steps have product
+            if row[f'product_step{step}'] == 'nan':  # only internal steps have scaffold
                 fill_in_product(row, step)
-                logger.critical(f"Missing product for step {step} in route {i}.")
-                raise ValueError(f"Missing product for step {step} in route {i}.")
+                logger.critical(f"Missing scaffold for step {step} in route {i}.")
+                raise ValueError(f"Missing scaffold for step {step} in route {i}.")
         # check reaction_name
         if row[f'reaction_name_step{step}'] == 'nan':
             logger.critical(f"Missing reaction name for step {step} in route {i}.")
@@ -304,7 +304,7 @@ def format_manual_route(row: pd.Series) -> Tuple[List[Tuple[Any, Any]], List[Any
             reactants_step = (row[f'reactant_step{step}'], row[f'reactant2_step{step}'])
             reactants.append(reactants_step)
         else:
-            # one reactant is product of previous step
+            # one reactant is scaffold of previous step
             reactants_step = (row[f'product_step{step - 1}'], row[f'reactant_step{step}'])
             reactants.append(reactants_step)
         reaction_names.append(row[f'reaction_name_step{step}'])

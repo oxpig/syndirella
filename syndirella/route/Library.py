@@ -17,7 +17,7 @@ import logging
 from .Reaction import Reaction
 from syndirella.Postera import Postera
 import syndirella.fairy as fairy
-from syndirella.error import SMARTSError
+from syndirella.error import SMARTSError, NoReactants
 
 
 class Library:
@@ -151,12 +151,12 @@ class Library:
         if len(matching) != len(analogues_mols):
             self.logger.error("Problem with finding matches.")
             raise SMARTSError(message="Problem with finding SMARTS matches to analogues.",
-                              mol=self.reaction.product,
+                              mol=self.reaction.scaffold,
                               route_uuid=self.route_uuid)
         if len(num) != len(analogues_mols):
             self.logger.error("Problem with finding number of matches.")
             raise SMARTSError(message="Problem with finding number of matches.",
-                              mol=self.reaction.product,
+                              mol=self.reaction.scaffold,
                               route_uuid=self.route_uuid)
         return matching, num
 
@@ -207,7 +207,7 @@ class Library:
         if other_reactant_smarts_pattern is None:
             self.logger.error(f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.")
             raise SMARTSError(message=f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.",
-                              mol=self.reaction.product,
+                              mol=self.reaction.scaffold,
                               route_uuid=self.route_uuid)
         other_reactant_prefix = self.reaction.matched_smarts_to_reactant[other_reactant_smarts_pattern][2]
         other_reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(other_reactant_smarts_pattern)
@@ -263,14 +263,14 @@ class Library:
 
     def _find_products_pkl_name(self, reactant: Chem.Mol) -> str:
         """
-        This function is used to find the name of the products .pkl file by comparing the reactant to the product with
+        This function is used to find the name of the products .pkl file by comparing the reactant to the scaffold with
         bit vector similarity.
         """
         product_pkls: List[str] = glob.glob(f"{self.extra_dir_path}/"
                                             f"{self.id}_{self.route_uuid}_*products_{self.current_step - 1}of"
                                             f"{self.num_steps}.pkl.gz")
         for i, path in enumerate(product_pkls):
-            # Find if the reactant is the same as the product
+            # Find if the reactant is the same as the scaffold
             df = pd.read_pickle(path)
             # Iterate through the top 100 products
             for product in df["smiles"][:100]:
@@ -305,6 +305,12 @@ class Library:
         try:
             # find column with analogue smiles
             df = pd.read_pickle(reactant_analogues_path)
+            if len(df) == 0:
+                self.logger.critical(f"Empty analogue library at {reactant_analogues_path}. Stopping...")
+                raise NoReactants(message=f"Empty analogue library at {reactant_analogues_path}",
+                                  route_uuid=self.route_uuid,
+                                  inchi=self.id,
+                                  mol=self.reaction.scaffold)
             if not internal_step:
                 analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
                 analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
@@ -314,7 +320,7 @@ class Library:
                 analogues_full = {analog: None for analog in analogues}
                 return analogues_full
         except KeyError:
-            self.logger.critical(f"Could not find analogue column in already existing product.pkl at {reactant_analogues_path}. "
+            self.logger.critical(f"Could not find analogue column in already existing scaffold.pkl at {reactant_analogues_path}. "
                   f"Stopping...")
 
     def save(self):
@@ -332,7 +338,7 @@ class Library:
         logger = logging.getLogger(f"{__name__}.{Library.__name__}")
         # get all .pkl in output_dir.
         library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
-        # get id from product SMILES
+        # get id from scaffold SMILES
         id = fairy.generate_inchi_ID(product, isomeric=False)
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)

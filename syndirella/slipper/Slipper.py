@@ -3,7 +3,7 @@
 syndirella.slipper.Slipper.py
 
 This module contains the Slipper class. A slipper in this metaphor is the set of molecules that is the
-product of a reaction.
+scaffold of a reaction.
 """
 from typing import List, Dict, Optional
 import pandas as pd
@@ -143,11 +143,11 @@ class Slipper:
 
     def check_scaffold_in_hippo(self, hippo_df: pd.DataFrame, hippo_path: str):
         """
-        Checks if there is a scaffold in the product names of the HIPPO output.
+        Checks if there is a scaffold in the scaffold names of the HIPPO output.
         """
         if not any('scaffold' in name for name in hippo_df[f'{self.library.num_steps}_product_name']):
-            self.logger.warning("Scaffold was not found in the product names of the HIPPO output.")
-            raise NoScaffold(message=f"Scaffold was not found in the product names of the HIPPO output at {hippo_path}."
+            self.logger.warning("Scaffold was not found in the scaffold names of the HIPPO output.")
+            raise NoScaffold(message=f"Scaffold was not found in the scaffold names of the HIPPO output at {hippo_path}."
                                      f"Most likely due to an incorrectly written SMIRKS.",
                              route_uuid=self.route_uuid,
                              inchi=self.library.id)
@@ -202,7 +202,7 @@ class Slipper:
                      row,  # row of current step
                      step,
                      df_previous_step: pd.DataFrame) -> List[str]:
-        product_matches = None  # Store matching product names
+        product_matches = None  # Store matching scaffold names
         for _, product_row in df_previous_step.iterrows():
             similarity = self.calculate_inchi_similarity(
                 row[f'{step + 1}_r{row[f"{step + 1}_r_previous_product"]}_smiles'],
@@ -215,20 +215,20 @@ class Slipper:
     def _put_hippo_dfs_together(self,
                                 hippo_dfs: Dict[int, pd.DataFrame]) -> pd.DataFrame:
         """
-        Puts the HIPPO dataframes together by matching on each reaction product to the correct previous step's reactant.
+        Puts the HIPPO dataframes together by matching on each reaction scaffold to the correct previous step's reactant.
         """
         # get the last step's dataframe
         hippo_df_step_last = hippo_dfs[self.library.num_steps]
         for step in range(1, self.library.num_steps)[::-1]:  # iterate through the steps in reverse
             # get the step's dataframe
             hippo_df_stepx = hippo_dfs[step]
-            # Find the matching product names for the reactant in this new step
+            # Find the matching scaffold names for the reactant in this new step
             hippo_df_step_last[f'{step}_product_name'] = hippo_df_step_last.apply(self.find_matches,
                                                                                   step=step,
                                                                                   df_previous_step=hippo_df_stepx,
                                                                                   axis=1)
-            # What happens if there are null product names?... Still keep row with null product name
-            # Join on the product names, has to be right merge because we only care about the products from the last step
+            # What happens if there are null scaffold names?... Still keep row with null scaffold name
+            # Join on the scaffold names, has to be right merge because we only care about the products from the last step
             result_df = pd.merge(hippo_df_stepx,
                                  hippo_df_step_last,
                                  left_on=f'{step}_product_name',
@@ -237,7 +237,7 @@ class Slipper:
             # Update the last step dataframe
             hippo_df_step_last = result_df
         # add scaffold compound smiles as first column, get from Inchi Key
-        base_compound_smiles: str = Chem.MolToSmiles(self.library.reaction.product)
+        base_compound_smiles: str = Chem.MolToSmiles(self.library.reaction.scaffold)
         hippo_df_step_last.insert(0, 'scaffold_smiles', base_compound_smiles)
         return hippo_df_step_last
 
@@ -308,7 +308,7 @@ class Slipper:
                                             r1_is_previous_product: bool,
                                             r2_is_previous_product: bool) -> int | None:
         """
-        Determine which reactant was the product of the previous step.
+        Determine which reactant was the scaffold of the previous step.
         """
         if r1_is_previous_product:
             if r2_is_previous_product:

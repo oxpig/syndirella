@@ -219,7 +219,7 @@ def get_morgan_fingerprint(mol: Chem.Mol) -> rdFingerprintGenerator.MorganFP:
 
 def generate_inchi_ID(smiles: str | None = None, mol: Chem.Mol | None = None, isomeric: bool = False) -> str | MolError:
     """
-    This function is used to generate a unique id for the route just using the product.
+    This function is used to generate a unique id for the route just using the scaffold.
     """
     if smiles is not None and isomeric is False:
         mol = Chem.MolFromSmiles(smiles)

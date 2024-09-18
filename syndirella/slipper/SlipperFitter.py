@@ -155,8 +155,8 @@ class SlipperFitter:
         input_df = input_df.astype({'name': str, 'smiles': str})
         # Check if there are any duplicates in the input_df
         if input_df.duplicated(subset='name').any():
-            self.logger.critical('There are duplicates of names in the product dataframe to place.')
-            raise PlacementError(message='There are duplicates of names in the product dataframe to place.',
+            self.logger.critical('There are duplicates of names in the scaffold dataframe to place.')
+            raise PlacementError(message='There are duplicates of names in the scaffold dataframe to place.',
                                  inchi=self.id,
                                  route_uuid=self.route_uuid)
         return input_df

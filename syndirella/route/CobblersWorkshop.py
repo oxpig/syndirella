@@ -52,7 +52,7 @@ class CobblersWorkshop():
 
     def check_product(self, product: str) -> str:
         """
-        Checks product can be converted to a molecule and can be sanitized. If not, logs an error.
+        Checks scaffold can be converted to a molecule and can be sanitized. If not, logs an error.
         """
         if Chem.MolFromSmiles(product) is None:
             self.logger.error(f"Could not create a molecule from the smiles {product}.")

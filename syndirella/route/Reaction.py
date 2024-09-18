@@ -28,7 +28,7 @@ class Reaction():
                  route_uuid: str):
         self.route_uuid: str = route_uuid
         self.logger = logging.getLogger(f"{__name__}")
-        self.product: Chem.Mol = product
+        self.scaffold: Chem.Mol = product
         self.reactants: List[Chem.Mol] = reactants
         self.reaction_name: str = reaction_name
         self.smarts_handler: SMARTSHandler = smarts_handler
@@ -63,7 +63,7 @@ class Reaction():
                                                                 alt_rxn['replacement_connecting_atom_id'])
                     if new_reactant:
                         other_reactant: Chem.Mol = next(value for key, value in self.matched_smarts_index_to_reactant.items() if key != r_index)[0]
-                        # check that new reactants can produce a product
+                        # check that new reactants can produce a scaffold
                         reaction_name: str = alt_rxn['replace_with']
                         can_react: bool = self.check_reaction_can_produce_product(new_reactant, other_reactant, reaction_name)
                         if can_react:
@@ -80,13 +80,13 @@ class Reaction():
                                            other_reactant: Chem.Mol,
                                            reaction_name: str) -> bool:
         """
-        This function is used to check if the new reactants can simply produce a product from the labeled reaction.
+        This function is used to check if the new reactants can simply produce a scaffold from the labeled reaction.
         """
         reaction: Chem.rdChemReactions = self.smarts_handler.reaction_smarts[reaction_name]
         new_reactant_combo: Tuple[Chem.Mol] = (new_reactant, other_reactant)
         products: Tuple[Chem.Mol] = reaction.RunReactants(new_reactant_combo)
         if len(products[0]) == 0:
-            self.logger.error(f"Additional reaction {reaction_name} cannot produce a product from the new reactants "
+            self.logger.error(f"Additional reaction {reaction_name} cannot produce a scaffold from the new reactants "
                               f"{Chem.MolToSmiles(new_reactant)} {Chem.MolToSmiles(other_reactant)}.")
             return False
         return True
@@ -175,9 +175,9 @@ class Reaction():
         return dummy_idx_list, neig_idx_list
 
     def use_fmcs(self, reactant: Chem.Mol) -> Dict[int, int]:
-        mcs = rdFMCS.FindMCS([reactant, self.product])
+        mcs = rdFMCS.FindMCS([reactant, self.scaffold])
         mcs_smarts = Chem.MolFromSmarts(mcs.smartsString)
-        product_matches = self.product.GetSubstructMatches(mcs_smarts)
+        product_matches = self.scaffold.GetSubstructMatches(mcs_smarts)
         # Can return multiple product_matches, only take the first one
         product_match = product_matches[0]
         reactant_matches = reactant.GetSubstructMatches(mcs_smarts)
@@ -191,26 +191,26 @@ class Reaction():
         :param reactant: a single reactant molecule
         :returns a list of tuples (attachmentIdx_whole, attachmentIdx_subMol)
         """
-        # product_to_reactant_mapping = self.product.GetSubstructMatch(reactant)
+        # product_to_reactant_mapping = self.scaffold.GetSubstructMatch(reactant)
 
         # Trying new get substruct match method
         product_to_reactant_mapping: Dict[int, int] = self.use_fmcs(reactant)
 
         attachment_idxs_list = []
-        for bond in self.product.GetBonds():
+        for bond in self.scaffold.GetBonds():
             i = bond.GetBeginAtomIdx()
             j = bond.GetEndAtomIdx()
             i_inSub = i in product_to_reactant_mapping.keys()
             j_inSub = j in product_to_reactant_mapping.keys()
             if int(i_inSub) + int(j_inSub) == 1:
                 if i_inSub:
-                    product_idx = i  # This is the attachment point within product
+                    product_idx = i  # This is the attachment point within scaffold
                     try:
                         reactant_idx = product_to_reactant_mapping[i]
                     except (ValueError, KeyError):
                         reactant_idx = None
                 else:
-                    product_idx = j  # This is the attachment point within product
+                    product_idx = j  # This is the attachment point within scaffold
                     try:
                         reactant_idx = product_to_reactant_mapping[j]
                     except (ValueError, KeyError):
@@ -280,7 +280,7 @@ class Reaction():
             all_attachments[reactant] = attachments
         if any(len(attach_ids) == 0 for attach_ids in all_attachments.values()):
             raise ReactionError(message=f"No attachment points found for reaction {self.reaction_name}",
-                                mol=self.product,
+                                mol=self.scaffold,
                                 route_uuid=self.route_uuid)
         self.all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
 
@@ -309,7 +309,7 @@ class Reaction():
         """
         # check reactant smarts in both reactants
         matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] | None = (
-            self.smarts_handler.assign_reactants_w_rxn_smarts(product=self.product,
+            self.smarts_handler.assign_reactants_w_rxn_smarts(product=self.scaffold,
                                                               reactant_attach_ids=self.all_attach_ids,
                                                               reaction_name=self.reaction_name))
         self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, List[int], str]] = (
@@ -317,5 +317,5 @@ class Reaction():
         self.matched_smarts_to_reactant = matched_reactants
         if len(self.matched_smarts_to_reactant) == 0:
             raise ReactionError(message=f"No reaction atoms found for reaction {self.reaction_name}",
-                                mol=self.product,
+                                mol=self.scaffold,
                                 route_uuid=self.route_uuid)

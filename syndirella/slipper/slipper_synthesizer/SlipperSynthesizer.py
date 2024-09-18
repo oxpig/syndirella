@@ -8,6 +8,8 @@ from typing import (List, Dict, Tuple)
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from rdkit import DataStructs
+from sklearn.gaussian_process.kernels import Product
+
 from syndirella.route.Library import Library
 from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
 import syndirella.fairy as fairy
@@ -68,7 +70,7 @@ class SlipperSynthesizer:
         if len(self.analogues_dataframes_to_react) == 1:
             self.products = self.get_products_from_single_reactant()
             return self.products
-        # Get cartesian product of all analogues
+        # Get cartesian scaffold of all analogues
         self.reactant_combinations: pd.DataFrame = self.combine_analogues()
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
@@ -96,7 +98,7 @@ class SlipperSynthesizer:
 
     def load_products(self):
         """
-        This function loads the product .pkl file.
+        This function loads the scaffold .pkl file.
         """
         pkl_name = (f"{self.library.id}_{self.library.route_uuid}_{self.library.reaction.reaction_name}_products_"
                     f"{self.library.current_step}of{self.library.num_steps}.pkl")
@@ -135,9 +137,9 @@ class SlipperSynthesizer:
         """
         self.logger.info(f"Ordering analogues of {reactant_prefix} before finding products...")
         # Add num_atom_diff to scaffold reactant, which is the first reactant
-        base_reactant = df[f"{reactant_prefix}_mol"].iloc[0]
-        # TODO: Fix this setting with a copy warning
-        df.loc[:, f'{reactant_prefix}_num_atom_diff'] = (
+        smarts_index: int = int(reactant_prefix[-1])
+        base_reactant: Chem.Mol = self.library.reaction.matched_smarts_index_to_reactant[smarts_index][0]
+        df[f'{reactant_prefix}_num_atom_diff'] = (
             df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
         # get columns to sort by
         ordered_columns = [f'{reactant_prefix}_lead_time', f'{reactant_prefix}_num_atom_diff', 'num_matches']
@@ -173,7 +175,7 @@ class SlipperSynthesizer:
             self.logger.critical(f"All reactants were filtered for {reactant_prefix}. No products will be found.")
             raise NoReactants(message=f"All reactants were filtered for {reactant_prefix}. No products will be found.",
                               route_uuid=self.route_uuid,
-                              mol=self.library.reaction.product)
+                              mol=self.library.reaction.scaffold)
         return df
 
     def filter_analogues_by_size(self):
@@ -183,6 +185,17 @@ class SlipperSynthesizer:
 
         If longer than 10,000, will just take the head with length of the square root of 10,000 (100).
         """
+        # before anything cut analogues based on min and max num_atom_diff values
+        for key, df in self.analogues_dataframes_to_react.items():
+            self.logger.info(f'Filtering reactants by number of atoms difference to original reactant.'
+                             f' Keeping only those with {self.atom_diff_min} <= num_atom_diff <= {self.atom_diff_max}.')
+            new_df = df[(df[f'{key}_num_atom_diff'] >= self.atom_diff_min) &
+                        (df[f'{key}_num_atom_diff'] <= self.atom_diff_max)]
+            self.analogues_dataframes_to_react[key] = new_df
+            percent = round(((len(new_df) / len(df)) * 100), 2)
+            self.logger.info(f'Kept {len(new_df)} ({percent}%) valid products out of {len(df)} '
+                             f'reactants.')
+
         if len(self.analogues_dataframes_to_react) < 2:
             if len(list(self.analogues_dataframes_to_react.values())[0]) > 10000:
                 self.logger.info(f"Too many analogues for {list(self.analogues_dataframes_to_react.keys())[0]}.")
@@ -295,7 +308,7 @@ class SlipperSynthesizer:
         except ValueError as e:
             self.logger.critical(e.args[0])
             raise ProductFormationError(message=e.args[0],
-                                        mol=self.library.reaction.product,
+                                        mol=self.library.reaction.scaffold,
                                         route_uuid=self.route_uuid)
         # Filter products
         products = self.filter_products(products)
@@ -323,7 +336,7 @@ class SlipperSynthesizer:
         except ValueError as e:
             self.logger.critical(e.args[0])
             raise ProductFormationError(message=e.args[0],
-                                        mol=self.library.reaction.product,
+                                        mol=self.library.reaction.scaffold,
                                         route_uuid=self.route_uuid)
         # Filter products
         products = self.filter_products(products)
@@ -340,7 +353,10 @@ class SlipperSynthesizer:
         This function applies the original reaction to each row of the reactant combinations dataframe. Can return
         multiple products.
         """
-        # only get num_atom_diff if final step of route
+        if self.library.current_step == self.library.num_steps:  # calculate difference if final step
+            calc_difference: bool = True
+        else:
+            calc_difference: bool = False
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         products = reaction.RunReactants((r1,))
@@ -349,7 +365,6 @@ class SlipperSynthesizer:
             self.logger.info("No products found.")
             row['flag'] = flags if flags else None
             row['combined'] = [(None, None)]
-            return row
         elif len(products) > 1 or len(products[0]) > 1:
             # check if all products can be sanitized and keep unique ones, only keep the ones that can be sanitized
             # and are unique
@@ -358,21 +373,27 @@ class SlipperSynthesizer:
             for product in products:
                 if self.can_be_sanitized(product[0]):
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(
-                        self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
-                if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
+                    if calc_difference:
+                        row_num_atom_diff.append(
+                            self.calc_num_atom_diff_absolute(self.library.reaction.scaffold, product[0]))
+                    else:
+                        row_num_atom_diff.append(None)
+                if len(row_smiles) > 1:  # if more than 1 scaffold can be sanitized then flag
                     if 'one_of_multiple_products' not in flags:
                         flags.append('one_of_multiple_products')
                 row['combined'] = list(zip(row_smiles, row_num_atom_diff))
                 row['flag'] = flags if flags else None
-                return row
-        product = products[0][0]
-        if self.can_be_sanitized(product):
-            base = self.library.reaction.product
-            num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-            row['flag'] = flags if flags else None
-            row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-            return row
+        else:
+            product = products[0][0]
+            if self.can_be_sanitized(product):
+                base = self.library.reaction.scaffold
+                if calc_difference:
+                    num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
+                else:
+                    num_atom_diff = None
+                row['flag'] = flags if flags else None
+                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+        return row
 
     def apply_reaction(self, row) -> pd.Series:
         """
@@ -380,7 +401,10 @@ class SlipperSynthesizer:
         This function applies the original reaction to each row of the reactant combinations dataframe. Checks to return
         only products that are sanitized.
         """
-        # only get num_atom_diff if final step of route
+        if self.library.current_step == self.library.num_steps:  # calculate difference only if final step
+            calc_difference: bool = True
+        else:
+            calc_difference: bool = False
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
@@ -389,31 +413,36 @@ class SlipperSynthesizer:
         if len(products) == 0:
             row['flag'] = flags if flags else None
             row['combined'] = [(None, None)]
-            return row
         elif len(products) > 1 or len(
-                products[0]) > 1:  # should only return 1 product, if more than 1 then there are selectivity issues
+                products[0]) > 1:  # should only return 1 scaffold, if more than 1 then there are selectivity issues
             # check if all products can be sanitized, only keep the ones that can
             row_smiles = []
             row_num_atom_diff = []
             for product in products:
                 if self.can_be_sanitized(product[0]):  # only keep products that can be sanitized
                     row_smiles.append(Chem.MolToSmiles(product[0]))
-                    row_num_atom_diff.append(
-                        self.calc_num_atom_diff_absolute(self.library.reaction.product, product[0]))
-            if len(row_smiles) > 1:  # if more than 1 product can be sanitized then flag
+                    if calc_difference:
+                        row_num_atom_diff.append(
+                            self.calc_num_atom_diff_absolute(self.library.reaction.scaffold, product[0]))
+                    else:
+                        row_num_atom_diff.append(None)
+            if len(row_smiles) > 1:  # if more than 1 scaffold can be sanitized then flag
                 if 'one_of_multiple_products' not in flags:
                     flags.append('one_of_multiple_products')
             row['combined'] = list(zip(row_smiles, row_num_atom_diff))
             row['flag'] = flags if flags else None
-            return row
-        product = products[0][0]
-        if self.can_be_sanitized(product):
-            base = self.library.reaction.product
-            num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-            row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-            # Set flag column to list of flags or None if empty
-            row['flag'] = flags if flags else None
-            return row
+        else:
+            product = products[0][0]
+            if self.can_be_sanitized(product):
+                base = self.library.reaction.scaffold
+                if calc_difference:
+                    num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
+                else:
+                    num_atom_diff = None
+                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+                # Set flag column to list of flags or None if empty
+                row['flag'] = flags if flags else None
+        return row
 
     def can_be_sanitized(self, mol: Chem.Mol) -> bool:
         if type(mol) != Chem.Mol:
@@ -426,7 +455,7 @@ class SlipperSynthesizer:
 
     def calc_num_atom_diff_mcs(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
-        This function is used to calculate the number of atoms added to product
+        This function is used to calculate the number of atoms added to scaffold
         by finding the maximum common substructure (MCS) and then finding the difference in length.
         """
         mcs = rdFMCS.FindMCS([base, product])
@@ -438,7 +467,7 @@ class SlipperSynthesizer:
 
     def calc_num_atom_diff_absolute(self, base: Chem.Mol, product: Chem.Mol) -> int:
         """
-        This function calculates the absolute number of atoms difference between the scaffold and product.
+        This function calculates the absolute number of atoms difference between the scaffold and scaffold.
         """
         difference = product.GetNumAtoms() - base.GetNumAtoms()
         return difference
@@ -451,16 +480,22 @@ class SlipperSynthesizer:
         products.dropna(subset=['smiles'], inplace=True, axis=0, how='any')
         # Convert 'flag' column to tuple ot be hashable
         products['flag'] = products['flag'].apply(lambda x: tuple(x) if isinstance(x, list) else x)
-        products.drop_duplicates(inplace=True, ignore_index=True)
-        # drop products with less than minimum number of atoms
-        self.logger.info(f'Cutting products with number of atoms difference greater than {self.atom_diff_max} and '
-                         f'below {self.atom_diff_min} to scaffold.')
-        filt_products = products[(products['num_atom_diff'] >= self.atom_diff_min) &
-                         (products['num_atom_diff'] <= self.atom_diff_max)]
-        self._print_diff(orig_df=products, input_df=filt_products, verb='Kept')
-        # reorder by num_atom_diff if calculated
-        if 'num_atom_diff' in filt_products.columns:
-            filt_products.sort_values(by=['num_atom_diff'], inplace=True)
+        filt_products = products.drop_duplicates(ignore_index=True)
+        if self.library.current_step == self.library.num_steps:  # only filter if final step
+            # drop products with less than minimum number of atoms
+            self.logger.info(f'Cutting products with number of atoms difference greater than {self.atom_diff_max} and '
+                             f'below {self.atom_diff_min} to scaffold.')
+            filt_products = filt_products[(filt_products['num_atom_diff'] >= self.atom_diff_min) &
+                                          (filt_products['num_atom_diff'] <= self.atom_diff_max)]
+            self._print_diff(orig_df=products, input_df=filt_products, verb='Kept')
+            # reorder by num_atom_diff if calculated
+            if 'num_atom_diff' in filt_products.columns:
+                filt_products.sort_values(by=['num_atom_diff'], inplace=True)
+        if len(filt_products) == 0:
+            self.logger.critical("No products found.")
+            raise ProductFormationError(message=f"All products filtered for step {self.library.current_step}.",
+                                        route_uuid=self.route_uuid,
+                                        mol=self.library.reaction.scaffold)
         filt_products.reset_index(drop=True, inplace=True)
         return filt_products
 
@@ -494,8 +529,8 @@ class SlipperSynthesizer:
             products['group_id'] = -1  # Initialize all to -1 to indicate no group yet
         fps = products['fp'].tolist()
         n = len(fps)
-        # Calculate the fingerprint for the library's reaction product
-        product_fp = fairy.get_morgan_fingerprint(self.library.reaction.product)
+        # Calculate the fingerprint for the library's reaction scaffold
+        product_fp = fairy.get_morgan_fingerprint(self.library.reaction.scaffold)
         groups = {}
         existing_group_ids = set(products['group_id'])
         group_id = max(existing_group_ids) + 1 if existing_group_ids else 0
@@ -503,10 +538,10 @@ class SlipperSynthesizer:
         for i in range(n):
             if fps[i] is None:
                 continue
-            # Check similarity with the reaction product
+            # Check similarity with the reaction scaffold
             similarity_to_product = DataStructs.FingerprintSimilarity(fps[i], product_fp)
             if similarity_to_product == 1:
-                # This is a match; assign it to a group with the reaction product
+                # This is a match; assign it to a group with the reaction scaffold
                 if base_group_id == -1:  # If not already assigned
                     while group_id in existing_group_ids:
                         group_id += 1
@@ -603,7 +638,7 @@ class SlipperSynthesizer:
             except:
                 self.logger.critical(f"Could not enumerate stereoisomers for {row['smiles']}.")
                 raise ProductFormationError(message=f"Could not enumerate stereoisomers for {row['smiles']}.",
-                                            mol=self.library.reaction.product,
+                                            mol=self.library.reaction.scaffold,
                                             route_uuid=self.route_uuid)
         new_df = pd.DataFrame(new_rows)
         # remove NaNs

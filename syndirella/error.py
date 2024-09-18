@@ -69,7 +69,7 @@ class ReactionError(ChemicalErrorBase):
 class ProductFormationError(ChemicalErrorBase):
     def __init__(self,
                  route_uuid: str,
-                 message: str = "Failed to form the product.",
+                 message: str = "Failed to form the scaffold.",
                  inchi: str | None = None,
                  smiles: str | None = None,
                  mol: Chem.Mol | None = None):

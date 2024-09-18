@@ -36,7 +36,7 @@ class Labeler:
         red.
         """
         # get scaffold compound
-        base_compound: Chem.Mol = self.library.reaction.product
+        base_compound: Chem.Mol = self.library.reaction.scaffold
         # label atom ids
         for i, atom in enumerate(base_compound.GetAtoms()):
             atom_index = atom.GetIdx()
@@ -85,20 +85,20 @@ class Labeler:
     def _label_product_with_atom_ids(self, atom_ids_to_expand: List[int], atom_ids_to_not_expand: List[int],
                                      row: pd.Series) -> pd.Series:
         """
-        This function goes through each product and checks if the compound has been expanded or not.
+        This function goes through each scaffold and checks if the compound has been expanded or not.
         """
         results_atom_ids_to_expand: Dict[int, bool] = {}
         results_atom_ids_to_not_expand: Dict[int, bool] = {}
         for atom_id in atom_ids_to_expand:
             results_atom_ids_to_expand[atom_id]: List[bool or str] = self._has_non_mcs_bond(row["smiles"],
-                                                                         self.library.reaction.product,
-                                                                         atom_id)
+                                                                                            self.library.reaction.scaffold,
+                                                                                            atom_id)
             row_name = f"expanded_on_atom_{atom_id}"
             row[row_name] = results_atom_ids_to_expand[atom_id]
         for atom_id in atom_ids_to_not_expand:
             results_atom_ids_to_not_expand[atom_id]: List[bool or str] = self._has_non_mcs_bond(row["smiles"],
-                                                                             self.library.reaction.product,
-                                                                             atom_id)
+                                                                                                self.library.reaction.scaffold,
+                                                                                                atom_id)
             row_name = f"expanded_on_atom_{atom_id}"
             row[row_name] = results_atom_ids_to_not_expand[atom_id]
         # Qualify if good expansion on if only expanding on good atoms and not expanding on bad atoms
