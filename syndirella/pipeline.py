@@ -75,7 +75,7 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
     for workshop in cobbler_workshops:
         try:
             slipper = None
-            final_library = workshop.get_final_library()
+            final_library = wconorkshop.get_final_library()
             if final_library is None:
                 logger.warning(f"Could not get the final library for compound {workshop.product}. Skipping...")
                 continue

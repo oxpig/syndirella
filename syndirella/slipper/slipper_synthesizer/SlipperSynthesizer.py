@@ -8,7 +8,6 @@ from typing import (List, Dict, Tuple)
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
 from rdkit import DataStructs
-from sklearn.gaussian_process.kernels import Product
 
 from syndirella.route.Library import Library
 from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
