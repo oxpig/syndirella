@@ -21,9 +21,14 @@ class Cobbler:
     """
     def __init__(self,
                  scaffold_compound: str,
-                 output_dir: str):
+                 output_dir: str,
+                 atom_diff_min: int,
+                 atom_diff_max: int):
         self.scaffold_compound: str = scaffold_compound
-        self.id: str = fairy.generate_inchi_ID(self.scaffold_compound)
+        self.id: str = fairy.generate_inchi_ID(self.scaffold_compound, isomeric=False)
+        self.atom_diff_min: int = atom_diff_min
+        self.atom_diff_max: int = atom_diff_max
+
         # Manifold API
         self.url = "https://api.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
@@ -71,6 +76,8 @@ class Cobbler:
             output_dir=self.output_dir,
             id=self.id,
             filter=False,
+            atom_diff_min=self.atom_diff_min,
+            atom_diff_max=self.atom_diff_max,
             atoms_ids_expansion=None
         )
         return cobblers_workshop
@@ -124,54 +131,6 @@ class Cobbler:
                                    inchi=self.id,
                                    smiles=self.scaffold_compound)
         return final_route
-
-    def _get_final_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
-        """
-        This function is used to get the final routes, which are routes that contain all reactions we have encoded
-        and others if specified in additional rxn_options.
-        """
-        first_route: List[Dict] = self.choose_route(routes)
-
-        # get first route and then other non-first routes if specified in fairy filters
-        #TODO: Main part to get additional route if using all auto
-        first_route: CobblersWorkshop = self.create_cobblers_workshop_from_Postera(first_route)
-        additional_routes: List[CobblersWorkshop] | None = first_route.get_additional_routes(edit_route=True)
-        if additional_routes is not None:
-            final_routes: List[CobblersWorkshop] = [first_route] + additional_routes
-        return final_routes
-
-    def _create_cobblers_workshops(self, final_routes: List[List[Dict]]) -> List[CobblersWorkshop]:
-        """
-        From the final routes, creates the cobblers workshops.
-        """
-        # TODO: Might not need this function.
-        cobblers_workshops = []
-        if len(final_routes) == 0:
-            self.logger.error("There are no final routes.")
-            return cobblers_workshops
-        for route in final_routes:
-            route: List[Dict]
-            # get the reactions and the product
-            reaction_names: List[str] = [reaction['name'].replace(" ","_") for reaction in route]
-            product = route[0]['productSmiles'] # final product
-            reactants: List[str] = [reaction['reactantSmiles'] for reaction in route]
-            # flip order of reaction_names and reactants to make it a forward synthesis
-            reaction_names = reaction_names[::-1]
-            reactants = reactants[::-1]
-            self._print_route(reaction_names, reactants, product)
-            # create the cobblers workshop
-            cobblers_workshop = CobblersWorkshop(
-                product=product,
-                reactants=reactants,
-                reaction_names=reaction_names,
-                num_steps=len(reaction_names),
-                output_dir=self.output_dir,
-                id=self.id,
-                filter=False,
-                atoms_ids_expansion=None
-            )
-            cobblers_workshops.append(cobblers_workshop)
-        return cobblers_workshops
 
     def _print_route(self, reaction_names: List[str], reactants: List[str], product: str):
         """

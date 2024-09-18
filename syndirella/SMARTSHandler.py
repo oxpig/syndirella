@@ -93,8 +93,23 @@ class SMARTSHandler:
         found_2: Dict[str, bool] = self.find_matching_atoms(r2, patt1, patt2, r2_attach_ids)
         # Check that both reactants have been found
         if not self.check_found_reactants(product, found_1, found_2, reaction_name, r1, r2):
-            return None
+            # will return False when both reactants match both reactant SMARTS. i.e. formation of urea.
+            self.seperate_matching_reactants(r1, r2, found_1, found_2, patt1, patt2)
         return self.matched_reactants
+
+    def seperate_matching_reactants(self,
+                                    r1: Chem.Mol,
+                                    r2: Chem.Mol,
+                                    found_1: Dict[str, bool],
+                                    found_2: Dict[str, bool],
+                                    patt1: str,
+                                    patt2: str) -> Dict[str, Tuple[Chem.Mol, List[int], str]]:
+        """
+        This function is used to separate reactants that match both reactant SMARTS.
+        """
+        if found_1["r1"] and found_2["r1"] and found_2["r2"] and found_1["r2"]:
+            self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
+            self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2') # make found_2 r2
 
     def check_found_reactants(self,
                               product: Chem.Mol,
@@ -106,6 +121,8 @@ class SMARTSHandler:
         """
         This function checks that both reactants have been found. It raises a warning if both reactants are matched
         to the same reactant SMARTS.
+
+        Returns False when both reactants match both reactant SMARTS.
         """
         if not found_1["r1"] and not found_2["r1"]:
             self.logger.critical(f"The reactants do not match the reaction SMARTS in reaction {reaction_name} in "
@@ -126,11 +143,17 @@ class SMARTSHandler:
             self.logger.warning(
                 f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 1st "
                 f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
+            if found_1["r2"] and found_2["r2"]:
+                self.logger.warning(
+                    f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 2nd "
+                    f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
+            return False
 
         if found_1["r2"] and found_2["r2"]:
             self.logger.warning(
                 f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 2nd "
                 f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
+
         return True
 
     def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[str, bool]:

@@ -32,16 +32,21 @@ class Library:
                  num_steps: int,
                  current_step: int,
                  filter: bool,
-                 route_uuid: str):
+                 route_uuid: str,
+                 atom_diff_min: int,
+                 atom_diff_max: int):
         self.reaction: Reaction = reaction
         self.id: str = id
-        self.output_dir: str = f"{output_dir}/{self.id}"
-        self.extra_dir_path: str = f"{self.output_dir}/extra"
+        self.output_dir: str = os.path.join(output_dir, self.id)
+        self.extra_dir_path: str = os.path.join(self.output_dir, "extra")
         self.num_steps: int = num_steps
         self.current_step: int = current_step
         self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
         self.filter: bool = filter
         self.route_uuid: str = route_uuid
+        self.atom_diff_min: int = atom_diff_min
+        self.atom_diff_max: int = atom_diff_max
+
         self.logger = logging.getLogger(f"{__name__}")
         self.r1 = None
         self.r2 = None
@@ -328,7 +333,7 @@ class Library:
         # get all .pkl in output_dir.
         library_pkls: List[str] = glob.glob(f"{output_dir}/*library*.pkl")
         # get id from product SMILES
-        id = fairy.generate_inchi_ID(product)
+        id = fairy.generate_inchi_ID(product, isomeric=False)
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)
             if library.id == id and library.num_steps == library.current_step: # return the final library

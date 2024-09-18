@@ -3,6 +3,18 @@
 Definitions
 ===========
 
+Classes
+-------
+
+.. glossary::
+
+    Cobbler
+        Class to
+
+    CobblersBench
+
+
+
 General Terminology
 -------------------
 

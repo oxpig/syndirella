@@ -39,7 +39,8 @@ def config_parser(syndirella_base_path: str):
     """
     parser = argparse.ArgumentParser(prog="syndirella",
                                      description="Run the Syndirella pipeline with specified configurations.",
-                                     epilog=f"Syndirella is installed at {syndirella_base_path} \n")
+                                     epilog=f"Syndirella is installed at {syndirella_base_path} \n",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-i', '--input', type=str, required=True, help="Input .csv file path for the pipeline.")
     parser.add_argument('-o', '--output', type=str, required=True, help="Output directory for the pipeline results.")
     parser.add_argument('-t', '--templates', type=str, required=True, help="Absolute path to a directory containing the "
@@ -50,6 +51,9 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--manual', action='store_true', help="Use manual routes for processing.")
     parser.add_argument('--profile', action='store_true', help="Run the pipeline with profiling.")
+    parser.add_argument('--atom_diff_min', type=int, default=0, help="Minimum atom difference between elaborations and scaffold to keep.")
+    parser.add_argument('--atom_diff_max', type=int, default=10, help="Maximum atom difference between elaborations and scaffold to keep.")
+    parser.add_argument('--scaffold_place_num', type=int, default=5, help="Number of times to attempt scaffold placement.")
 
     return parser
 
@@ -60,14 +64,7 @@ def run_pipeline(settings: Dict[str, Any], pipeline):
     """
     logging.info('Running the pipeline...')
 
-    pipeline.run_pipeline(csv_path=settings['input'],
-                          output_dir=settings['output'],
-                          template_dir=settings['templates'],
-                          hits_path=settings['hits_path'],
-                          metadata_path=settings['metadata'],
-                          batch_num=settings['batch_num'],
-                          additional_columns=['compound_set'], # Will always be compound_set
-                          manual_routes=settings['manual'])
+    pipeline.run_pipeline(settings)
 
     logging.info('Pipeline execution completed successfully.')
 

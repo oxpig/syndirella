@@ -30,6 +30,8 @@ class CobblersWorkshop():
                  output_dir: str,
                  filter: bool,
                  id: str,
+                 atom_diff_min: int,
+                 atom_diff_max: int,
                  atoms_ids_expansion: dict = None):
         self.logger = logging.getLogger(f"{__name__}")
         self.route_uuid: str = shortuuid.ShortUUID().random(length=6)
@@ -37,6 +39,9 @@ class CobblersWorkshop():
         self.id: str = id
         self.reactants: List[Tuple[str]] = self.check_reactants(reactants)
         self.reaction_names: List[str] = self.check_reaction_names(reaction_names)
+        self.atom_diff_min: int = atom_diff_min
+        self.atom_diff_max: int = atom_diff_max
+
         self.num_steps: int = num_steps
         self.output_dir: str = output_dir
         self.filter: bool = filter
@@ -44,7 +49,6 @@ class CobblersWorkshop():
         self.cobbler_benches: List[CobblerBench] = []  # To store instances for each step
         self.first_library: Library = None
         self.final_library: Library = None
-
 
     def check_product(self, product: str) -> str:
         """
@@ -102,7 +106,9 @@ class CobblersWorkshop():
                                      num_steps=self.num_steps,
                                      current_step= step + 1,
                                      filter=self.filter,
-                                     route_uuid=self.route_uuid)
+                                     route_uuid=self.route_uuid,
+                                     atom_diff_min=self.atom_diff_min,
+                                     atom_diff_max=self.atom_diff_max)
         return cobbler_bench
 
 
@@ -135,7 +141,9 @@ class CobblersWorkshop():
                                                 output_dir=self.output_dir,
                                                 filter=self.filter,
                                                 id=self.id,
-                                                atoms_ids_expansion=self.atoms_ids_expansion)
+                                                atoms_ids_expansion=self.atoms_ids_expansion,
+                                                atom_diff_min=self.atom_diff_min,
+                                                atom_diff_max=self.atom_diff_max)
             workshops.append(cobbler_workshop)
         if len(workshops) == 0:
             self.logger.error(f"No additional routes for {self.product} could be created...")

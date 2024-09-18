@@ -224,26 +224,33 @@ Command Line Interface
 
 .. code-block::
 
-    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--profile]
+    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--profile] [--atom_diff_min ATOM_DIFF_MIN]
+                      [--atom_diff_max ATOM_DIFF_MAX] [--scaffold_place_num SCAFFOLD_PLACE_NUM]
 
     Run the Syndirella pipeline with specified configurations.
 
     options:
       -h, --help            show this help message and exit
       -i INPUT, --input INPUT
-                            Input .csv file path for the pipeline.
+                            Input .csv file path for the pipeline. (default: None)
       -o OUTPUT, --output OUTPUT
-                            Output directory for the pipeline results.
+                            Output directory for the pipeline results. (default: None)
       -t TEMPLATES, --templates TEMPLATES
-                            Absolute path to a directory containing the template(s).
+                            Absolute path to a directory containing the template(s). (default: None)
       --hits_path HITS_PATH
-                            Absolute path to hits_path for placements (.sdf or .mol).
-      --metadata METADATA   Absolute path to metadata for placements.
-      --products PRODUCTS   Absolute path to products for placements.
+                            Absolute path to hits_path for placements (.sdf or .mol). (default: None)
+      --metadata METADATA   Absolute path to metadata for placements. (default: None)
+      --products PRODUCTS   Absolute path to products for placements. (default: None)
       --batch_num BATCH_NUM
-                            Batch number for processing.
-      --manual              Use manual routes for processing.
-      --profile             Run the pipeline with profiling.
+                            Batch number for processing. (default: 10000)
+      --manual              Use manual routes for processing. (default: False)
+      --profile             Run the pipeline with profiling. (default: False)
+      --atom_diff_min ATOM_DIFF_MIN
+                            Minimum atom difference between elaborations and scaffold to keep. (default: 0)
+      --atom_diff_max ATOM_DIFF_MAX
+                            Maximum atom difference between elaborations and scaffold to keep. (default: 10)
+      --scaffold_place_num SCAFFOLD_PLACE_NUM
+                            Number of times to attempt scaffold placement. (default: 5)
 
     Syndirella is installed at [path_to_installation]
 

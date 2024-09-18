@@ -39,7 +39,9 @@ class SlipperFitter:
         self.route_uuid: str | None = route_uuid
         self.scaffold_placements: Dict[Chem.Mol, str | None] = scaffold_placements
 
-        self.num_atom_diff_limit: int = 10
+        self.atom_diff_min: int = 0
+        self.atom_diff_max: int = 10
+
         self.final_products_csv_path: str | None = None
         self.final_products_pkl_path: str | None = None
         self.batch_num: int | None = None
@@ -72,7 +74,8 @@ class SlipperFitter:
 
     def check_scaffold(self,
                        scaffold: Chem.Mol,
-                       scaffold_name: str) -> str | None:
+                       scaffold_name: str,
+                       scaffold_place_num: int) -> str | None:
         """
         Checks if the scaffold can be minimised (no specific stereoisomer) and passes intermolecular checks.
         If it cannot be minimised after 3 attempts, returns False.
@@ -81,15 +84,13 @@ class SlipperFitter:
         id = fairy.generate_inchi_ID(Chem.MolToSmiles(scaffold, isomericSmiles=False))
         output_path: str = os.path.join(self.output_dir, f'{id}-scaffold-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
-        num_attempts = 2
-        for attempt in range(1, num_attempts+1):
+        for attempt in range(1, scaffold_place_num + 1):
             scaffold_placed: Chem.Mol = self._place_scaffold(lab, input_df)  # None if not minimised
             if scaffold_placed is not None:
-                paths = [os.path.join(output_path, 'output', scaffold_name, f'{scaffold_name}.minimised.mol'),
-                         os.path.join(output_path, scaffold_name, f'{scaffold_name}.minimised.mol')] # could be two output paths...
+                paths = [os.path.join(output_path, 'output', scaffold_name, f'{scaffold_name}.minimised.mol')] # could be two output paths...
                 path_exists = [os.path.exists(path) for path in paths]
                 if not any(path_exists):
-                    self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
+                    self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {scaffold_place_num}.')
                     continue
                 geometries: Dict = intra_geometry.check_geometry(scaffold_placed,
                                                                  threshold_clash=0.4) # increasing threshold for internal clash
@@ -97,9 +98,9 @@ class SlipperFitter:
                 if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
                     return paths[0] if path_exists[0] else paths[1]
                 else:
-                    self.logger.info(f'Scaffold could not pass intramolecular checks. Attempt {attempt} of {num_attempts}.')
+                    self.logger.info(f'Scaffold could not pass intramolecular checks. Attempt {attempt} of {scaffold_place_num}.')
             else:
-                self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {num_attempts}.')
+                self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {scaffold_place_num}.')
         return None
 
     def _check_intra_geom_flatness_results(self,
@@ -168,13 +169,13 @@ class SlipperFitter:
         final_products: pd.DataFrame = self.final_products.copy(deep=True)
         final_products = final_products.drop_duplicates(subset='name') # drop duplicates of names first
         self.logger.info(f"Total number of products with enumerated stereoisomers (unique name) found before cutting: {len(final_products)}")
-        # cut rows with number of atoms difference greater than num_atom_diff_limit
-        self.logger.info(f'Cutting products with number of atoms difference greater than {self.num_atom_diff_limit} and '
-                         f'below 0 to scaffold.')
+        # cut rows with number of atoms difference greater than atom_diff_max
+        self.logger.info(f'Cutting products with number of atoms difference greater than {self.atom_diff_max} and '
+                         f'below {self.atom_diff_min} to scaffold.')
         input_df = final_products[
-            (final_products['num_atom_diff'] <= self.num_atom_diff_limit) &
-            (final_products['num_atom_diff'] >= 0)]
-        self._print_diff(final_products, input_df, verb='Kept')
+            (final_products['num_atom_diff'] <= self.atom_diff_max) &
+            (final_products['num_atom_diff'] >= self.atom_diff_min)]
+        self._print_diff(orig_df=final_products, input_df=input_df, verb='Kept')
         # drop columns that are not needed
         input_df = input_df[['name', 'smiles']]
         # place number in batch

@@ -92,6 +92,8 @@ class Slipper:
                                        route_uuid=self.route_uuid,
                                        id=self.library.id,
                                        scaffold_placements=self.scaffold_placements)
+        slipper_fitter.atom_diff_min = self.library.atom_diff_min
+        slipper_fitter.atom_diff_max = self.library.atom_diff_max
         slipper_fitter.final_products = self.products # products with enumerated stereoisomers from final library
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path
@@ -121,7 +123,7 @@ class Slipper:
         # cut placements to those that were placed by batch_num
         placements: pd.DataFrame = self.placements.iloc[:self.batch_num]
 
-        hippo_path: str = self.output_dir + f'/{self.library.id}_{self.route_uuid}_to_hippo.pkl.gz'
+        hippo_path: str = os.path.join(self.output_dir, f'{self.library.id}_{self.route_uuid}_to_hippo.pkl.gz')
         # get all products dfs in /extra
         products_files: List[str] = glob.glob(f"{self.output_dir}/extra/*products*.pkl*")
         product_dfs: Dict[int, pd.DataFrame] = self._load_products_dfs(products_files)

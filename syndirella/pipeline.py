@@ -15,6 +15,7 @@ from rdkit.Chem import inchi
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 
 from syndirella.Cobbler import Cobbler
+from syndirella.check_inputs import metadata_dict
 from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
@@ -30,7 +31,8 @@ def assert_scaffold_placement(scaffold: str,
                               template_path: str,
                               hits_path: str,
                               hits_names: List[str],
-                              output_dir: str
+                              output_dir: str,
+                              scaffold_place_num: int
                               ) -> Dict[Chem.Mol, str]:
     """
     Assert that the scaffold can be placed for any stereoisomers. If not, raise an error.
@@ -47,7 +49,8 @@ def assert_scaffold_placement(scaffold: str,
     for i, isomer in enumerate(isomers):
         scaffold_name: str = f'scaffold-{chr(65 + i)}'
         can_be_placed: str | None = slipper_fitter.check_scaffold(scaffold=isomer,
-                                                                  scaffold_name=scaffold_name)  # path to scaffold if successful
+                                                                  scaffold_name=scaffold_name,
+                                                                  scaffold_place_num=scaffold_place_num)  # path to scaffold if successful
         placements[isomer] = can_be_placed  # absolute path to minimised.mol scaffold, checked to exist
     if not any(placements.items()):
         logger.critical(f"Scaffold {scaffold} could not be placed successfully.")
@@ -103,7 +106,8 @@ def start_elaboration(product: str,
                       template_path: str,
                       hits_path: str,
                       hits: List[str],
-                      output_dir: str) -> Tuple[float, Dict[Chem.Mol, str | None]]:
+                      output_dir: str,
+                      scaffold_place_num: int) -> Tuple[float, Dict[Chem.Mol, str | None]]:
     """
     Starts the elaboration of a single compound by checking if it can be placed.
     """
@@ -112,7 +116,8 @@ def start_elaboration(product: str,
     scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
                                                                                 template_path=template_path,
                                                                                 hits_path=hits_path, hits_names=hits,
-                                                                                output_dir=output_dir)
+                                                                                output_dir=output_dir,
+                                                                                scaffold_place_num=scaffold_place_num)
     return start_time, scaffold_placements
 
 
@@ -126,15 +131,21 @@ def elaborate_compound_with_manual_routes(product: str,
                                           batch_num: int,
                                           output_dir: str,
                                           csv_path: str,
+                                          atom_diff_min: int,
+                                          atom_diff_max: int,
+                                          scaffold_place_num: int,
                                           additional_info=None):
     """
     This function is used to elaborate a single compound using a manually defined route.
     """
-    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
-                                          hits=hits, output_dir=output_dir)
+    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path,
+                                                        hits_path=hits_path,
+                                                        hits=hits, output_dir=output_dir,
+                                                        scaffold_place_num=scaffold_place_num)
     workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                 num_steps=num_steps, output_dir=output_dir, filter=False,
-                                id=fairy.generate_inchi_ID(product))
+                                id=fairy.generate_inchi_ID(product, isomeric=False), atom_diff_min=atom_diff_min,
+                                atom_diff_max=atom_diff_max)
     cobblers_workshops = [workshop]
     alternative_routes: List[CobblersWorkshop] | None = workshop.get_additional_routes(edit_route=True)
     if alternative_routes is not None:
@@ -157,14 +168,20 @@ def elaborate_compound_full_auto(product: str,
                                  batch_num: int,
                                  output_dir: str,
                                  csv_path: str,
+                                 atom_diff_min: int,
+                                 atom_diff_max: int,
+                                 scaffold_place_num: int,
                                  additional_info=None):
     """
     This function is used to elaborate a single compound.
     """
-    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path, hits_path=hits_path,
-                                          hits=hits, output_dir=output_dir)
+    start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path,
+                                                        hits_path=hits_path,
+                                                        hits=hits, output_dir=output_dir,
+                                                        scaffold_place_num=scaffold_place_num)
     cobbler = Cobbler(scaffold_compound=product,
-                      output_dir=output_dir)  # check that output_dirs can be made for different routes
+                      output_dir=output_dir, atom_diff_min=atom_diff_min,
+                      atom_diff_max=atom_diff_max)  # check that output_dirs can be made for different routes
     cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
     elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
                                      hits_path=hits_path, hits=hits, batch_num=batch_num,
@@ -179,18 +196,36 @@ def elaborate_compound_full_auto(product: str,
 
 #######################################
 
-def run_pipeline(*,
-                 csv_path: str,
-                 output_dir: str,
-                 template_dir: str,
-                 hits_path: str,
-                 metadata_path: str,
-                 batch_num: int,
-                 additional_columns: List[str],
-                 manual_routes: bool):
+def run_pipeline(settings: Dict):
     """
     Run the whole syndirella pipeline! 👑
+
+    Settings dict should have these keys:
+      csv_path=settings['input'],
+      output_dir=settings['output'],
+      template_dir=settings['templates'],
+      hits_path=settings['hits_path'],
+      metadata_path=settings['metadata'],
+      batch_num=settings['batch_num'],
+      additional_columns=['compound_set'], # Will always be compound_set
+      manual_routes=settings['manual'],
+      atom_diff_min=settings['atom_diff_min'],
+      atom_diff_max=settings['atom_diff_max']
     """
+    # set variables
+    try:
+        additional_columns = ['compound_set']
+        metadata_path = settings['metadata_path']
+        template_dir = settings['template_dir']
+        hits_path = settings['hits_path']
+        output_dir = settings['output_dir']
+        batch_num = settings['batch_num']
+        csv_path = settings['csv_path']
+        atom_diff_min = settings['atom_diff_min']
+        atom_diff_max = settings['atom_diff_max']
+        scaffold_place_num = settings['scaffold_place_num']
+    except KeyError as e:
+        logger.critical(f"Missing critical argument to run pipeline: {e}")
 
     def process_row(row, manual_routes):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
@@ -199,9 +234,11 @@ def run_pipeline(*,
             template=row['template'],
             metadata_path=metadata_path
         )
-        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path, hits_path=hits_path)
+        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path,
+                                                           hits_path=hits_path)
 
         try:
+
             if manual_routes:
                 reactants, reaction_names, num_steps = check_inputs.format_manual_route(row)
                 elaborate_compound_with_manual_routes(
@@ -215,7 +252,10 @@ def run_pipeline(*,
                     batch_num=batch_num,
                     output_dir=output_dir,
                     additional_info=additional_info,
-                    csv_path=csv_path
+                    csv_path=csv_path,
+                    atom_diff_min=atom_diff_min,
+                    atom_diff_max=atom_diff_max,
+                    scaffold_place_num=scaffold_place_num
                 )
             else:
                 elaborate_compound_full_auto(
@@ -226,7 +266,10 @@ def run_pipeline(*,
                     batch_num=batch_num,
                     output_dir=output_dir,
                     additional_info=additional_info,
-                    csv_path=csv_path
+                    csv_path=csv_path,
+                    atom_diff_min=atom_diff_min,
+                    atom_diff_max=atom_diff_max,
+                    scaffold_place_num=scaffold_place_num
                 )
         except Exception as e:
             tb = traceback.format_exc()
@@ -240,6 +283,11 @@ def run_pipeline(*,
                 hits=hits,
                 additional_info=additional_info
             )
+
+    try:
+        manual_routes = settings['manual']
+    except KeyError:
+        manual_routes = False
 
     # Validate inputs
     check_inputs.check_pipeline_inputs(

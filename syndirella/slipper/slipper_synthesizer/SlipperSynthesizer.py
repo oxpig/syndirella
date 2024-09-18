@@ -47,6 +47,9 @@ class SlipperSynthesizer:
         self.num_steps: int = library.num_steps
         self.logger = logging.getLogger(f"{__name__}")
 
+        self.atom_diff_min: int = self.library.atom_diff_min
+        self.atom_diff_max: int = self.library.atom_diff_max
+
         # variables for output
         self.num_unique_products: int = 0
         self.num_products_enumstereo: int = 0
@@ -363,13 +366,13 @@ class SlipperSynthesizer:
                 row['combined'] = list(zip(row_smiles, row_num_atom_diff))
                 row['flag'] = flags if flags else None
                 return row
-            product = products[0][0]
-            if self.can_be_sanitized(product):
-                base = self.library.reaction.product
-                num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-                row['flag'] = flags if flags else None
-                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-                return row
+        product = products[0][0]
+        if self.can_be_sanitized(product):
+            base = self.library.reaction.product
+            num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
+            row['flag'] = flags if flags else None
+            row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
+            return row
 
     def apply_reaction(self, row) -> pd.Series:
         """
@@ -449,11 +452,32 @@ class SlipperSynthesizer:
         # Convert 'flag' column to tuple ot be hashable
         products['flag'] = products['flag'].apply(lambda x: tuple(x) if isinstance(x, list) else x)
         products.drop_duplicates(inplace=True, ignore_index=True)
+        # drop products with less than minimum number of atoms
+        self.logger.info(f'Cutting products with number of atoms difference greater than {self.atom_diff_max} and '
+                         f'below {self.atom_diff_min} to scaffold.')
+        filt_products = products[(products['num_atom_diff'] >= self.atom_diff_min) &
+                         (products['num_atom_diff'] <= self.atom_diff_max)]
+        self._print_diff(orig_df=products, input_df=filt_products, verb='Kept')
         # reorder by num_atom_diff if calculated
-        if 'num_atom_diff' in products.columns:
-            products.sort_values(by=['num_atom_diff'], inplace=True)
-        products.reset_index(drop=True, inplace=True)
-        return products
+        if 'num_atom_diff' in filt_products.columns:
+            filt_products.sort_values(by=['num_atom_diff'], inplace=True)
+        filt_products.reset_index(drop=True, inplace=True)
+        return filt_products
+
+    def _print_diff(self,
+                    orig_df: pd.DataFrame,
+                    input_df: pd.DataFrame,
+                    verb: str = None):
+        """
+        This function is used to print the difference between the original number of analogues and the number of
+        valid analogues.
+        """
+        if len(input_df) >= len(orig_df):
+            self.logger.error("Problem with finding unique analogues. There are more than were in the original list of "
+                              "analogues.")
+        percent = round(((len(input_df) / len(orig_df)) * 100), 2)
+        self.logger.info(f'{verb} {len(input_df)} ({percent}%) valid products out of {len(orig_df)} '
+                         f'products.')
 
     def calculate_fingerprints(self, products):
         """Calculate morgan fingerprints for each molecule."""
@@ -565,7 +589,7 @@ class SlipperSynthesizer:
         if self.library.num_steps != self.library.current_step:
             return products
         self.logger.info("Enumerating stereoisomers since this is the final step...")
-        self.num_unique_products = len(set(list(products['name']))) # unique products before stereoisomer enumeration
+        self.num_unique_products = len(set(list(products['name'])))  # unique products before stereoisomer enumeration
         new_rows = []
         for index, row in products.iterrows():
             try:
@@ -585,7 +609,8 @@ class SlipperSynthesizer:
         # remove NaNs
         new_df = new_df.dropna(subset=['smiles'])
         new_df.reset_index(drop=True, inplace=True)
-        self.num_products_enumstereo = len(set(list(new_df['name']))) # number of products after stereoisomer enumeration
+        self.num_products_enumstereo = len(
+            set(list(new_df['name'])))  # number of products after stereoisomer enumeration
         return new_df
 
     def find_stereoisomers(self, smiles: str) -> List[Chem.Mol]:
@@ -597,7 +622,7 @@ class SlipperSynthesizer:
             isomers = list(EnumerateStereoisomers(mol, options=opts))
             isomer_list = [Chem.MolToSmiles(isomer, isomericSmiles=True) for isomer in isomers]
         except RuntimeError:
-            self.logger.warning(f"Could not enumerate stereoisomers for {smiles}. Returning original SMILES.")
+            self.logger.warning(f"Could not enumerate stereoisomers for {smiles}. Keeping original SMILES.")
             isomer_list = [smiles]
         return isomer_list
 

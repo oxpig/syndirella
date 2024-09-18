@@ -165,7 +165,7 @@ def get_inchi(scaffold: str, workshop: CobblersWorkshop | None) -> str:
         except AttributeError:
             pass
     else:
-        return fairy.generate_inchi_ID(scaffold)
+        return fairy.generate_inchi_ID(scaffold, isomeric=False)
 
 
 def check_route_to_add(workshop: CobblersWorkshop | None) -> bool:
