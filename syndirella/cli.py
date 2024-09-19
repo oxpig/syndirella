@@ -50,11 +50,12 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--products', type=str, required=False, help="Absolute path to products for placements.")
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--manual', action='store_true', help="Use manual routes for processing.")
+    parser.add_argument('--scaffold_place', action='store_true', help="Only place scaffolds. Do not continue to elaborate.")
+    parser.add_argument('--scaffold_place_num', type=int, default=5,
+                        help="Number of times to attempt scaffold placement.")
     parser.add_argument('--profile', action='store_true', help="Run the pipeline with profiling.")
     parser.add_argument('--atom_diff_min', type=int, default=0, help="Minimum atom difference between elaborations and scaffold to keep.")
     parser.add_argument('--atom_diff_max', type=int, default=10, help="Maximum atom difference between elaborations and scaffold to keep.")
-    parser.add_argument('--scaffold_place_num', type=int, default=5, help="Number of times to attempt scaffold placement.")
-
     return parser
 
 

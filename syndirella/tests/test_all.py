@@ -27,14 +27,15 @@ class TestAtomDiff_2(unittest.TestCase):
     def setUp(self):
         self.settings= {
             'input' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/syndirella_input/syndirella_input145.csv',
-            'output' : '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/atom_diff',
+            'output' : '/Users/kate_fieseler/PycharmProjects/syndirella/syndirella/tests/just_scaffold_place',
             'templates' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/templates',
             'hits_path' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/CHIKV_Mac_combined.sdf',
             'metadata' : '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/fragments/metadata.csv',
             'batch_num' : 5,
             'atom_diff_min' : 0,
             'atom_diff_max' : 10,
-            'scaffold_place_num' : 3
+            'scaffold_place_num' : 3,
+            'scaffold_place' : True
         }
 
     def test(self):
