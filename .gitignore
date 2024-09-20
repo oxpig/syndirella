@@ -22,5 +22,6 @@ iris/
 *.DS_Store
 
 /nbs/
+/debug/
 
 

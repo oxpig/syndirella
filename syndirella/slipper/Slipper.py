@@ -8,7 +8,7 @@ scaffold of a reaction.
 from typing import List, Dict, Optional
 import pandas as pd
 
-from syndirella.error import NoScaffold
+from syndirella.error import NoScaffold, NoToHippo
 from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
 from syndirella.route.Library import Library
 from syndirella.slipper.SlipperFitter import SlipperFitter
@@ -165,8 +165,14 @@ class Slipper:
             step = df['step'].iloc[0]
             product_dfs[step] = df
         if len(product_dfs) != self.library.num_steps - 1:
-            self.logger.error("Not all steps have products dataframes.")
-            return None
+            found_steps = list(product_dfs.keys())
+            missing_steps = [step for step in range(1, self.library.num_steps) if step not in found_steps]
+            self.logger.critical("Not all steps have findable products dataframes or non empty dataframes. "
+                                 f"Missing steps: {missing_steps}")
+            raise NoToHippo(message=f"Not all steps have findable products dataframes or non empty dataframes. "
+                                    f"Missing steps: {missing_steps}",
+                            route_uuid=self.route_uuid,
+                            inchi=self.library.id)
         return product_dfs
 
     def _structure_products_for_hippo(self,
@@ -248,7 +254,6 @@ class Slipper:
         Structures the products df for HIPPO output.
         """
         # cut down the dataframe to those with num_atom_diff <= 15
-        products_df = products_df[products_df['num_atom_diff'] <= 15]
         reaction: str = products_df['reaction'].iloc[0]
         r1_smiles: List[str] = products_df['r1_smiles'].tolist()
         r1_is_previous_product: bool = products_df['r1_is_previous_product'].iloc[0]
@@ -259,7 +264,7 @@ class Slipper:
             r2_smiles: List[str] = [''] * len(products_df)
             r2_is_previous_product: bool = None
         # find which reactants were products of the previous step
-        r_previous_product: int = self.which_reactant_was_previous_product(r1_is_previous_product,
+        r_previous_product: int | None = self.which_reactant_was_previous_product(r1_is_previous_product,
                                                                            r2_is_previous_product)
         product_smiles: List[str] = products_df['smiles'].tolist()
         product_names: List[str] = products_df['name'].tolist()
@@ -281,8 +286,6 @@ class Slipper:
             regarded: List[bool] = products_df['regarded'].tolist()
             intra_geometry_pass: List[bool] = products_df['intra_geometry_pass'].tolist()
             path_to_mol: List[Optional[str]] = products_df['path_to_mol'].tolist()
-        else:
-            num_atom_diff: List[None] = [None] * len(products_df)
         # make HIPPO output dataframe
         hippo_df_step = pd.DataFrame({f'{step}_reaction': reaction,
                                       f'{step}_r1_smiles': r1_smiles,
@@ -290,9 +293,9 @@ class Slipper:
                                       f'{step}_r_previous_product': r_previous_product,
                                       f'{step}_product_smiles': product_smiles,
                                       f'{step}_product_name': product_names,
-                                      f'{step}_num_atom_diff': num_atom_diff,
                                       f'{step}_flag': flags})
         if step == self.library.num_steps:
+            hippo_df_step[f'{step}_num_atom_diff'] = num_atom_diff
             hippo_df_step[f'{step}_stereoisomer'] = stereoisomer
             hippo_df_step[f'error'] = error
             hippo_df_step[f'∆∆G'] = delta_delta_G
@@ -301,6 +304,7 @@ class Slipper:
             hippo_df_step[f'comRMSD'] = comRMSD
             hippo_df_step[f'regarded'] = regarded
             hippo_df_step[f'path_to_mol'] = path_to_mol
+            hippo_df_step['template'] = self.template
             hippo_df_step[f'intra_geometry_pass'] = intra_geometry_pass
         return hippo_df_step
 

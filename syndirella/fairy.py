@@ -130,13 +130,28 @@ def format_for_output(mols: List[Chem.Mol], hits: List[Tuple[str, float]]) -> Di
 
 
 def simple_filters(mols: List[Chem.Mol]) -> List[Chem.Mol]:
-    """Filter out molecules based on chirality, repeats, and non-abundant isotopes."""
-    mols = [mol for mol in mols if all(atom.GetChiralTag() == Chem.rdchem.ChiralType.CHI_UNSPECIFIED
-                                       for atom in mol.GetAtoms())]
+    """Filter out molecules based on repeats, and non-abundant isotopes."""
     mols = remove_repeat_mols(mols)
     mols = remove_non_abundant_isotopes(mols)
+    mols = remove_hydrogen_ions(mols)
     return mols
 
+def remove_hydrogen_ions(mols: List[Chem.Mol]) -> List[Chem.Mol]:
+    """Remove molecules with only hydrogen ions."""
+    for i, mol in enumerate(mols):
+        mol = Chem.RWMol(mol) # make editable
+        atoms_to_remove = []
+        for atom in mol.GetAtoms():
+            # remove single hydrogen ions
+            if atom.GetAtomicNum() == 1 and atom.GetHybridization() == Chem.HybridizationType.S:
+                atoms_to_remove.append(atom.GetIdx())
+        try:
+            for atom_idx in atoms_to_remove[::-1]: # have to reverse it for some reason
+                mol.RemoveAtom(atom_idx)
+        except Exception as e: # don't know exact Error here
+            logger.info(f"Error removing hydrogen ion: {e}")
+            continue
+    return mols
 
 def remove_repeat_mols(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """

@@ -87,7 +87,8 @@ class SlipperFitter:
         for attempt in range(1, scaffold_place_num + 1):
             scaffold_placed: Chem.Mol = self._place_scaffold(lab, input_df)  # None if not minimised
             if scaffold_placed is not None:
-                paths = [os.path.join(output_path, 'output', scaffold_name, f'{scaffold_name}.minimised.mol')] # could be two output paths...
+                paths = [os.path.join(output_path, 'output', scaffold_name, f'{scaffold_name}.minimised.mol'),
+                         os.path.join(output_path, scaffold_name, f'{scaffold_name}.minimised.mol')] # could be two output paths...
                 path_exists = [os.path.exists(path) for path in paths]
                 if not any(path_exists):
                     self.logger.info(f'Scaffold could not be minimised. Attempt {attempt} of {scaffold_place_num}.')
@@ -96,6 +97,7 @@ class SlipperFitter:
                                                                  threshold_clash=0.4) # increasing threshold for internal clash
                 flat_results: Dict = flatness.check_flatness(scaffold_placed)
                 if self._check_intra_geom_flatness_results(geometries=geometries, flat_results=flat_results):
+                    self.logger.info(f'Scaffold minimised and passed intramolecular checks.')
                     return paths[0] if path_exists[0] else paths[1]
                 else:
                     self.logger.info(f'Scaffold could not pass intramolecular checks. Attempt {attempt} of {scaffold_place_num}.')
@@ -194,7 +196,7 @@ class SlipperFitter:
         This function is used to print the difference between the original number of analogues and the number of
         valid analogues.
         """
-        if len(input_df) >= len(orig_df):
+        if len(input_df) > len(orig_df):
             self.logger.error("Problem with finding unique analogues. There are more than were in the original list of "
                               "analogues.")
         percent = round(((len(input_df) / len(orig_df)) * 100), 2)
@@ -416,9 +418,12 @@ class SlipperFitter:
             raise PlacementError(message=f'Output path not set for placements of {self.id}.',
                                  inchi=self.id,
                                  route_uuid=self.route_uuid)
-        paths_to_mols = df.apply(lambda x: os.path.join(self.output_path, x['name'], f'{x["name"]}.minimised.mol'), axis=1)
-        # only add paths to mol files if they exist
-        df['path_to_mol'] = [path if os.path.exists(path) else None for path in paths_to_mols]
+        df['paths_to_mols'] = df.apply(lambda x: [os.path.join(self.output_path, x['name'], f'{x["name"]}.minimised.mol'),
+                                            os.path.join(self.output_path, 'output', x['name'], f'{x["name"]}.minimised.mol')], axis=1)
+        # Add only the first path that exists, or None if neither path exists
+        df['path_to_mol'] = df['paths_to_mols'].apply(
+            lambda paths: next((path for path in paths if os.path.exists(path)), None))
+        df.drop(columns=['paths_to_mols'], inplace=True)
         return df
 
     def merge_placements(self) -> pd.DataFrame:

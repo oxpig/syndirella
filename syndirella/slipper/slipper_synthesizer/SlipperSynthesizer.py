@@ -141,14 +141,14 @@ class SlipperSynthesizer:
         df[f'{reactant_prefix}_num_atom_diff'] = (
             df[f"{reactant_prefix}_mol"].apply(lambda x: self.calc_num_atom_diff_absolute(base_reactant, x)))
         # get columns to sort by
-        ordered_columns = [f'{reactant_prefix}_lead_time', f'{reactant_prefix}_num_atom_diff', 'num_matches']
+        ordered_columns = [f'{reactant_prefix}_num_atom_diff', 'num_matches']
         matching_columns = []
         # Iterate over each substring in the order of preference
         for substring in ordered_columns:
             # Find and append columns that contain the current substring
             matching_columns.extend([col for col in df.columns if substring in col])
         # sort column order
-        df = df.sort_values(by=matching_columns, ascending=[True, True, True])
+        df = df.sort_values(by=matching_columns, ascending=[True, True])
         df.reset_index(drop=True, inplace=True)
         return df
 
@@ -186,7 +186,7 @@ class SlipperSynthesizer:
         """
         # before anything cut analogues based on min and max num_atom_diff values
         for key, df in self.analogues_dataframes_to_react.items():
-            self.logger.info(f'Filtering reactants by number of atoms difference to original reactant.'
+            self.logger.info(f'{key}: Filtering reactants for by number of atoms difference to original reactant.'
                              f' Keeping only those with {self.atom_diff_min} <= num_atom_diff <= {self.atom_diff_max}.')
             new_df = df[(df[f'{key}_num_atom_diff'] >= self.atom_diff_min) &
                         (df[f'{key}_num_atom_diff'] <= self.atom_diff_max)]
@@ -194,7 +194,6 @@ class SlipperSynthesizer:
             percent = round(((len(new_df) / len(df)) * 100), 2)
             self.logger.info(f'Kept {len(new_df)} ({percent}%) valid products out of {len(df)} '
                              f'reactants.')
-
         if len(self.analogues_dataframes_to_react) < 2:
             if len(list(self.analogues_dataframes_to_react.values())[0]) > 10000:
                 self.logger.info(f"Too many analogues for {list(self.analogues_dataframes_to_react.keys())[0]}.")

@@ -40,6 +40,8 @@ class SMARTSHandler:
         self.pattern_reactant1 = self.from_SMARTS_to_patterns(self.reactant1_dict)
         self.pattern_reactant2 = self.from_SMARTS_to_patterns(self.reactant2_dict)
         self.matched_reactants = None
+        self.found_1 = None
+        self.found_2 = None
         REACTANT1_PREFIX = self.fromReactionFullNameToReactantName("", 1)
         REACTANT2_PREFIX = self.fromReactionFullNameToReactantName("", 2)
         REACTIONS_NAMES = list(reaction_smarts.keys())
@@ -89,12 +91,14 @@ class SMARTSHandler:
         patt1 = self.reactant1_dict[reaction_name]
         patt2 = self.reactant2_dict[reaction_name]
         self.matched_reactants = {patt1: None, patt2: None}
-        found_1: Dict[str, bool] = self.find_matching_atoms(r1, patt1, patt2, r1_attach_ids)
-        found_2: Dict[str, bool] = self.find_matching_atoms(r2, patt1, patt2, r2_attach_ids)
+        found_1: Dict[str, Tuple[int] | bool] = self.find_matching_atoms(r1, patt1, patt2, r1_attach_ids)
+        found_2: Dict[str, Tuple[int] | bool] = self.find_matching_atoms(r2, patt1, patt2, r2_attach_ids)
         # Check that both reactants have been found
         if not self.check_found_reactants(product, found_1, found_2, reaction_name, r1, r2):
             # will return False when both reactants match both reactant SMARTS. i.e. formation of urea.
             self.seperate_matching_reactants(r1, r2, found_1, found_2, patt1, patt2)
+        self.found_1 = found_1
+        self.found_2 = found_2
         return self.matched_reactants
 
     def seperate_matching_reactants(self,
@@ -105,11 +109,34 @@ class SMARTSHandler:
                                     patt1: str,
                                     patt2: str) -> Dict[str, Tuple[Chem.Mol, List[int], str]]:
         """
-        This function is used to separate reactants that match both reactant SMARTS.
+        This function is used to fix edge cases:
+        - to separate reactants that match both reactant SMARTS.
+        - one reactant matches both reactant SMARTS.
+
+        These found_1 and found_2 dictionaries are a bit confusing:
+        Key: 'r1' or 'r2'
+        Value: False if no match, List of atom indices within reactant that match the SMARTS of that reactant.
         """
+        # Both reactants match both reactant SMARTS
         if found_1["r1"] and found_2["r1"] and found_2["r2"] and found_1["r2"]:
             self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
             self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2') # make found_2 r2
+        # reactant 1 matches both reactant SMARTS
+        elif found_1["r1"] and found_1["r2"]:
+            if found_2["r2"]: # change r2 to found_2
+                self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
+                self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2')
+            if found_2["r1"]: # change r1 to found_2
+                self.matched_reactants[patt1] = (r2, found_2["r1"], 'r1')
+                self.matched_reactants[patt2] = (r1, found_1["r2"], 'r2')
+        # reactant 2 matches both reactant SMARTS
+        elif found_2["r1"] and found_2["r2"]:
+            if found_1["r2"]: # change r2 to found_1
+                self.matched_reactants[patt1] = (r2, found_2["r1"], 'r1')
+                self.matched_reactants[patt2] = (r1, found_1["r2"], 'r2')
+            if found_1["r1"]: # change r1 to found_1
+                self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
+                self.matched_reactants[patt2] = (r2, found_2["r1"], 'r2')
 
     def check_found_reactants(self,
                               product: Chem.Mol,
@@ -149,14 +176,9 @@ class SMARTSHandler:
                     f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
             return False
 
-        if found_1["r2"] and found_2["r2"]:
-            self.logger.warning(
-                f"Both reactants ({Chem.MolToSmiles(r1)} {Chem.MolToSmiles(r2)}) have atoms found in SMARTS of 2nd "
-                f"reactant for {reaction_name}. This might cause selectivity issues downstream, but continuing.")
-
         return True
 
-    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[str, bool]:
+    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[str, Tuple[int] | bool]:
         """
         This function finds the matched atoms in a reactant against both reactant SMARTS.
         """
