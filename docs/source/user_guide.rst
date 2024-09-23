@@ -219,13 +219,24 @@ Run pipeline in *manual* mode:
             - Internal steric clash: The interatomic distance between pairs of non-covalently bound atoms is above 60% of the lower bound distance apart determined by distance geometry.
 
 
+Usage Option: Only Place Scaffolds
+==================================
+
+You can run Syndirella to only place scaffolds. It will not perform the full elaboration procedure.
+
+.. code-block::bash
+
+    syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --templates [path_to_templates_dir]
+    --hits_path [path_to_fragments.sdf] --metadata [path_to_metadata.csv] --scaffold_place
+
+
 Command Line Interface
 ======================
 
 .. code-block::
 
-    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--profile] [--atom_diff_min ATOM_DIFF_MIN]
-                      [--atom_diff_max ATOM_DIFF_MAX] [--scaffold_place_num SCAFFOLD_PLACE_NUM]
+    usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--scaffold_place]
+                  [--scaffold_place_num SCAFFOLD_PLACE_NUM] [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX]
 
     Run the Syndirella pipeline with specified configurations.
 
@@ -244,13 +255,15 @@ Command Line Interface
       --batch_num BATCH_NUM
                             Batch number for processing. (default: 10000)
       --manual              Use manual routes for processing. (default: False)
+      --scaffold_place      Only place scaffolds. Do not continue to elaborate. (default: False)
+      --scaffold_place_num SCAFFOLD_PLACE_NUM
+                            Number of times to attempt scaffold placement. (default: 5)
       --profile             Run the pipeline with profiling. (default: False)
       --atom_diff_min ATOM_DIFF_MIN
                             Minimum atom difference between elaborations and scaffold to keep. (default: 0)
       --atom_diff_max ATOM_DIFF_MAX
                             Maximum atom difference between elaborations and scaffold to keep. (default: 10)
-      --scaffold_place_num SCAFFOLD_PLACE_NUM
-                            Number of times to attempt scaffold placement. (default: 5)
+
 
     Syndirella is installed at [path_to_installation]
 

@@ -16,7 +16,7 @@ from syndirella.slipper._placement_data import get_placement_data
 import os, shutil
 import glob
 from rdkit import Chem
-from rdkit.Chem import AllChem, inchi
+from rdkit.Chem import inchi
 import logging
 
 
@@ -62,7 +62,7 @@ class Slipper:
 
     def get_products(self) -> pd.DataFrame and str:
         """
-        Main entry to the Slipper class. This function is used to get the products from the final library.
+        Main entry to the Slipper class. This function is used to get the products the self.library object.
         """
         slipper_synth = SlipperSynthesizer(self.library,
                                            self.output_dir,

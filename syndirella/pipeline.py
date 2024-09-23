@@ -108,7 +108,7 @@ def start_elaboration(product: str,
     """
     Starts the elaboration of a single compound by checking if it can be placed.
     """
-    logger.info(f'Running pipeline for: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
+    logger.info(f'Starting: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
     start_time = time.time()
     scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
                                                                                 template_path=template_path,
@@ -213,21 +213,6 @@ def run_pipeline(settings: Dict):
       atom_diff_min=settings['atom_diff_min'],
       atom_diff_max=settings['atom_diff_max']
     """
-    # set required variables
-    try:
-        additional_columns: List[str] = ['compound_set']
-        metadata_path: str = settings['metadata']
-        template_dir: str = settings['templates']
-        hits_path: str = settings['hits_path']
-        output_dir: str = settings['output']
-        batch_num: int = settings['batch_num']
-        csv_path: str = settings['input']
-        atom_diff_min: int = settings['atom_diff_min']
-        atom_diff_max: int = settings['atom_diff_max']
-        scaffold_place_num: int = settings['scaffold_place_num']
-    except KeyError as e:
-        logger.critical(f"Missing critical argument to run pipeline: {e}")
-
     def process_row(row: pd.Series, manual_routes: bool, scaffold_place: bool):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
         template_path: str = check_inputs.get_template_path(
@@ -285,6 +270,21 @@ def run_pipeline(settings: Dict):
                 additional_info=additional_info
             )
 
+    # set required variables
+    try:
+        additional_columns: List[str] = ['compound_set']
+        metadata_path: str = settings['metadata']
+        template_dir: str = settings['templates']
+        hits_path: str = settings['hits_path']
+        output_dir: str = settings['output']
+        batch_num: int = settings['batch_num']
+        csv_path: str = settings['input']
+        atom_diff_min: int = settings['atom_diff_min']
+        atom_diff_max: int = settings['atom_diff_max']
+        scaffold_place_num: int = settings['scaffold_place_num']
+    except KeyError as e:
+        logger.critical(f"Missing critical argument to run pipeline: {e}")
+
     # set optional variables
     try:
         manual_routes: bool = settings['manual']
@@ -294,10 +294,13 @@ def run_pipeline(settings: Dict):
     try:
         scaffold_place: bool = settings['scaffold_place']
         # If scaffold_place is True, only place scaffolds and do not continue to elaborate
-        logger.info(f"Only placing scaffolds")
+        if scaffold_place:
+            logger.info(f"Only placing scaffolds!")
     except KeyError:
         scaffold_place = False
         # Log pipeline type
+
+    if not scaffold_place:
         logger.info(f"Running the pipeline with {"manual" if manual_routes else "full auto"} routes.")
 
     # Validate inputs

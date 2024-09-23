@@ -12,7 +12,6 @@ from .Library import Library
 from ..error import ReactionError, SMARTSError
 from ..SMARTSHandler import SMARTSHandler
 import logging
-from syndirella.PipelineOutput import PipelineOutput
 
 class CobblerBench:
     """

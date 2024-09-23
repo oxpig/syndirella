@@ -21,12 +21,33 @@ Classes
         elaborated products are 'slippers' in this analogy, the CobblerBench is where the material to make the slippers
         (superstructure of reactants) are found.
 
+    Reaction
+        Represents a single reaction within the CobblerBench. Contains the reactants, products, and the name of the reaction.
+        Assigns the reactants to the SMARTS pattern of the specific reactant in the full reaction SMIRKS.
+
+    Library
+        Contains the superstructures of reactant scaffolds found. Performs filtering for reactants before finding products.
+
     Slipper
-        Represents a single product of a reaction. Contains the SMILES of the product and the reaction name that was
-        used to generate it.
+        Handles finding the products of a Library and placing them. Is instantiated for each step of a route.
 
+    SlipperSynthesizer
+        Finds the products of a Library object with a cartesian multiplication of the superstructures of reactants after
+        filtering.
 
+    SlipperFitter
+        'Fits' the final products into the protein template by performing constrained energy minimisation to the experimental
+        fragment structures using the matched atoms. This placement procedure is carried out by
+        `Fragmenstein <https://github.com/matteoferla/Fragmenstein.`_.
 
+Modules
+-------
+
+.. glossary::
+
+    Fairy
+        This module provides functions to find similar cheaper reactants, filter out reactants based on simple filters,
+        fingerprint generation, etc. Provides the 'fairy dust' to improve syntheses structured by ML tools.
 
 
 General Terminology

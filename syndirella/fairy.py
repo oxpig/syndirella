@@ -7,7 +7,6 @@ reactants based on simple filters, fingerprint generation, and others...
 """
 
 from typing import Any, List, Dict, Tuple, Optional
-from rdkit import Chem
 from rdkit.Chem import AllChem, rdinchi
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
