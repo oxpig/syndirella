@@ -67,8 +67,7 @@ This file specifies reactions that should be replaced by another reaction to mak
 
 The ``.json`` structure follows this format:
 
-- ``name``: The reaction name that triggers for an additional route to be created with this reaction replaced  (e.g., "Amide_schotten-baumann").
-Must match the reaction name in the ``RXN_SMIRKS_CONSTANTS.json``.
+- ``name``: The reaction name that triggers for an additional route to be created with this reaction replaced  (e.g., "Amide_schotten-baumann"). Must match the reaction name in the ``RXN_SMIRKS_CONSTANTS.json``.
 
 - ``replace_with``: The new reaction to replace the original reaction in a new route. This is the reaction you're swapping in (e.g., "Amidation").
 
