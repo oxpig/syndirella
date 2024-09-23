@@ -23,7 +23,7 @@ This guide will walk you through an example to run Syndirella's pipeline through
    git clone https://github.com/kate-fie/syndirella.git
    cd syndirella
 
-2. Open notebook at `syndirella/example/run_examples.ipynb <https://github.com/kate-fie/syndirella/blob/284b1567b6a7dd58fca5b5e887fb8f35136328ef/syndirella/example/run_examples.ipynb>`_ which will take you through installation,
+2. Open notebook at `syndirella/example/run_examples.ipynb <https://github.com/kate-fie/syndirella/blob/77035823825a249937d0bde30506c1c162421182/example/run_examples.ipynb>`_ which will take you through installation,
 looking at designs, running a handful of placements, and analysing outputs.
 
 
