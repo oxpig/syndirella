@@ -224,7 +224,7 @@ Usage Option: Only Place Scaffolds
 
 You can run Syndirella to only place scaffolds. It will not perform the full elaboration procedure.
 
-.. code-block::bash
+.. code-block:: bash
 
     syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --templates [path_to_templates_dir]
     --hits_path [path_to_fragments.sdf] --metadata [path_to_metadata.csv] --scaffold_place
@@ -233,7 +233,7 @@ You can run Syndirella to only place scaffolds. It will not perform the full ela
 Command Line Interface
 ======================
 
-.. code-block::
+.. code-block:: bash
 
     usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--scaffold_place]
                   [--scaffold_place_num SCAFFOLD_PLACE_NUM] [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX]

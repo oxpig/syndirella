@@ -38,7 +38,7 @@ Classes
     SlipperFitter
         'Fits' the final products into the protein template by performing constrained energy minimisation to the experimental
         fragment structures using the matched atoms. This placement procedure is carried out by
-        `Fragmenstein <https://github.com/matteoferla/Fragmenstein.`_.
+        `Fragmenstein <https://github.com/matteoferla/Fragmenstein>`_.
 
 Modules
 -------
