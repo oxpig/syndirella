@@ -63,7 +63,9 @@ Example entry:
 `ADDITIONAL_RXN_OPTIONS.json <https://github.com/kate-fie/syndirella/blob/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants/ADDITIONAL_RXN_OPTIONS.json>`_
 --------------------------------
 
-This file specifies reactions that should be replaced by another reaction to make a new route for the pipeline.
+This file specifies reactions that should be replaced by another reaction to make a new route for the pipeline. Similar
+to ``REACTANT_FILTER_CONSTANTS.json`` as it used to structure inputs for ``rdkit.Chem.ReplaceSubstructs()``. But instead
+of adding the edited reactant to the library of reactants of one reaction, it is creating a completely new route.
 
 The ``.json`` structure follows this format:
 
