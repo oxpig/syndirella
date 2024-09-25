@@ -32,7 +32,7 @@ def check_csv(csv_path: str) -> None:
             raise ValueError(f"The csv must contain the column {col}.")
 
 
-def metadata_dict(metadata_path: str) -> dict:
+def metadata_dict(metadata_path: str) -> Dict:
     """
     Get the metadata dictionary from the metadata file, checking that it contains the required columns.
     """
@@ -40,11 +40,18 @@ def metadata_dict(metadata_path: str) -> dict:
         logger.error("The metadata path does not exist.")
         raise FileNotFoundError(f"The metadata path {metadata_path} does not exist.")
     metadata = pd.read_csv(metadata_path)
-    if 'Code' not in metadata.columns or 'Long code' not in metadata.columns:
-        logger.error("The metadata must contain the columns 'Code' and 'Long code'.")
-        raise ValueError("The metadata must contain the columns 'Code' and 'Long code'.")
-    code_dict = metadata.set_index('Code')['Long code'].to_dict()
-    return code_dict
+    if 'Code' in metadata.columns and 'Long code' in metadata.columns:
+        code_info: Dict = metadata.set_index('Code')['Long code'].to_dict()
+    else:
+        logger.warning("The metadata does not contain the columns 'Code' and 'Long code'. Searching for 'crystal_name' "
+                       "column instead.")
+        if 'crystal_name' in metadata.columns:
+            # use crystal_name as key and value to match dict
+            logger.info("Using 'crystal_name' column as the key and value for the metadata dictionary.")
+            code_info: Dict = {name: name for name in metadata['crystal_name']}
+        else:
+            raise ValueError("The metadata must contain the columns 'Code' and 'Long code'.")
+    return code_info
 
 
 def check_template_paths(template_dir: str, csv_path: str, metadata_path: str) -> Set[str]:
@@ -147,7 +154,7 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
     hit_cols = [col for col in df.columns if 'hit' in col]
     hit_names = df[hit_cols].values.flatten()
     # remove nan and strip whitespace
-    hit_names = [name.strip() for name in hit_names if str(name) != 'nan']
+    hit_names = [str(name).strip() for name in hit_names if str(name) != 'nan']
     if not os.path.exists(hits_path):
         logger.critical("The hits_path path does not exist.")
         raise FileNotFoundError(f"The hits_path path {hits_path} does not exist")

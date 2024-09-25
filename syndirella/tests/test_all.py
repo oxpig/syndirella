@@ -19,6 +19,12 @@ import syndirella.check_inputs as check_inputs
 import syndirella.fairy as fairy
 import logging
 
+class TestDiffMetadata(unittest.TestCase):
+    def setUp(self):
+        self.settings = {
+
+        }
+
 class TestAtomDiff_2(unittest.TestCase):
     """
     Doing Formation of urea from two amines from CHIKV-Mac
