@@ -13,7 +13,7 @@ import time
 import logging
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
-from syndirella.route.Reaction import Reaction
+import random
 
 
 class Postera(DatabaseSearch):
@@ -132,8 +132,11 @@ class Postera(DatabaseSearch):
 
                 if response.status_code in [429, 504]:
                     if attempt < retries - 1:
-                        # Calculate wait time using exponential backoff strategy
-                        wait_time = backoff_factor * (2 ** attempt)
+                        # Calculate wait time using jittered exponential backoff strategy with at most 3 minutes
+                        wait_time = random.uniform(0, backoff_factor * (2 ** attempt))
+                        if wait_time > 180:
+                            # choose randomly num attempts to wait for
+                            wait_time = random.uniform(0, 180)
                         error_type = "Rate limit exceeded" if response.status_code == 429 else "Gateway timeout"
                         logger.warning(f"{error_type}. Waiting for {wait_time} seconds before retrying...")
                         time.sleep(wait_time)

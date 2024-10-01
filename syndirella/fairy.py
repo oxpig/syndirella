@@ -127,7 +127,6 @@ def format_for_output(mols: List[Chem.Mol], hits: List[Tuple[str, float]]) -> Di
 
     return hits_info
 
-
 def simple_filters(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """Filter out molecules based on repeats, and non-abundant isotopes."""
     mols = remove_repeat_mols(mols)
