@@ -42,14 +42,14 @@ def assert_scaffold_placement(scaffold: str,
     opts = StereoEnumerationOptions(unique=True)
     isomers = list(EnumerateStereoisomers(scaffold_mol, options=opts))
     slipper_fitter = SlipperFitter(template_path, hits_path, hits_names, output_dir)
-    placements: Dict[Chem.Mol, str] = {}
+    placements: Dict[Chem.Mol, str | None] = {}
     for i, isomer in enumerate(isomers):
         scaffold_name: str = f'scaffold-{chr(65 + i)}'
         can_be_placed: str | None = slipper_fitter.check_scaffold(scaffold=isomer,
                                                                   scaffold_name=scaffold_name,
                                                                   scaffold_place_num=scaffold_place_num)  # path to scaffold if successful
         placements[isomer] = can_be_placed  # absolute path to minimised.mol scaffold, checked to exist
-    if not any(placements.items()):
+    if not any(placements.values()):
         logger.critical(f"Scaffold {scaffold} could not be placed successfully.")
         raise ScaffoldPlacementError(smiles=scaffold)
     return placements
