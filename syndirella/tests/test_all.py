@@ -19,6 +19,17 @@ import syndirella.check_inputs as check_inputs
 import syndirella.fairy as fairy
 import logging
 
+class TestCheckInputsUpdated(unittest.TestCase):
+    def setUp(self):
+        self.csv_path='syndirella_input/final/syndirella_input5.csv',
+        self.hits_path='fragments/A71EV2A_combined_aligned.sdf',
+        self.metadata_path='fragments/metadata.csv'
+
+    def test_check_hit_names_v2(self):
+        os.chdir('/Users/kate_fieseler/PycharmProjects/EV-A71-2A-syndirella-run-2')
+        check_inputs.check_hit_names(csv_path=self.csv_path[0], hits_path=self.hits_path[0], metadata_path=self.metadata_path,
+                                     long_code_column='Experiment code')
+
 class TestDiffMetadata(unittest.TestCase):
     def setUp(self):
         self.settings = {
@@ -208,7 +219,7 @@ class TestCheckInputs(unittest.TestCase):
         check_inputs.check_csv(self.csv_path)
 
     def test_check_hit_names(self):
-        check_inputs.check_hit_names(self.csv_path, self.hits_path, self.metadata)
+        check_inputs.check_hit_names(self.csv_path, self.hits_path, self.metadata, 'Experiment code')
 
     def test_template_paths(self):
         check_inputs.check_template_paths(self.template_dir, self.csv_path, self.metadata)

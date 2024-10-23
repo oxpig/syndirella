@@ -288,6 +288,7 @@ def run_pipeline(settings: Dict):
     # set optional variables
     try:
         manual_routes: bool = settings['manual']
+        long_code_column: str = settings['long_code_column']
     except KeyError:
         manual_routes = False
 
@@ -310,7 +311,8 @@ def run_pipeline(settings: Dict):
         hits_path=hits_path,
         metadata_path=metadata_path,
         additional_columns=additional_columns,
-        manual_routes=manual_routes
+        manual_routes=manual_routes,
+        long_code_column=long_code_column
     )
 
     # Load data

@@ -56,6 +56,8 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--profile', action='store_true', help="Run the pipeline with profiling.")
     parser.add_argument('--atom_diff_min', type=int, default=0, help="Minimum atom difference between elaborations and scaffold to keep.")
     parser.add_argument('--atom_diff_max', type=int, default=10, help="Maximum atom difference between elaborations and scaffold to keep.")
+    parser.add_argument('--long_code_column', type=str, default='Long code', help="Column name for long code in metadata csv to match to SDF name."
+                                                                                                " The column can contain a substring for the SDF name. ")
     return parser
 
 

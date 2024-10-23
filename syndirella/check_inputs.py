@@ -32,7 +32,7 @@ def check_csv(csv_path: str) -> None:
             raise ValueError(f"The csv must contain the column {col}.")
 
 
-def metadata_dict(metadata_path: str) -> Dict:
+def metadata_dict(metadata_path: str, long_code_column: str = 'Long code') -> Dict:
     """
     Get the metadata dictionary from the metadata file, checking that it contains the required columns.
     """
@@ -40,17 +40,17 @@ def metadata_dict(metadata_path: str) -> Dict:
         logger.error("The metadata path does not exist.")
         raise FileNotFoundError(f"The metadata path {metadata_path} does not exist.")
     metadata = pd.read_csv(metadata_path)
-    if 'Code' in metadata.columns and 'Long code' in metadata.columns:
-        code_info: Dict = metadata.set_index('Code')['Long code'].to_dict()
+    if 'Code' in metadata.columns and long_code_column in metadata.columns:
+        code_info: Dict = metadata.set_index('Code')[long_code_column].to_dict()
     else:
-        logger.warning("The metadata does not contain the columns 'Code' and 'Long code'. Searching for 'crystal_name' "
+        logger.warning(f"The metadata does not contain the columns 'Code' and {long_code_column}. Searching for 'crystal_name' "
                        "column instead.")
         if 'crystal_name' in metadata.columns:
             # use crystal_name as key and value to match dict
             logger.info("Using 'crystal_name' column as the key and value for the metadata dictionary.")
             code_info: Dict = {name: name for name in metadata['crystal_name']}
         else:
-            raise ValueError("The metadata must contain the columns 'Code' and 'Long code'.")
+            raise ValueError(f"The metadata must contain the columns 'Code' and '{long_code_column}'.")
     return code_info
 
 
@@ -146,7 +146,7 @@ def check_manual(csv_path: str) -> None:
         check_route(i, row)
 
 
-def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
+def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code_column: str) -> None:
     """
     Check that the hit names are found within SDF.
     """
@@ -163,7 +163,7 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
     if not os.path.exists(metadata_path):
         logger.critical("The metadata path does not exist.")
         raise FileNotFoundError(f"The metadata path {metadata_path} does not exist.")
-    code_dict = metadata_dict(metadata_path)
+    code_dict = metadata_dict(metadata_path, long_code_column=long_code_column)
     # get the LongCodes for the hit names
     hit_longcodes = []
     for name in hit_names:
@@ -182,13 +182,14 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str) -> None:
             raise ValueError(f"No matches found for '{name}'")
         else:
             hit_longcodes.append(matches[0])
-    # check if hit_longcodes are in sdf_names, matching exactly
-    if not all([longcode in sdf_names for longcode in hit_longcodes]):
+    # check if hit_longcodes are in sdf_names, not matching exactly, can be a substring
+    if not all([any([longcode in sdf_name for sdf_name in sdf_names]) for longcode in hit_longcodes]):
         logger.critical(f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
                         f" from Fragalysis.")
         raise ValueError(
             f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
-            f" from Fragalysis.")
+            f" from Fragalysis. Or set the code_column argument to the correct column in the metadata (such as "
+            f"'Experiment code' or 'Compound code'.")
 
 
 def check_apo_template(template_path: str) -> None:
@@ -332,13 +333,14 @@ def check_pipeline_inputs(*,
                           hits_path: str,
                           metadata_path: str,
                           additional_columns: List[str],
-                          manual_routes: bool) -> None:
+                          manual_routes: bool,
+                          long_code_column: str) -> None:
     """
     Check the inputs for the pipeline.
     """
     try:
         check_csv(csv_path)
-        check_hit_names(csv_path, hits_path, metadata_path)
+        check_hit_names(csv_path, hits_path, metadata_path, long_code_column=long_code_column)
         check_additional_columns(csv_path, additional_columns)
         template_paths: Set[str] = check_template_paths(template_dir, csv_path, metadata_path)
         for template_path in template_paths:  # check each template
