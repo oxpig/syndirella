@@ -236,7 +236,7 @@ Command Line Interface
 .. code-block:: bash
 
     usage: syndirella [-h] -i INPUT -o OUTPUT -t TEMPLATES --hits_path HITS_PATH --metadata METADATA [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--scaffold_place]
-                  [--scaffold_place_num SCAFFOLD_PLACE_NUM] [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX]
+                  [--scaffold_place_num SCAFFOLD_PLACE_NUM] [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX] [--long_code_column LONG_CODE_COLUMN]
 
     Run the Syndirella pipeline with specified configurations.
 
@@ -263,6 +263,9 @@ Command Line Interface
                             Minimum atom difference between elaborations and scaffold to keep. (default: 0)
       --atom_diff_max ATOM_DIFF_MAX
                             Maximum atom difference between elaborations and scaffold to keep. (default: 10)
+      --long_code_column LONG_CODE_COLUMN
+                            Column name for long code in metadata csv to match to SDF name. The column can contain a substring for the
+                            SDF name. (default: Long code)
 
 
     Syndirella is installed at [path_to_installation]
