@@ -87,7 +87,8 @@ class Postera(DatabaseSearch):
             data={
                 'smiles': smiles,
                 "entryType": "both",
-                "patentDatabases": [], # don't search over pantent databases
+                "patentDatabases": [], # don't search over pantent databases,
+                "withPurchaseInfo": True,
                 "vendors": ["all"]
             },
             max_pages=max_pages,
