@@ -157,8 +157,9 @@ class Postera(DatabaseSearch):
         hits_info: List[Tuple[str, float]] = []
         for hit in hits:
             # get minimum lead time possible
-            lead_time = min([entry['purchaseInfo']['bbLeadTimeWeeks'] for entry in hit['catalogEntries']])
-            hits_info.append((hit['smiles'], lead_time))
+            # TODO: Remove lead_time from the output as it is not used.
+            # lead_time = min([entry['purchaseInfo']['bbLeadTimeWeeks'] for entry in hit['catalogEntries']])
+            hits_info.append((hit['smiles'], 0.0))
             # could do price but seems like too much faff
         return hits_info
 
