@@ -9,6 +9,7 @@ import logging
 import glob2
 import pandas as pd
 from typing import List, Dict, Set, Tuple, Any
+import re
 
 import numpy as np
 from rdkit import Chem
@@ -151,7 +152,7 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code
     Check that the hit names are found within SDF.
     """
     df = pd.read_csv(csv_path)
-    hit_cols = [col for col in df.columns if 'hit' in col]
+    hit_cols = [col for col in df.columns if re.match(r'^hit\d+$', col)]
     hit_names = df[hit_cols].values.flatten()
     # remove nan and strip whitespace
     hit_names = [str(name).strip() for name in hit_names if str(name) != 'nan']
@@ -228,7 +229,7 @@ def get_exact_hit_names(row: pd.Series, metadata_path: str, hits_path: str) -> L
     Get the exact hit name to use for placement.
     """
     code_dict = metadata_dict(metadata_path)
-    hit_cols = [col for col in row.index if 'hit' in col]
+    hit_cols = [col for col in row.index if re.match(r'^hit\d+$', col)]
     hit_names = row[hit_cols].values.flatten()
     hit_names = [name.strip() for name in hit_names if str(name) != 'nan']
     sdf = Chem.SDMolSupplier(hits_path)
