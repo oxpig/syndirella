@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "syndirella"
-version = "2.1.4-alpha"
+version = "2.1.5-alpha"
 authors = [
     { name = "Kate Fieseler", email = "kate.fieseler@stats.ox.ac.uk" },
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "rdkit >= 2024.03.1",
+    "rdkit",
     "jupyter",
     "numpy<2",
     "glob2",

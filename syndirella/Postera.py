@@ -86,9 +86,9 @@ class Postera(DatabaseSearch):
             api_key=self.api_key,
             data={
                 'smiles': smiles,
-                "entryType": "building_block",
-                "withPurchaseInfo": True,
-                "vendors": ["enamine_bb", "mcule", "mcule_ultimate"]
+                "entryType": "both",
+                "patentDatabases": [], # don't search over pantent databases
+                "vendors": ["all"]
             },
             max_pages=max_pages,
         )
@@ -96,6 +96,58 @@ class Postera(DatabaseSearch):
         # add query smiles just in case it's not returned
         hits_info.append((smiles, 0))
         return hits_info
+
+    def perform_exact_search(self,
+                             smiles: str,
+                             queryThirdPartyServices: bool = False,
+                             catalogues: List[str] = ["all"],
+                             max_pages: int = 10) -> List[Dict]:
+        """
+        This function is used to perform the Postera exact search.
+        """
+        self.logger.info(f"Running exact search for {smiles}.")
+        self.logger.info(f"Searching in catalogues: {catalogues}")
+        if not isinstance(smiles, str):
+            self.logger.error("Smiles must be a string.")
+            raise TypeError("Smiles must be a string.")
+        exact_hits: List[Dict] = Postera.get_search_results(
+            url=f'{self.url}/api/v1/exact/',
+            api_key=self.api_key,
+            data={
+                'smiles': smiles,
+                "queryThirdPartyServices": queryThirdPartyServices,
+                "withPurchaseInfo": True,
+                "vendors": catalogues
+            },
+            max_pages=max_pages,
+        )
+        return exact_hits
+
+    def perform_exact_batch_search(self,
+                                   smiles_list: List[str],
+                                   queryThirdPartyServices: bool = False,
+                                   catalogues: List[str] = ["all"],
+                                   max_pages: int = 10) -> List[Dict]:
+        """
+        Performs exact search with a batch of smiles.
+        """
+        self.logger.info(f"Running exact search for {len(smiles_list)} smiles.")
+        self.logger.info(f"Searching in catalogues: {catalogues}")
+        if not isinstance(smiles_list, list):
+            self.logger.error("Smiles must be in a list.")
+            raise TypeError("Smiles must be in a list.")
+        exact_hits: List[Dict] = Postera.get_search_results(
+            url=f'{self.url}/api/v1/exact/batch/',
+            api_key=self.api_key,
+            data={
+                "smilesList": smiles_list,
+                "queryThirdPartyServices": queryThirdPartyServices,
+                "vendors": catalogues
+            },
+            max_pages=max_pages,
+        )
+        return exact_hits
+
 
     def structure_output(self, hits: List[Dict]) -> List[Tuple[str, float]]:
         """
@@ -133,7 +185,7 @@ class Postera(DatabaseSearch):
                 if response.status_code in [429, 504]:
                     if attempt < retries - 1:
                         # Calculate wait time using jittered exponential backoff strategy with at most 3 minutes
-                        wait_time = random.uniform(0, backoff_factor * (2 ** attempt))
+                        wait_time = backoff_factor * (2 ** attempt)
                         if wait_time > 180:
                             # choose randomly num attempts to wait for
                             wait_time = random.uniform(0, 180)

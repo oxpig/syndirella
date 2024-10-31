@@ -2,7 +2,7 @@ python>=3.10
 pandas
 numpy<2
 glob2
-rdkit>=2024.03.1
+rdkit
 requests
 pillow
 fragmenstein>=1.0.8

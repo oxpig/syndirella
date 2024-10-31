@@ -321,6 +321,7 @@ class Slipper:
             return 1
         elif r2_is_previous_product:
             return 2
+        # what if both ?? don't throw error still work
         else:
             return None
 

@@ -270,6 +270,7 @@ class Library:
                                             f"{self.id}_{self.route_uuid}_*products_{self.current_step - 1}of"
                                             f"{self.num_steps}.pkl.gz")
         for i, path in enumerate(product_pkls):
+            self.logger.info(f"Found {path} as the potential products .pkl from previous step.")
             # Find if the reactant is the same as the scaffold
             df = pd.read_pickle(path)
             # Iterate through the top 100 products
@@ -283,7 +284,10 @@ class Library:
                 if similarity_score == 1:
                     self.logger.info(f"Found {path} as the products .pkl from previous step.")
                     return path
-        return None
+        self.logger.info(f"Could not find any products .pkl from previous step.")
+        raise NoReactants(message=f"Could not find any products .pkl from previous step.",
+                          route_uuid=self.route_uuid,
+                          inchi=self.id)
 
     def save_library(self, df: pd.DataFrame, analogue_prefix: str):
         """
