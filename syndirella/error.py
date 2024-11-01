@@ -40,7 +40,7 @@ class SMARTSError(ChemicalErrorBase):
 
 class NoReactants(ChemicalErrorBase):
     def __init__(self,
-                 route_uuid: str,
+                 route_uuid: str | None = None,
                  message: str = "No reactants found for the reaction.",
                  inchi: str | None = None,
                  smiles: str | None = None,

@@ -149,8 +149,8 @@ def get_error_info(error: Exception | None) -> Tuple[str | None, str | None, boo
             error_message = error.args[0]  # any other error
             custom_error = False
     else:
-        error_type = None
-        error_message = None
+        error_type = ''
+        error_message = ''
         custom_error = False
     return error_type, error_message, custom_error
 
