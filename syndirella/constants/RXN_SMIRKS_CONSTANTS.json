@@ -9,7 +9,7 @@
   "Nucleophilic_substitution_with_thiol": "[Cl,Br,I]-[C;H2,H1;+0:1].[SH;+0:2]>>[S&X2;H0;D2;+0:2]-[C&X4;D2;+0:1]",
   "Mitsunobu_reaction_with_amine_alcohol_and_thioalcohol": "[OH]-[#6&X4:1].[NX3;H2,H1;!$(NC=O):2]>>[NX3;!$(NC=O):2]-[#6&X4:1]",
   "Amide_Schotten-Baumann_with_amine": "[#6:2][#6X3;!$(C-N):1](=[OX1:3])[#17,#9,#35].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):4]>>[#6:2]-[#6:1](=[OX1:3])-[#7:4]",
-  "Ester_amidation": "C-O-[C;H0;D3;+0:1](-[#6:2])=[O;D1;H0:3].[N;H1,H2;+0:5]>>[N&X3;+0:5]-[C;H0;D3;+0:1](-[#6:2])=[O;D1;H0:3]",
+  "Ester_amidation": "C-[O;R0]-[C;H0;D3;+0;R0:1](-[#6:2])=[O;D1;H0:3].[N;H1,H2;+0:5]>>[N&X3;+0:5]-[C;H0;D3;+0:1](-[#6:2])=[O;D1;H0:3]",
   "Nucleophilic_substitution_with_amine": "[Cl,Br,I]-[C;H2,H1;+0:1].[#7&X3;H2,H1;+0:5]>>[#7&X3;+0:5]-[C&X4;+0:1]",
   "N-Boc_deprotection": "[#7&X3:2]-[#6](=[#8])-[#8]-[#6](-[#6;H3])(-[#6;H3])(-[#6;H3])>>[#7&X3:2]",
   "Sp3-sp2_Suzuki_coupling": "[#6:1]-[Cl,Br,I].[#6:2]-[B](-[O])(-[O])>>[#6:1]-[#6:2]",
