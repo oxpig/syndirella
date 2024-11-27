@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI script to run the Syndirella pipeline 🏁
+CLI script to run the Syndirella pipeline or justretroquery 🏁
 """
 import sys
 import os
@@ -42,11 +42,11 @@ def config_parser(syndirella_base_path: str):
                                      epilog=f"Syndirella is installed at {syndirella_base_path} \n",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-i', '--input', type=str, required=True, help="Input .csv file path for the pipeline.")
-    parser.add_argument('-o', '--output', type=str, required=True, help="Output directory for the pipeline results.")
-    parser.add_argument('-t', '--templates', type=str, required=True, help="Absolute path to a directory containing the "
+    parser.add_argument('-o', '--output', type=str, required=False, help="Output directory for the pipeline results.")
+    parser.add_argument('-t', '--templates', type=str, required=False, help="Absolute path to a directory containing the "
                                                                                    "template(s).")
-    parser.add_argument('--hits_path', type=str, required=True, help="Absolute path to hits_path for placements (.sdf or .mol).")
-    parser.add_argument('--metadata', type=str, required=True, help="Absolute path to metadata for placements.")
+    parser.add_argument('--hits_path', type=str, required=False, help="Absolute path to hits_path for placements (.sdf or .mol).")
+    parser.add_argument('--metadata', type=str, required=False, help="Absolute path to metadata for placements.")
     parser.add_argument('--products', type=str, required=False, help="Absolute path to products for placements.")
     parser.add_argument('--batch_num', type=int, default=10000, help="Batch number for processing.")
     parser.add_argument('--manual', action='store_true', help="Use manual routes for processing.")
@@ -58,6 +58,7 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--atom_diff_max', type=int, default=10, help="Maximum atom difference between elaborations and scaffold to keep.")
     parser.add_argument('--long_code_column', type=str, default='Long code', help="Column name for long code in metadata csv to match to SDF name."
                                                                                                 " The column can contain a substring for the SDF name. ")
+    parser.add_argument('--just_retro', action='store_true', help="Only run retrosynthesis querying of scaffolds.")
     return parser
 
 
@@ -70,6 +71,16 @@ def run_pipeline(settings: Dict[str, Any], pipeline):
     pipeline.run_pipeline(settings)
 
     logging.info('Pipeline execution completed successfully.')
+
+def run_justretroquery(settings: Dict[str, Any], justretroquery):
+    """
+    Run the justretroquery pipeline with the given settings.
+    """
+    logging.info('Running justretroquery...')
+
+    justretroquery.run_justretroquery(settings)
+
+    logging.info('Justretroquery execution completed successfully.')
 
 
 def main():
@@ -87,28 +98,46 @@ def main():
         logging.error("MANIFOLD_API_KEY environment variable not set.")
         sys.exit(1)
 
-    # Load the pipeline module
-    pipeline = load_pipeline_module(syndirella_base_path, 'pipeline.py')
-
     # Convert argparse Namespace to dictionary
     settings = vars(args)
 
-    if settings['profile']:
-        profiler = cProfile.Profile()
-        profiler.enable()
-        run_pipeline(settings, pipeline)
-        profiler.disable()
-        profiler.print_stats(sort='time')
-        print('\n\n')
-        profiler.print_stats(sort='cumtime')
-    else:
+    if settings['just_retro']:
+        # Load the justretroquery module
+        justretroquery = load_pipeline_module(syndirella_base_path, 'justretroquery.py')
         # Run the pipeline
         try:
+            run_justretroquery(settings, justretroquery)
+            sys.exit(0)
+        except Exception as e:
+            tb = traceback.format_exc()
+            logging.error(f"An error occurred during justretroquery execution: {tb}")
+            sys.exit(1)
+
+    # Load the pipeline module
+    pipeline = load_pipeline_module(syndirella_base_path, 'pipeline.py')
+
+    if settings['profile']:
+        try:
+            profiler = cProfile.Profile()
+            profiler.enable()
             run_pipeline(settings, pipeline)
+            profiler.disable()
+            profiler.print_stats(sort='time')
+            print('\n\n')
+            profiler.print_stats(sort='cumtime')
+            sys.exit(0)
         except Exception as e:
             tb = traceback.format_exc()
             logging.error(f"An error occurred during pipeline execution: {tb}")
             sys.exit(1)
+
+    # Run the pipeline
+    try:
+        run_pipeline(settings, pipeline)
+    except Exception as e:
+        tb = traceback.format_exc()
+        logging.error(f"An error occurred during pipeline execution: {tb}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':

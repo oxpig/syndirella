@@ -1,6 +1,21 @@
 import unittest
 import subprocess
 from syndirella.pipeline import run_pipeline
+from syndirella.justretroquery import run_justretroquery
+
+class TestJustRetroQuery(unittest.TestCase):
+    def test_cli(self):
+        subprocess.check_call(['syndirella', '--help'])
+
+    def test_just_retro_query(self):
+        subprocess.check_call(['syndirella',
+                               '--input', '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/designs/syndirella_master.csv',
+                               '--output', 'just_retro_query',
+                               '--just_retro'])
+
+    def test_pythonic_just_retro_query(self):
+        run_justretroquery({'input': '/Users/kate_fieseler/PycharmProjects/CHIKV-Mac-syndirella-run/designs/syndirella_master.csv',
+                            'output': 'just_retro_query'})
 
 class TestCLI(unittest.TestCase):
     def test_cli(self):

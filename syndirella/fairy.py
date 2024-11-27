@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-syndirella.route.fairy.py
+syndirella.fairy.py
 
 This module provides functions to find similar cheaper reactants, filter out
 reactants based on simple filters, fingerprint generation, and others...
