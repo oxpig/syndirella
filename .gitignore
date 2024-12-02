@@ -9,9 +9,7 @@ old_README.md
 /syndirella/constants/ADDITIONAL_RXN_OPTIONS.json
 
 # tests
-/syndirella/tests/one_step_warren_A71EV2A/
-/syndirella/tests/reactants_filtering
-/syndirella/tests/reactants_filtering_w_labels
+/syndirella/tests/
 
 #any output folder
 */output/
