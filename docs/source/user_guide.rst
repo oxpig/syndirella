@@ -240,13 +240,13 @@ reactions (non-CAR route).
 
     syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --just_retro_query
 
- **Output file: [input_csv_name].pkl.gz**
+**Output file: [input_csv_name].pkl.gz**
 
- .. note::
+.. note::
 
     You can read this file using pandas and reading it in as a pickle.
 
- Structure of the important columns are:
+Structure of the important columns are:
 
     ``routeX``:
         List of dictionaries of each step (X is an int) in the route with reaction names, reactants, and product.
@@ -264,39 +264,39 @@ Command Line Interface
 
 .. code-block:: bash
 
-usage: syndirella [-h] -i INPUT -o OUTPUT [-t TEMPLATES] [--hits_path HITS_PATH] [--metadata METADATA] [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--scaffold_place] [--scaffold_place_num SCAFFOLD_PLACE_NUM]
-                  [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX] [--long_code_column LONG_CODE_COLUMN] [--just_retro]
+    usage: syndirella [-h] -i INPUT -o OUTPUT [-t TEMPLATES] [--hits_path HITS_PATH] [--metadata METADATA] [--products PRODUCTS] [--batch_num BATCH_NUM] [--manual] [--scaffold_place] [--scaffold_place_num SCAFFOLD_PLACE_NUM]
+                      [--profile] [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX] [--long_code_column LONG_CODE_COLUMN] [--just_retro]
 
-Run the Syndirella pipeline with specified configurations.
+    Run the Syndirella pipeline with specified configurations.
 
-options:
-  -h, --help            show this help message and exit
-  -i INPUT, --input INPUT
-                        Input .csv file path for the pipeline. (default: None)
-  -o OUTPUT, --output OUTPUT
-                        Output directory for the pipeline results. (default: None)
-  -t TEMPLATES, --templates TEMPLATES
-                        Absolute path to a directory containing the template(s). (default: None)
-  --hits_path HITS_PATH
-                        Absolute path to hits_path for placements (.sdf or .mol). (default: None)
-  --metadata METADATA   Absolute path to metadata for placements. (default: None)
-  --products PRODUCTS   Absolute path to products for placements. (default: None)
-  --batch_num BATCH_NUM
-                        Batch number for processing. (default: 10000)
-  --manual              Use manual routes for processing. (default: False)
-  --scaffold_place      Only place scaffolds. Do not continue to elaborate. (default: False)
-  --scaffold_place_num SCAFFOLD_PLACE_NUM
-                        Number of times to attempt scaffold placement. (default: 5)
-  --profile             Run the pipeline with profiling. (default: False)
-  --atom_diff_min ATOM_DIFF_MIN
-                        Minimum atom difference between elaborations and scaffold to keep. (default: 0)
-  --atom_diff_max ATOM_DIFF_MAX
-                        Maximum atom difference between elaborations and scaffold to keep. (default: 10)
-  --long_code_column LONG_CODE_COLUMN
-                        Column name for long code in metadata csv to match to SDF name. The column can contain a substring for the SDF name. (default: Long code)
-  --just_retro          Only run retrosynthesis querying of scaffolds. (default: False)
+    options:
+      -h, --help            show this help message and exit
+      -i INPUT, --input INPUT
+                            Input .csv file path for the pipeline. (default: None)
+      -o OUTPUT, --output OUTPUT
+                            Output directory for the pipeline results. (default: None)
+      -t TEMPLATES, --templates TEMPLATES
+                            Absolute path to a directory containing the template(s). (default: None)
+      --hits_path HITS_PATH
+                            Absolute path to hits_path for placements (.sdf or .mol). (default: None)
+      --metadata METADATA   Absolute path to metadata for placements. (default: None)
+      --products PRODUCTS   Absolute path to products for placements. (default: None)
+      --batch_num BATCH_NUM
+                            Batch number for processing. (default: 10000)
+      --manual              Use manual routes for processing. (default: False)
+      --scaffold_place      Only place scaffolds. Do not continue to elaborate. (default: False)
+      --scaffold_place_num SCAFFOLD_PLACE_NUM
+                            Number of times to attempt scaffold placement. (default: 5)
+      --profile             Run the pipeline with profiling. (default: False)
+      --atom_diff_min ATOM_DIFF_MIN
+                            Minimum atom difference between elaborations and scaffold to keep. (default: 0)
+      --atom_diff_max ATOM_DIFF_MAX
+                            Maximum atom difference between elaborations and scaffold to keep. (default: 10)
+      --long_code_column LONG_CODE_COLUMN
+                            Column name for long code in metadata csv to match to SDF name. The column can contain a substring for the SDF name. (default: Long code)
+      --just_retro          Only run retrosynthesis querying of scaffolds. (default: False)
 
-    Syndirella is installed at [path_to_installation]
+        Syndirella is installed at [path_to_installation]
 
 
 
