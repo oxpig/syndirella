@@ -42,7 +42,7 @@ def config_parser(syndirella_base_path: str):
                                      epilog=f"Syndirella is installed at {syndirella_base_path} \n",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-i', '--input', type=str, required=True, help="Input .csv file path for the pipeline.")
-    parser.add_argument('-o', '--output', type=str, required=False, help="Output directory for the pipeline results.")
+    parser.add_argument('-o', '--output', type=str, required=True, help="Output directory for the pipeline results.")
     parser.add_argument('-t', '--templates', type=str, required=False, help="Absolute path to a directory containing the "
                                                                                    "template(s).")
     parser.add_argument('--hits_path', type=str, required=False, help="Absolute path to hits_path for placements (.sdf or .mol).")

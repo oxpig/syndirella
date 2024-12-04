@@ -60,3 +60,6 @@ General Terminology
 
     Placement
         Constrained docking to the fragment inspirations.
+
+    CAR
+        Chemist Assisted Robotics.
