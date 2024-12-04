@@ -49,7 +49,7 @@ formatting SMARTS/SMIRKS strings to your needs as they can be quite finicky.
 
 **Reactions**:
 Syndirella has >20 encoded reactions which you can find in
-`RXN_SMARTS_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/13f73d8beda750c023739729d2681f5939d29e29/syndirella/constants/RXN_SMARTS_CONSTANTS.json>`_.
+`RXN_SMIRKS_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/3c58fb9dfc1ddcd2df11f1f81b619a529b064c2e/syndirella/constants/RXN_SMIRKS_CONSTANTS.json>`_.
 
 **Alternative Reactions**:
 You can provide alternatives for reactions based on preference. Add them in
