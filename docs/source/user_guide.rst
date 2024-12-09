@@ -238,7 +238,7 @@ reactions (non-CAR route).
 
 .. code-block:: bash
 
-    syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --just_retro_query
+    syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --just_retro
 
 **Output file: [input_csv_name].pkl.gz**
 
