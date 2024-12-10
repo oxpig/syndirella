@@ -302,7 +302,7 @@ def run_pipeline(settings: Dict):
         # Log pipeline type
 
     if not scaffold_place:
-        logger.info(f"Running the pipeline with {"manual" if manual_routes else "full auto"} routes.")
+        logger.info(f"Running the pipeline with {'manual' if manual_routes else 'full auto'} routes.")
 
     # Validate inputs
     check_inputs.check_pipeline_inputs(
