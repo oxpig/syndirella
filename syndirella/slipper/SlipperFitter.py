@@ -81,6 +81,9 @@ class SlipperFitter:
         If it cannot be minimised after 3 attempts, returns False.
         """
         input_df: pd.DataFrame = self._prep_scaffold_input_df(scaffold=scaffold, scaffold_name=scaffold_name)
+
+        assert all(v for v in input_df["hits"].values), input_df
+
         id = fairy.generate_inchi_ID(Chem.MolToSmiles(scaffold, isomericSmiles=False))
         output_path: str = os.path.join(self.output_dir, f'{id}-scaffold-check')
         lab: Laboratory = self.setup_Fragmenstein(output_path)
@@ -215,9 +218,13 @@ class SlipperFitter:
         else:
             with Chem.SDMolSupplier(self.hits_path.strip()) as sd:
                 hits: List[Chem.Mol] = list(sd) # many hits
+
         # only get hits that exactly match the hit_name in the hits_names
-        hits = [hit for hit in hits for hit_name in self.hits_names if hit.GetProp('_Name') == hit_name]
-        input_df['hits'] = input_df.apply(lambda row: hits, axis=1)
+        filtered_hits = [hit for hit in hits for hit_name in self.hits_names if hit.GetProp('_Name') == hit_name]
+
+        assert filtered_hits, ([h.GetProp("_Name") for h in hits], self.hits_names)
+
+        input_df['hits'] = input_df.apply(lambda row: filtered_hits, axis=1)
         return input_df
 
     def _place_scaffold(self,
