@@ -59,6 +59,8 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--long_code_column', type=str, default='Long code', help="Column name for long code in metadata csv to match to SDF name."
                                                                                                 " The column can contain a substring for the SDF name. ")
     parser.add_argument('--just_retro', action='store_true', help="Only run retrosynthesis querying of scaffolds.")
+    parser.add_argument('--no_scaffold_place', action='store_true', help="Do not place scaffolds initially before elaborating, "
+                                                                                      "immediately start elaboration process.")
     return parser
 
 
