@@ -104,17 +104,23 @@ def start_elaboration(product: str,
                       hits_path: str,
                       hits: List[str],
                       output_dir: str,
-                      scaffold_place_num: int) -> Tuple[float, Dict[Chem.Mol, str | None]]:
+                      scaffold_place_num: int,
+                      no_scaffold_place: bool) -> Tuple[float, Dict[Chem.Mol, str | None] | Dict]:
     """
-    Starts the elaboration of a single compound by checking if it can be placed.
+    Starts the elaboration of a single compound.
     """
     logger.info(f'Starting: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
     start_time = time.time()
-    scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
-                                                                                template_path=template_path,
-                                                                                hits_path=hits_path, hits_names=hits,
-                                                                                output_dir=output_dir,
-                                                                                scaffold_place_num=scaffold_place_num)
+    if no_scaffold_place:
+        logger.info(f"Skipping initial scaffold placement...")
+        scaffold_placements: Dict[Chem.Mol, str | None] = {}
+    else:
+        logger.info(f"Placing scaffold...")
+        scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
+                                                                                    template_path=template_path,
+                                                                                    hits_path=hits_path, hits_names=hits,
+                                                                                    output_dir=output_dir,
+                                                                                    scaffold_place_num=scaffold_place_num)
     return start_time, scaffold_placements
 
 
@@ -132,6 +138,7 @@ def elaborate_compound_with_manual_routes(product: str,
                                           atom_diff_max: int,
                                           scaffold_place_num: int,
                                           scaffold_place: bool,
+                                          no_scaffold_place: bool,
                                           additional_info=None):
     """
     This function is used to elaborate a single compound using a manually defined route.
@@ -139,7 +146,8 @@ def elaborate_compound_with_manual_routes(product: str,
     start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path,
                                                         hits_path=hits_path,
                                                         hits=hits, output_dir=output_dir,
-                                                        scaffold_place_num=scaffold_place_num)
+                                                        scaffold_place_num=scaffold_place_num,
+                                                        no_scaffold_place=no_scaffold_place)
     if not scaffold_place: # continue elaboration
         workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                     num_steps=num_steps, output_dir=output_dir, filter=False,
@@ -171,6 +179,7 @@ def elaborate_compound_full_auto(product: str,
                                  atom_diff_max: int,
                                  scaffold_place_num: int,
                                  scaffold_place: bool,
+                                 no_scaffold_place: bool,
                                  additional_info=None):
     """
     This function is used to elaborate a single compound.
@@ -178,7 +187,8 @@ def elaborate_compound_full_auto(product: str,
     start_time, scaffold_placements = start_elaboration(product=product, template_path=template_path,
                                                         hits_path=hits_path,
                                                         hits=hits, output_dir=output_dir,
-                                                        scaffold_place_num=scaffold_place_num)
+                                                        scaffold_place_num=scaffold_place_num,
+                                                        no_scaffold_place=no_scaffold_place)
     if not scaffold_place: # continue elaboration
         cobbler = Cobbler(scaffold_compound=product,
                           output_dir=output_dir, atom_diff_min=atom_diff_min,
@@ -201,6 +211,7 @@ def run_pipeline(settings: Dict):
     """
     Run the whole syndirella pipeline! 👑
 
+    OUTDATED DOCSTRING:
     Settings dict should have these keys:
       csv_path=settings['input'],
       output_dir=settings['output'],
@@ -213,7 +224,7 @@ def run_pipeline(settings: Dict):
       atom_diff_min=settings['atom_diff_min'],
       atom_diff_max=settings['atom_diff_max']
     """
-    def process_row(row: pd.Series, manual_routes: bool, scaffold_place: bool):
+    def process_row(row: pd.Series, manual_routes: bool, scaffold_place: bool, no_scaffold_place: bool):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
         template_path: str = check_inputs.get_template_path(
             template_dir=template_dir,
@@ -240,7 +251,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_min=atom_diff_min,
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
-                    scaffold_place=scaffold_place
+                    scaffold_place=scaffold_place,
+                    no_scaffold_place=no_scaffold_place
                 )
             else:
                 elaborate_compound_full_auto(
@@ -255,7 +267,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_min=atom_diff_min,
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
-                    scaffold_place=scaffold_place
+                    scaffold_place=scaffold_place,
+                    no_scaffold_place=no_scaffold_place
                 )
         except Exception as e:
             tb = traceback.format_exc()
@@ -282,13 +295,13 @@ def run_pipeline(settings: Dict):
         atom_diff_min: int = settings['atom_diff_min']
         atom_diff_max: int = settings['atom_diff_max']
         scaffold_place_num: int = settings['scaffold_place_num']
+        long_code_column: str = settings['long_code_column']
     except KeyError as e:
         logger.critical(f"Missing critical argument to run pipeline: {e}")
 
     # set optional variables
     try:
         manual_routes: bool = settings['manual']
-        long_code_column: str = settings['long_code_column']
     except KeyError:
         manual_routes = False
 
@@ -300,6 +313,13 @@ def run_pipeline(settings: Dict):
     except KeyError:
         scaffold_place = False
         # Log pipeline type
+
+    try:
+        no_scaffold_place: bool = settings['no_scaffold_place']
+        if no_scaffold_place:
+            logger.warning(f"Skipping initial scaffold placement! Immediately starting elaboration process.")
+    except KeyError:
+        no_scaffold_place = False
 
     if not scaffold_place:
         logger.info(f"Running the pipeline with {'manual' if manual_routes else 'full auto'} routes.")
@@ -320,6 +340,7 @@ def run_pipeline(settings: Dict):
 
     # Process each row in the DataFrame
     for index, row in df.iterrows():
-        process_row(row=row, manual_routes=manual_routes, scaffold_place=scaffold_place)
+        process_row(row=row, manual_routes=manual_routes, scaffold_place=scaffold_place,
+                    no_scaffold_place=no_scaffold_place)
 
     logger.info("Pipeline complete.")

@@ -219,8 +219,8 @@ Run pipeline in *manual* mode:
             - Internal steric clash: The interatomic distance between pairs of non-covalently bound atoms is above 60% of the lower bound distance apart determined by distance geometry.
 
 
-Usage Option: Only Place Scaffolds
-==================================
+Usage Option: Only Place Scaffolds (or Specifically Don't Place)
+===============================================================
 
 You can run Syndirella to only place scaffolds. It will not perform the full elaboration procedure.
 
@@ -228,6 +228,14 @@ You can run Syndirella to only place scaffolds. It will not perform the full ela
 
     syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --templates [path_to_templates_dir]
     --hits_path [path_to_fragments.sdf] --metadata [path_to_metadata.csv] --scaffold_place
+
+You can also specify to not place the scaffold (most likely you confirmed placement using another method).
+
+.. code-block:: bash
+
+    syndirella --input [path_to_automatic.csv] --output [path_to_output_dir] --templates [path_to_templates_dir]
+    --hits_path [path_to_fragments.sdf] --metadata [path_to_metadata.csv] --no_scaffold_place
+
 
 Usage Option: Only Get Retrosynthesis Routes of Scaffolds
 ========================================================
@@ -295,6 +303,7 @@ Command Line Interface
       --long_code_column LONG_CODE_COLUMN
                             Column name for long code in metadata csv to match to SDF name. The column can contain a substring for the SDF name. (default: Long code)
       --just_retro          Only run retrosynthesis querying of scaffolds. (default: False)
+      --no_scaffold_place   Do not place scaffolds initially before elaborating, immediately start elaboration process. (default: False)
 
         Syndirella is installed at [path_to_installation]
 
