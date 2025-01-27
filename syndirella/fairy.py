@@ -11,7 +11,6 @@ from rdkit.Chem import AllChem, rdinchi
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
 from syndirella.cli_defaults import cli_default_settings
-from rdkit.Chem import rdMolDescriptors
 from rdkit import DataStructs
 import logging
 from rdkit.Chem import rdFingerprintGenerator
@@ -95,7 +94,7 @@ def make_similar_reactant(reactant: Chem.Mol, to_replace: str, matched_details: 
     return similar_reactant_smiles
 
 
-def filter_molecules(hits: List[Tuple[str, float]]) -> Dict[str, float]:
+def filter_molecules(hits: List[Tuple[str, float]]) -> List[str]:
     """
     Filter out reactants and return a dictionary with SMILES strings as keys and their associated scores as values.
     """
@@ -105,27 +104,10 @@ def filter_molecules(hits: List[Tuple[str, float]]) -> Dict[str, float]:
     mols = simple_filters(mols)
     print_diff(hits, mols, "simple filters")
 
-    return format_for_output(mols, hits)
+    hits = [Chem.MolToSmiles(mol) for mol in mols]
 
+    return hits
 
-def format_for_output(mols: List[Chem.Mol], hits: List[Tuple[str, float]]) -> Dict[str, float]:
-    """
-    Format the output of the filtered molecules to a dictionary with SMILES strings as keys and their scores as values.
-    """
-    hits_info: Dict[str, float] = {}
-    hits_fps = [(Chem.MolFromSmiles(smiles), score) for smiles, score in hits]
-    hits_fps = [(AllChem.GetMorganFingerprintAsBitVect(mol, 2), score) for mol, score in hits_fps if mol is not None]
-
-    for mol in mols:
-        mol_fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2)
-        for hit_fp, value in hits_fps:
-            similarity = TanimotoSimilarity(mol_fp, hit_fp)
-            if similarity == 1.0:
-                mol_smiles = Chem.MolToSmiles(mol)
-                hits_info[mol_smiles] = value
-                break
-
-    return hits_info
 
 def simple_filters(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """Filter out molecules based on repeats, and non-abundant isotopes."""
@@ -157,7 +139,7 @@ def remove_repeat_mols(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """
     logger.info("Removing repeat analogues...")
     unique_mols = []
-    fingerprints = [rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048) for mol in mols]
+    fingerprints = [get_morgan_fingerprint(mol) for mol in mols]
     seen = set()
 
     for i, fp1 in enumerate(fingerprints):

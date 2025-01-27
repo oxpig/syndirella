@@ -7,6 +7,7 @@ analogue library from the Reaction object. It will also store the analogue libra
 """
 
 import pandas as pd
+from pandas import DataFrame
 from rdkit.Chem.FilterCatalog import *
 from typing import (List, Dict, Tuple)
 import os
@@ -64,28 +65,25 @@ class Library:
             analogue_columns: Tuple[str, str]
             self.analogues_dataframes[analogue_prefix] = (df, analogue_columns)
 
-    def process_reactant(self, reactant: Chem.Mol, reactant_smarts: str, analogue_prefix: str) -> pd.DataFrame:
+    def process_reactant(self, reactant: Chem.Mol, reactant_smarts: str, analogue_prefix: str) -> tuple[
+        DataFrame, tuple[str, str]]:
         # search for analogues csv if already created. Perform for all reactants.
         reactant_analogues_path, internal_step, previous_product = self.check_analogues_pkl_exists(analogue_prefix,
                                                                                                    reactant)
         if reactant_analogues_path is not None:
-            analogues_full: Dict[str, float] = self.load_library(reactant_analogues_path,
+            analogues: List[str] = self.load_library(reactant_analogues_path,
                                                                  analogue_prefix,
                                                                  internal_step)
-            analogues: List[str] = list(analogues_full.keys())
         else: # perform database search
             postera_search = Postera()
-            # returns a dictionary of analogues where values = min lead time found
-            analogues_full: Dict[str, float] = postera_search.perform_database_search(reactant=reactant,
-                                                                                      reaction_name=self.reaction.reaction_name,
-                                                                                      search_type="superstructure")
-            analogues: List[str] = list(analogues_full.keys())
+            analogues: List[str] = postera_search.perform_database_search(reactant=reactant,
+                                                                          reaction_name=self.reaction.reaction_name,
+                                                                          search_type="superstructure")
         processed_analogues_df, analogue_columns = (
             self.process_analogues(analogues,
                                    reactant_smarts,
                                    analogue_prefix,
-                                   previous_product,
-                                   analogues_full))
+                                   previous_product))
         processed_analogues_df: pd.DataFrame
         analogue_columns: Tuple[str, str]
         self.save_library(processed_analogues_df, analogue_prefix)
@@ -95,8 +93,7 @@ class Library:
                           analogues: List[str],
                           reactant_smarts: str,
                           analogue_prefix: str,
-                          previous_product: bool,
-                          analogues_full: Dict[str, float] = None) -> pd.DataFrame:
+                          previous_product: bool) -> pd.DataFrame:
         """
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
@@ -120,20 +117,13 @@ class Library:
                 self.check_analogue_contains_other_reactant_smarts_pattern(analogues_mols, reactant_smarts))
         contains_other_reactant_smarts_pattern: List[bool]
         other_reactant_prefix: str
-        # get lead time from analogues
         analogues = [Chem.MolToSmiles(analogue) for analogue in analogues_mols]
-        if analogues_full is not None:
-            lead_times = [analogues_full[analogue] if analogue in analogues_full else None for analogue in analogues]
-            if len(lead_times) != len(analogues):
-                self.logger.error("Problem with finding lead times.")
-                raise ValueError("Problem with finding lead times.")
         analogues_df = (
             pd.DataFrame({f"{analogue_prefix}_smiles": analogues,
                           f"{analogue_prefix}_mol": analogues_mols,
                           f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
                           f"{analogue_prefix}_{self.reaction.reaction_name}_num_matches": num_matches,
                           f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern,
-                          f"{analogue_prefix}_lead_time": lead_times,
                           f"{analogue_prefix}_is_previous_product": previous_product}))
         if self.filter:
             analogues_df['is_PAINS_A'] = False
@@ -301,10 +291,9 @@ class Library:
     def load_library(self,
                      reactant_analogues_path: str,
                      analogue_prefix: str,
-                     internal_step: bool) -> Dict[str, float]:
+                     internal_step: bool) -> List[str]:
         """
-        This function is used to load the analogue library from a .pkl file. Returns a dictionary of the smiles as keys
-        and the lead time (if found) as float. Otherwise return lead time as None.
+        This function is used to load the analogue library from a .pkl file.
         """
         try:
             # find column with analogue smiles
@@ -316,13 +305,11 @@ class Library:
                                   inchi=self.id,
                                   mol=self.reaction.scaffold)
             if not internal_step:
-                analogues = df[[f"{analogue_prefix}_smiles", f"{analogue_prefix}_lead_time"]]
-                analogues_full = {row[0]: row[1] for row in analogues.itertuples(index=False)}
-                return analogues_full
+                analogues = df[f"{analogue_prefix}_smiles"].tolist()
+                return analogues
             if internal_step:
                 analogues = df["smiles"].tolist()
-                analogues_full = {analog: None for analog in analogues}
-                return analogues_full
+                return analogues
         except KeyError:
             self.logger.critical(f"Could not find analogue column in already existing scaffold.pkl at {reactant_analogues_path}. "
                   f"Stopping...")

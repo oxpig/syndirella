@@ -28,8 +28,7 @@ class Postera(DatabaseSearch):
         self.logger = logging.getLogger(f"{__name__}")
 
     def perform_route_search(self,
-                             compound: str,
-                             max_pages: int = 10) -> List[Dict[str, List[Dict[str, str]]]]:
+                             compound: str) -> List[Dict[str, List[Dict[str, str]]]]:
         """
         This function is used to perform the route query.
         """
@@ -44,15 +43,14 @@ class Postera(DatabaseSearch):
                 'smiles': compound,
                 "withPurchaseInfo": True,
                 "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
-            },
-            max_pages=max_pages,
+            }
         )
         return retro_hits
 
     def perform_database_search(self,
                                 reactant: Chem.Mol,
                                 reaction_name: str,
-                                search_type: str = "superstructure") -> Dict[str, float]:
+                                search_type: str = "superstructure") -> List[str]:
         """
         This function is used to perform the Postera search using the database_search_function.
         """
@@ -68,16 +66,18 @@ class Postera(DatabaseSearch):
                 hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles)
                 self.logger.info(f'Found {len(hits)} hits for {smiles} before filtering.')
                 hits_all.extend(hits)
-        filtered_hits: Dict[str, float] = fairy.filter_molecules(hits=hits_all)
+        filtered_hits: List[str] = fairy.filter_molecules(hits=hits_all)
         return filtered_hits
 
     def perform_superstructure_search(self,
                                       smiles: str,
-                                      max_pages: int = 10) -> List[Tuple[str, float]]:
+                                      queryThirdPartyServices: bool = False,
+                                      keep_catalogue: bool = False) -> List[Tuple[str, Tuple[str, str] | None]]:
         """
         This function is used to perform the Postera superstructure search.
         """
-        self.logger.info(f"Running superstructure search for {smiles}. Only searching for building blocks.")
+        self.logger.info(f"Running superstructure search for {smiles}.")
+        self.logger.info(f"Querying third party services: {queryThirdPartyServices}")
         if not isinstance(smiles, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")
@@ -87,22 +87,22 @@ class Postera(DatabaseSearch):
             data={
                 'smiles': smiles,
                 "entryType": "both",
-                "patentDatabases": [], # don't search over pantent databases,
+                "patentDatabases": [], # don't search over patent databases,
                 "withPurchaseInfo": True,
+                "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": ["all"]
-            },
-            max_pages=max_pages,
+            }
         )
-        hits_info: List[Tuple[str, float]] = self.structure_output(superstructure_hits)
-        # add query smiles just in case it's not returned
-        hits_info.append((smiles, 0))
+        hits_info: List[Tuple[str, float]] = self.structure_output(superstructure_hits,
+                                                                   query_smiles=smiles,
+                                                                   keep_catalogue=keep_catalogue)
+
         return hits_info
 
     def perform_exact_search(self,
                              smiles: str,
                              queryThirdPartyServices: bool = False,
-                             catalogues: List[str] = ["all"],
-                             max_pages: int = 10) -> List[Dict]:
+                             catalogues: List[str] = ["all"]) -> List[Dict]:
         """
         This function is used to perform the Postera exact search.
         """
@@ -119,16 +119,14 @@ class Postera(DatabaseSearch):
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "withPurchaseInfo": True,
                 "vendors": catalogues
-            },
-            max_pages=max_pages,
+            }
         )
         return exact_hits
 
     def perform_exact_batch_search(self,
                                    smiles_list: List[str],
                                    queryThirdPartyServices: bool = False,
-                                   catalogues: List[str] = ["all"],
-                                   max_pages: int = 10) -> List[Dict]:
+                                   catalogues: List[str] = ["all"]) -> List[Dict]:
         """
         Performs exact search with a batch of smiles.
         """
@@ -144,23 +142,27 @@ class Postera(DatabaseSearch):
                 "smilesList": smiles_list,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": catalogues
-            },
-            max_pages=max_pages,
+            }
         )
         return exact_hits
 
 
-    def structure_output(self, hits: List[Dict]) -> List[Tuple[str, float]]:
+    def structure_output(self, hits: List[Dict], query_smiles: str, keep_catalogue: bool=False) -> List[Tuple[str, Tuple[str, str] | None]]:
         """
-        Formats output where key is the smiles and value is the lead time. Could add other purchase info if interested.
+        Formats output into a list of tuples with smiles and catalogue.
         """
-        hits_info: List[Tuple[str, float]] = []
+        hits_info: List[Tuple[str, Tuple[str, str] | None]] = []
         for hit in hits:
-            # get minimum lead time possible
-            # TODO: Remove lead_time from the output as it is not used.
-            # lead_time = min([entry['purchaseInfo']['bbLeadTimeWeeks'] for entry in hit['catalogEntries']])
-            hits_info.append((hit['smiles'], 0.0))
-            # could do price but seems like too much faff
+            if keep_catalogue and type(hit['catalogEntries']) is list and len(hit['catalogEntries']) > 0:
+                for entry in hit['catalogEntries']:
+                    entry: dict
+                    hits_info.append((hit['smiles'], (entry['catalogName'], entry['catalogId'])))
+            else:
+                hits_info.append((hit['smiles'], None))
+        if len(hits_info) == 0:
+            self.logger.warning(f"No superstructures found for {query_smiles}.")
+            # add query smiles just in case it's not returned
+            hits_info.append((query_smiles, None))
         return hits_info
 
     @staticmethod
@@ -218,7 +220,6 @@ class Postera(DatabaseSearch):
     def get_search_results(url: str,
                            api_key: str,
                            data: Dict[str, Any],
-                           max_pages: int = 5,
                            page: int = 1) -> List[Dict]:
         """
         Recursively get all pages for the endpoint until reach null next page or
@@ -239,12 +240,11 @@ class Postera(DatabaseSearch):
             all_hits.extend(response.get('routes', []))
         # Grab more hits_path if there is a next page supplied.
         next_page = response.get('nextPage', None)
-        if next_page is not None and next_page < max_pages:
+        if next_page is not None:
             next_hits = Postera.get_search_results(
                 url,
                 api_key,
                 data,
-                max_pages,
                 next_page
             )
             all_hits.extend(next_hits)
