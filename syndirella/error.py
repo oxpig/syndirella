@@ -115,3 +115,7 @@ class NoToHippo(ChemicalErrorBase):
                  mol: Chem.Mol | None = None):
         self.route_uuid = route_uuid
         super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)
+
+# class APIQueryError(ChemicalErrorBase): # TODO implement
+#     def __init__(self,
+#                  ):

@@ -161,8 +161,7 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code
         raise FileNotFoundError(f"The hits_path path {hits_path} does not exist")
     sdf = Chem.SDMolSupplier(hits_path)
     sdf_names = [mol.GetProp('_Name') for mol in sdf]
-    if not os.path.exists(metadata_path):
-        logger.critical("The metadata path does not exist.")
+    if not os.path.exists(metadata_path): # could be None
         raise FileNotFoundError(f"The metadata path {metadata_path} does not exist.")
     code_dict = metadata_dict(metadata_path, long_code_column=long_code_column)
     # get the LongCodes for the hit names

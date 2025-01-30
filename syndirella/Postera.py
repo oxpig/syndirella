@@ -14,6 +14,7 @@ import logging
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
 import random
+import datetime
 
 
 class Postera(DatabaseSearch):
@@ -81,7 +82,7 @@ class Postera(DatabaseSearch):
         if not isinstance(smiles, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")
-        superstructure_hits: List[Dict] = Postera.get_search_results(
+        superstructure_hits: List[Dict] | int = Postera.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
             api_key=self.api_key,
             data={
@@ -93,7 +94,7 @@ class Postera(DatabaseSearch):
                 "vendors": ["all"]
             }
         )
-        hits_info: List[Tuple[str, float]] = self.structure_output(superstructure_hits,
+        hits_info: List[Tuple[str, Tuple[str, str] | None]] = self.structure_output(superstructure_hits,
                                                                    query_smiles=smiles,
                                                                    keep_catalogue=keep_catalogue)
 
@@ -147,11 +148,14 @@ class Postera(DatabaseSearch):
         return exact_hits
 
 
-    def structure_output(self, hits: List[Dict], query_smiles: str, keep_catalogue: bool=False) -> List[Tuple[str, Tuple[str, str] | None]]:
+    def structure_output(self, hits: List[Dict] | int, query_smiles: str, keep_catalogue: bool=False) -> List[Tuple[str, Tuple[str, str] | None]]:
         """
         Formats output into a list of tuples with smiles and catalogue.
         """
         hits_info: List[Tuple[str, Tuple[str, str] | None]] = []
+        if type(hits) is int:
+            self.logger.critical("Max retries exceeded, this will be an empty output!")
+            return hits_info
         for hit in hits:
             if keep_catalogue and type(hit['catalogEntries']) is list and len(hit['catalogEntries']) > 0:
                 for entry in hit['catalogEntries']:
@@ -170,7 +174,7 @@ class Postera(DatabaseSearch):
                       api_key: str,
                       data: Dict = None,
                       retries: int = 50,
-                      backoff_factor: float = 0.5) -> Optional[Dict]:
+                      backoff_factor: float = 0.5) -> Optional[Dict] | int:
         """
         Directly get the response json from a request, with retry mechanism for handling 429 status code.
         """
@@ -198,8 +202,9 @@ class Postera(DatabaseSearch):
                         time.sleep(wait_time)
                         continue
                     else:
-                        logger.error("Max retries exceeded. Please try again later.")
-                        return None
+                        logger.error(f"Max retries exceeded. Please try again later. Returning status code "
+                                     f"{response.status_code}")
+                        return response.status_code
 
                 response.raise_for_status()
                 return response.json()
@@ -220,7 +225,7 @@ class Postera(DatabaseSearch):
     def get_search_results(url: str,
                            api_key: str,
                            data: Dict[str, Any],
-                           page: int = 1) -> List[Dict]:
+                           page: int = 1) -> List[Dict] | int:
         """
         Recursively get all pages for the endpoint until reach null next page or
         the max_pages threshold.
@@ -231,9 +236,11 @@ class Postera(DatabaseSearch):
             **data,
             'page': page,
         }
-        response = Postera.get_resp_json(url, api_key, data)
-        if response is None:
+        response: Dict | int = Postera.get_resp_json(url, api_key, data)
+        if response is None: # other error
             return all_hits
+        if type(response) is int: # rate limit exceeded
+            return response
         elif response.get('results') is not None:
             all_hits.extend(response.get('results', []))
         elif response.get('routes') is not None:
