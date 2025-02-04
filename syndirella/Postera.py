@@ -14,7 +14,7 @@ import logging
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
 import random
-import datetime
+import sys
 
 
 class Postera(DatabaseSearch):
@@ -225,11 +225,15 @@ class Postera(DatabaseSearch):
     def get_search_results(url: str,
                            api_key: str,
                            data: Dict[str, Any],
-                           page: int = 1) -> List[Dict] | int:
+                           page: int = 1,
+                           max_pages: int = 900) -> List[Dict] | int:
         """
         Recursively get all pages for the endpoint until reach null next page or
-        the max_pages threshold.
+        the max_pages threshold. The default max_pages is set to 900 since the recursion limit is 1000.
         """
+        current_limit = sys.getrecursionlimit()
+        if max_pages > (current_limit - 100):
+            raise ValueError(f"max_pages ({max_pages}) too close to recursion limit ({current_limit})")
         # List where we will gather up all the hits_path.
         all_hits = []
         data = {
@@ -246,13 +250,16 @@ class Postera(DatabaseSearch):
         elif response.get('routes') is not None:
             all_hits.extend(response.get('routes', []))
         # Grab more hits_path if there is a next page supplied.
+        if page >= max_pages:
+            return all_hits
         next_page = response.get('nextPage', None)
         if next_page is not None:
             next_hits = Postera.get_search_results(
                 url,
                 api_key,
                 data,
-                next_page
+                next_page,
+                max_pages
             )
             all_hits.extend(next_hits)
         return all_hits
