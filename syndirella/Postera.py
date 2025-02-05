@@ -73,7 +73,8 @@ class Postera(DatabaseSearch):
     def perform_superstructure_search(self,
                                       smiles: str,
                                       queryThirdPartyServices: bool = False,
-                                      keep_catalogue: bool = False) -> List[Tuple[str, Tuple[str, str] | None]]:
+                                      keep_catalogue: bool = False,
+                                      vendors: list[str] = ['all']) -> List[Tuple[str, Tuple[str, str] | None]]:
         """
         This function is used to perform the Postera superstructure search.
         """
@@ -91,7 +92,7 @@ class Postera(DatabaseSearch):
                 "patentDatabases": [], # don't search over patent databases,
                 "withPurchaseInfo": True,
                 "queryThirdPartyServices": queryThirdPartyServices,
-                "vendors": ["all"]
+                "vendors": vendors
             }
         )
         hits_info: List[Tuple[str, Tuple[str, str] | None]] = self.structure_output(superstructure_hits,
