@@ -51,7 +51,8 @@ class Postera(DatabaseSearch):
     def perform_database_search(self,
                                 reactant: Chem.Mol,
                                 reaction_name: str,
-                                search_type: str = "superstructure") -> List[str]:
+                                search_type: str = "superstructure",
+                                vendors: list[str] = ['enamine_bb', 'mcule', 'mcule_ultimate', 'enamine_real', 'enamine_made']) -> List[str]:
         """
         This function is used to perform the Postera search using the database_search_function.
         """
@@ -64,7 +65,7 @@ class Postera(DatabaseSearch):
         hits_all: List[Tuple[str, float]] = []
         for smiles in reactants:
             if search_type == "superstructure":
-                hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles)
+                hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles, vendors=vendors)
                 self.logger.info(f'Found {len(hits)} hits for {smiles} before filtering.')
                 hits_all.extend(hits)
         filtered_hits: List[str] = fairy.filter_molecules(hits=hits_all)
@@ -80,6 +81,7 @@ class Postera(DatabaseSearch):
         """
         self.logger.info(f"Running superstructure search for {smiles}.")
         self.logger.info(f"Querying third party services: {queryThirdPartyServices}")
+        self.logger.info(f"Vendor list: {vendors}")
         if not isinstance(smiles, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")

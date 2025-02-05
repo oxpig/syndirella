@@ -78,7 +78,8 @@ class Library:
             postera_search = Postera()
             analogues: List[str] = postera_search.perform_database_search(reactant=reactant,
                                                                           reaction_name=self.reaction.reaction_name,
-                                                                          search_type="superstructure")
+                                                                          search_type="superstructure",
+                                                                          vendors=['enamine_bb', 'mcule', 'mcule_ultimate', 'enamine_real', 'enamine_made'])
         processed_analogues_df, analogue_columns = (
             self.process_analogues(analogues,
                                    reactant_smarts,
