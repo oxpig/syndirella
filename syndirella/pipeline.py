@@ -4,22 +4,24 @@ syndirella.run_pipeline.py
 
 This script contains the main pipeline for syndirella.
 """
-from typing import List, Tuple, Dict
-import pandas as pd
-import datetime, time
-import traceback
+import datetime
 import logging
+import time
+import traceback
+from typing import List, Tuple, Dict
+
+import pandas as pd
 from rdkit.Chem import inchi
 from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 
+import syndirella.check_inputs as check_inputs
+import syndirella.fairy as fairy
+import syndirella.structure_outputs as structure_outputs
 from syndirella.Cobbler import Cobbler
+from syndirella.error import *
 from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
 from syndirella.slipper.SlipperFitter import SlipperFitter
-from syndirella.error import *
-import syndirella.check_inputs as check_inputs
-import syndirella.structure_outputs as structure_outputs
-import syndirella.fairy as fairy
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,8 @@ def start_elaboration(product: str,
         logger.info(f"Placing scaffold...")
         scaffold_placements: Dict[Chem.Mol, str | None] = assert_scaffold_placement(scaffold=product,
                                                                                     template_path=template_path,
-                                                                                    hits_path=hits_path, hits_names=hits,
+                                                                                    hits_path=hits_path,
+                                                                                    hits_names=hits,
                                                                                     output_dir=output_dir,
                                                                                     scaffold_place_num=scaffold_place_num)
     return start_time, scaffold_placements
@@ -148,7 +151,7 @@ def elaborate_compound_with_manual_routes(product: str,
                                                         hits=hits, output_dir=output_dir,
                                                         scaffold_place_num=scaffold_place_num,
                                                         no_scaffold_place=no_scaffold_place)
-    if not scaffold_place: # continue elaboration
+    if not scaffold_place:  # continue elaboration
         workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                     num_steps=num_steps, output_dir=output_dir, filter=False,
                                     id=fairy.generate_inchi_ID(product, isomeric=False), atom_diff_min=atom_diff_min,
@@ -163,8 +166,9 @@ def elaborate_compound_with_manual_routes(product: str,
                                          scaffold_placements=scaffold_placements)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
-                    f"after {datetime.timedelta(seconds=elapsed_time)}")
+        logger.info(
+            f"Finished Syndirella 👑 pipeline for compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
+            f"after {datetime.timedelta(seconds=elapsed_time)}")
         logger.info("")
 
 
@@ -189,7 +193,7 @@ def elaborate_compound_full_auto(product: str,
                                                         hits=hits, output_dir=output_dir,
                                                         scaffold_place_num=scaffold_place_num,
                                                         no_scaffold_place=no_scaffold_place)
-    if not scaffold_place: # continue elaboration
+    if not scaffold_place:  # continue elaboration
         cobbler = Cobbler(scaffold_compound=product,
                           output_dir=output_dir, atom_diff_min=atom_diff_min,
                           atom_diff_max=atom_diff_max)  # check that output_dirs can be made for different routes
@@ -200,8 +204,9 @@ def elaborate_compound_full_auto(product: str,
                                          scaffold_placements=scaffold_placements)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        logger.info(f"Finished elaborating compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
-                    f"after {datetime.timedelta(seconds=elapsed_time)}")
+        logger.info(
+            f"Finished Syndirella 👑 pipeline for compound {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))} "
+            f"after {datetime.timedelta(seconds=elapsed_time)}")
         logger.info("")
 
 
@@ -224,6 +229,7 @@ def run_pipeline(settings: Dict):
       atom_diff_min=settings['atom_diff_min'],
       atom_diff_max=settings['atom_diff_max']
     """
+
     def process_row(row: pd.Series, manual_routes: bool, scaffold_place: bool, no_scaffold_place: bool):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
         template_path: str = check_inputs.get_template_path(

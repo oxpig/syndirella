@@ -6,19 +6,21 @@ This module contains the Library class. This class contains information about th
 analogue library from the Reaction object. It will also store the analogue library as a .pkl file.
 """
 
+import glob
+import logging
+import os
+import pickle
+from typing import (List, Dict, Tuple)
+
 import pandas as pd
 from pandas import DataFrame
-from rdkit.Chem.FilterCatalog import *
-from typing import (List, Dict, Tuple)
-import os
 from rdkit import DataStructs
-import glob
-import pickle
-import logging
-from .Reaction import Reaction
-from syndirella.Postera import Postera
+from rdkit.Chem.FilterCatalog import *
+
 import syndirella.fairy as fairy
-from syndirella.error import SMARTSError, NoReactants
+from syndirella.Postera import Postera
+from syndirella.error import SMARTSError, NoReactants, APIQueryError
+from .Reaction import Reaction
 
 
 class Library:
@@ -26,6 +28,7 @@ class Library:
     This class contains information about the analogue library. It will create the analogue library from the Reaction
     object. It will also store the analogue library as a .pkl file.
     """
+
     def __init__(self,
                  reaction: Reaction,
                  output_dir: str,
@@ -56,7 +59,7 @@ class Library:
         """
         This function is used to create the analogue library from the Reaction object.
         """
-        for key, value in self.reaction.matched_smarts_to_reactant.items(): # can work for 1 and 2 reactants
+        for key, value in self.reaction.matched_smarts_to_reactant.items():  # can work for 1 and 2 reactants
             reactant = value[0]
             reactant_smarts = key
             analogue_prefix = value[2]
@@ -72,14 +75,24 @@ class Library:
                                                                                                    reactant)
         if reactant_analogues_path is not None:
             analogues: List[str] = self.load_library(reactant_analogues_path,
-                                                                 analogue_prefix,
-                                                                 internal_step)
-        else: # perform database search
+                                                     analogue_prefix,
+                                                     internal_step)
+        else:  # perform database search
             postera_search = Postera()
-            analogues: List[str] = postera_search.perform_database_search(reactant=reactant,
-                                                                          reaction_name=self.reaction.reaction_name,
-                                                                          search_type="superstructure",
-                                                                          vendors=['enamine_bb', 'mcule', 'mcule_ultimate', 'enamine_real', 'enamine_made'])
+            analogues: List[str] | None = postera_search.perform_database_search(reactant=reactant,
+                                                                                 reaction_name=self.reaction.reaction_name,
+                                                                                 search_type="superstructure",
+                                                                                 vendors=['enamine_bb', 'mcule',
+                                                                                          'mcule_ultimate',
+                                                                                          'enamine_real',
+                                                                                          'enamine_made'])
+            if analogues is None:  # if the API query failed
+                self.logger.critical(
+                    f"API superstructure query failed for reactant {analogue_prefix} in {self.reaction.reaction_name}.")
+                raise APIQueryError(
+                    message=f"API superstructure query failed for step {self.current_step} reactant {analogue_prefix} in {self.reaction.reaction_name}.",
+                    inchi=self.id,
+                    route_uuid=self.route_uuid)
         processed_analogues_df, analogue_columns = (
             self.process_analogues(analogues,
                                    reactant_smarts,
@@ -167,11 +180,13 @@ class Library:
         valid analogues.
         """
         if len(valid_mols) > len(mols):
-            self.logger.warning("Problem with finding valid molecules. There are more than were in the original list of "
-                              "molecules.")
+            self.logger.warning(
+                "Problem with finding valid molecules. There are more than were in the original list of "
+                "molecules.")
         num_filtered = len(mols) - len(valid_mols)
         percent_diff = round((num_filtered / len(mols)) * 100, 2)
-        self.logger.info(f'Removed {num_filtered} invalid or repeated molecules ({percent_diff}%) of {analogue_prefix} analogues.')
+        self.logger.info(
+            f'Removed {num_filtered} invalid or repeated molecules ({percent_diff}%) of {analogue_prefix} analogues.')
 
     def filter_on_substructure_filters(self, mols: List[Chem.Mol], ) -> List[str]:
         """
@@ -194,7 +209,8 @@ class Library:
         """
         # get other reactant SMARTS pattern
         self.logger.info('Checking if analogues contain SMARTS pattern of other reactant...')
-        other_reactant_smarts_pattern = [smarts for smarts in self.reaction.matched_smarts_to_reactant.keys() if not smarts == reactant_smarts][0]
+        other_reactant_smarts_pattern = \
+            [smarts for smarts in self.reaction.matched_smarts_to_reactant.keys() if not smarts == reactant_smarts][0]
         if other_reactant_smarts_pattern is None:
             self.logger.error(f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.")
             raise SMARTSError(message=f"Other reactant SMARTS pattern not found for {self.reaction.reaction_name}.",
@@ -202,9 +218,11 @@ class Library:
                               route_uuid=self.route_uuid)
         other_reactant_prefix = self.reaction.matched_smarts_to_reactant[other_reactant_smarts_pattern][2]
         other_reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(other_reactant_smarts_pattern)
-        return [bool(analogue.GetSubstructMatches(other_reactant_smarts_mol)) for analogue in analogues_mols], other_reactant_prefix
+        return [bool(analogue.GetSubstructMatches(other_reactant_smarts_mol)) for analogue in
+                analogues_mols], other_reactant_prefix
 
-    def check_analogue_contains_all_smarts_patterns(self, analogues_mols: List[Chem.Mol]) -> List[bool] | NotImplementedError:
+    def check_analogue_contains_all_smarts_patterns(self, analogues_mols: List[Chem.Mol]) -> List[
+                                                                                                 bool] | NotImplementedError:
         """
         This function is used to check if the analogues contains all the SMARTS patterns of the other reactants.
         """
@@ -216,26 +234,27 @@ class Library:
         """
         internal_step = False
         if self.current_step != 1 and (self.current_step == self.num_steps or self.current_step < self.num_steps):
-            self.logger.info('Since this is an internal or final step looking for the products .pkl from previous step...')
+            self.logger.info(
+                'Since this is an internal or final step looking for the products .pkl from previous step...')
             pkl_path: str = self._find_products_pkl_name(reactant)
             if pkl_path is not None:
                 internal_step = True
                 previous_product = True
-                return pkl_path, internal_step, previous_product # returns path to products .pkl.gz since is reactant
+                return pkl_path, internal_step, previous_product  # returns path to products .pkl.gz since is reactant
         if self.current_step != 1 and self.current_step < self.num_steps:
             self.logger.info('Looking for analogue library .pkl.gz if already created...')
             pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
             if pkl_path is not None:
                 internal_step = True
                 previous_product = False
-                return pkl_path, internal_step, previous_product # returns path to analogue .pkl.gz and is internal step
+                return pkl_path, internal_step, previous_product  # returns path to analogue .pkl.gz and is internal step
         if self.current_step == 1:
             self.logger.info('Looking for analogue library .pkl.gz if already created...')
             pkl_path: str = self._find_analogues_pkl_name(analogue_prefix)
             if pkl_path is not None:
                 internal_step = False
                 previous_product = False
-                return pkl_path, internal_step, previous_product # returns path to analogue .pkl.gz and is first step
+                return pkl_path, internal_step, previous_product  # returns path to analogue .pkl.gz and is first step
         previous_product = False
         os.makedirs(self.extra_dir_path, exist_ok=True)
         return None, internal_step, previous_product
@@ -312,8 +331,9 @@ class Library:
                 analogues = df["smiles"].tolist()
                 return analogues
         except KeyError:
-            self.logger.critical(f"Could not find analogue column in already existing scaffold.pkl at {reactant_analogues_path}. "
-                  f"Stopping...")
+            self.logger.critical(
+                f"Could not find analogue column in already existing scaffold.pkl at {reactant_analogues_path}. "
+                f"Stopping...")
 
     def save(self):
         """
@@ -334,10 +354,9 @@ class Library:
         id = fairy.generate_inchi_ID(product, isomeric=False)
         with open(library_pkls[0], "rb") as f:
             library = pickle.load(f)
-            if library.id == id and library.num_steps == library.current_step: # return the final library
+            if library.id == id and library.num_steps == library.current_step:  # return the final library
                 logger.info(f"Loaded {library.id} final library.")
                 return library
         # if not found, return None
         logger.warning(f"Could not load {id} final library.")
         return None
-

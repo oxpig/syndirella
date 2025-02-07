@@ -5,20 +5,24 @@ syndirella.cobbler.Cobbler.py
 This module contains the Cobbler class. It is used to perform retrosynthetic analysis of the scaffold compound. It handles
 Postera searches, including multiple elaboration searches.
 """
+import logging
 import os
 from typing import (List, Dict)
-from syndirella.route.CobblersWorkshop import CobblersWorkshop
+
+from rdkit import Chem
+
+import syndirella.fairy as fairy
 from syndirella.Postera import Postera
 from syndirella.SMARTSHandler import SMARTSHandler
-from syndirella.error import NoSynthesisRoute
-import logging
-from rdkit import Chem
-import syndirella.fairy as fairy
+from syndirella.error import NoSynthesisRoute, APIQueryError
+from syndirella.route.CobblersWorkshop import CobblersWorkshop
+
 
 class Cobbler:
     """
     A single cobbler represents 1 scaffold compound design. It can contain multiple routes (CobblerWorkshop objects).
     """
+
     def __init__(self,
                  scaffold_compound: str,
                  output_dir: str,
@@ -42,7 +46,13 @@ class Cobbler:
         This function is used to get the routes for the scaffold compound. Main function that is called.
         """
         postera_search: Postera = Postera()
-        routes: List[Dict[str, List[Dict[str, str]]]] = postera_search.perform_route_search(compound=self.scaffold_compound)
+        routes: List[Dict[str, List[Dict[str, str]]]] | None = postera_search.perform_route_search(
+            compound=self.scaffold_compound)
+        if routes is None:  # if the API query failed
+            raise APIQueryError(
+                message=f"API retrosynthesis query failed for {self.scaffold_compound}.",
+                inchi=self.id,
+                smiles=self.scaffold_compound)
         route: CobblersWorkshop = self.get_route(routes)
         additional_routes: List[CobblersWorkshop] = route.get_additional_routes(edit_route=True)
         if additional_routes is not None:
@@ -59,12 +69,11 @@ class Cobbler:
         cobblers_workshop: CobblersWorkshop = self.create_cobblers_workshop_from_Postera(route)
         return cobblers_workshop
 
-
     def create_cobblers_workshop_from_Postera(self, route: List[Dict]) -> CobblersWorkshop:
         """
         Creates a cobblers workshop from a route.
         """
-        route = route[::-1] # reverse route since it is a retrosynthesis route.
+        route = route[::-1]  # reverse route since it is a retrosynthesis route.
         reaction_names = [reaction['name'].replace(" ", "_") for reaction in route]
         reactants = [reaction['reactantSmiles'] for reaction in route]
         product = self.scaffold_compound
@@ -89,7 +98,7 @@ class Cobbler:
         passing_routes = []
         for route in routes:
             # get the reactions
-            reactions: List[Dict[str,str]] = route['reactions']
+            reactions: List[Dict[str, str]] = route['reactions']
             # check if all reactions are in the reactions
             if len(reactions) == 0:
                 continue
@@ -107,15 +116,17 @@ class Cobbler:
         for route in routes:
             reactants = [reactant for reaction in route for reactant in reaction['reactantSmiles']]
             reactant_atoms = [Chem.MolFromSmiles(reactant).GetNumAtoms() for reactant in reactants]
-            if 1 in reactant_atoms: # remove routes that contain reactions with single atoms
+            if 1 in reactant_atoms:  # remove routes that contain reactions with single atoms
                 continue
             # reaction name and n reactants dict
-            reaction_name_n_reactants = {reaction['name'].replace(" ", "_"): len(reaction['reactantSmiles']) for reaction in route}
-            if any([reaction_name in self.n_reactants_per_reaction.keys() and n_reactants != self.n_reactants_per_reaction[reaction_name] for reaction_name, n_reactants in reaction_name_n_reactants.items()]):
+            reaction_name_n_reactants = {reaction['name'].replace(" ", "_"): len(reaction['reactantSmiles']) for
+                                         reaction in route}
+            if any([reaction_name in self.n_reactants_per_reaction.keys() and n_reactants !=
+                    self.n_reactants_per_reaction[reaction_name] for reaction_name, n_reactants in
+                    reaction_name_n_reactants.items()]):
                 continue
             passing_routes.append(route)
         return passing_routes
-
 
     def choose_route(self, routes: List[Dict[str, List[Dict[str, str]]]]) -> List[Dict]:
         """
@@ -138,7 +149,7 @@ class Cobbler:
         """
         self.logger.info('Syndirella 👑 will elaborate the following route:')
         for i, reaction in enumerate(reaction_names):
-            self.logger.info(f'\n Step {i+1}: \n {reactants[i]} -> {reaction}')
+            self.logger.info(f'\n Step {i + 1}: \n {reactants[i]} -> {reaction}')
         self.logger.info(f'Final product: {product}')
 
     def save(self):

@@ -5,17 +5,18 @@ syndirella.structure_outputs.py
 This module contains the functions used to structure the pipeline outputs.
 """
 import logging
+import os
+import traceback
 from argparse import ArgumentError
 from typing import *
+
 import glob2
 import pandas as pd
-import os
 from rdkit import Chem
-import traceback
 
+import syndirella.fairy as fairy
 from syndirella.route.CobblersWorkshop import CobblersWorkshop
 from syndirella.slipper.Slipper import Slipper
-import syndirella.fairy as fairy
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ def add_outcome_info(slipper: Slipper | None = None,
         outcome[f"hit{i + 1}"] = hit
 
     return outcome
+
 
 def get_output_df(csv_path: str,
                   output_dir: str) -> Tuple[pd.DataFrame, str | None]:
@@ -217,6 +219,7 @@ def check_additional_info_to_add(slipper: Slipper | None) -> bool:
     else:
         return False
 
+
 def add_new_route_to_output_df(output_df: pd.DataFrame, row: Dict) -> pd.DataFrame:
     """
     This function adds a new row to the output dataframe. If the row contains different columns,
@@ -241,10 +244,14 @@ def add_new_route_to_output_df(output_df: pd.DataFrame, row: Dict) -> pd.DataFra
 
     # order columns with smiles, inchi_key, error_type, error_message always first
     try:
-        output_df = output_df[['smiles', 'inchi_key', 'error_type', 'error_message'] + [col for col in output_df.columns if col not in ['smiles', 'inchi_key', 'error_type', 'error_message']]]
+        output_df = output_df[
+            ['smiles', 'inchi_key', 'error_type', 'error_message'] + [col for col in output_df.columns if
+                                                                      col not in ['smiles', 'inchi_key', 'error_type',
+                                                                                  'error_message']]]
     except KeyError:
         pass
     return output_df
+
 
 def save_output_df(output_df: pd.DataFrame, output_dir: str, csv_path: str):
     """
@@ -261,7 +268,8 @@ def save_output_df(output_df: pd.DataFrame, output_dir: str, csv_path: str):
 
 def structure_route_outputs(error_message: str | None, error_type: str | None, output_df: pd.DataFrame,
                             workshop: CobblersWorkshop | None, slipper: Slipper | None, scaffold: str,
-                            template_path: str | None, hits: List[str] | None, additional_info: Dict | None) -> pd.DataFrame:
+                            template_path: str | None, hits: List[str] | None,
+                            additional_info: Dict | None) -> pd.DataFrame:
     """
     This function structures the route outputs as a single row in the output dataframe.
     """
@@ -284,9 +292,8 @@ def structure_route_outputs(error_message: str | None, error_type: str | None, o
 
     if check_additional_info_to_add(slipper):  # True if slipper contains additional info
         additional_info: Dict = slipper.additional_info
-    elif additional_info is not None:  # True if additional info is passed in
-        additional_info: Dict = additional_info
-    row.update(additional_info)
+    if additional_info is not None:  # True if additional info is passed in
+        row.update(additional_info)
 
     output_df: pd.DataFrame = add_new_route_to_output_df(output_df=output_df, row=row)
     return output_df
@@ -327,7 +334,7 @@ def structure_pipeline_outputs(error: Exception | None,
                                                           hits=hits,
                                                           additional_info=additional_info)
         if past_csv_path is not None:
-            os.remove(past_csv_path) # delete previous output csv
+            os.remove(past_csv_path)  # delete previous output csv
             logger.info(f"Deleted previous output csv at {past_csv_path}")
         save_output_df(output_df=output_df, output_dir=output_dir, csv_path=csv_path)
     except (TypeError, ValueError, FileNotFoundError):

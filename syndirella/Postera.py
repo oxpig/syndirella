@@ -4,17 +4,19 @@ Postera.py
 
 This module contains the functionality for a Postera search.
 """
-import os
-from typing import (Any, List, Dict, Tuple, Optional)
-from rdkit import Chem
-import requests
 import json
-import time
 import logging
-import syndirella.fairy as fairy
-from syndirella.DatabaseSearch import DatabaseSearch
+import os
 import random
 import sys
+import time
+from typing import (Any, List, Dict, Tuple, Optional)
+
+import requests
+from rdkit import Chem
+
+import syndirella.fairy as fairy
+from syndirella.DatabaseSearch import DatabaseSearch
 
 
 class Postera(DatabaseSearch):
@@ -22,6 +24,7 @@ class Postera(DatabaseSearch):
     This class contains information about the Postera search. It will perform the Postera search using the
     perform_database_search function. It will also store the results of the Postera search as a .csv file.
     """
+
     def __init__(self):
         super().__init__()
         self.url = "https://api.postera.ai"
@@ -37,7 +40,7 @@ class Postera(DatabaseSearch):
         if not isinstance(compound, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")
-        retro_hits: List[Dict] = Postera.get_search_results(
+        retro_hits: List[Dict] | None = Postera.get_search_results(  # will be None if errored out
             url=f'{self.url}/api/v1/retrosynthesis/',
             api_key=self.api_key,
             data={
@@ -52,7 +55,8 @@ class Postera(DatabaseSearch):
                                 reactant: Chem.Mol,
                                 reaction_name: str,
                                 search_type: str = "superstructure",
-                                vendors: list[str] = ['enamine_bb', 'mcule', 'mcule_ultimate', 'enamine_real', 'enamine_made']) -> List[str]:
+                                vendors: list[str] = ['enamine_bb', 'mcule', 'mcule_ultimate', 'enamine_real',
+                                                      'enamine_made']) -> List[str] | None:
         """
         This function is used to perform the Postera search using the database_search_function.
         """
@@ -65,7 +69,9 @@ class Postera(DatabaseSearch):
         hits_all: List[Tuple[str, float]] = []
         for smiles in reactants:
             if search_type == "superstructure":
-                hits: List[Tuple[str, float]] = self.perform_superstructure_search(smiles, vendors=vendors)
+                hits: List[Tuple[str, float]] | None = self.perform_superstructure_search(smiles, vendors=vendors)
+                if hits is None:  # if the API query failed
+                    return None
                 self.logger.info(f'Found {len(hits)} hits for {smiles} before filtering.')
                 hits_all.extend(hits)
         filtered_hits: List[str] = fairy.filter_molecules(hits=hits_all)
@@ -75,7 +81,7 @@ class Postera(DatabaseSearch):
                                       smiles: str,
                                       queryThirdPartyServices: bool = False,
                                       keep_catalogue: bool = False,
-                                      vendors: list[str] = ['all']) -> List[Tuple[str, Tuple[str, str] | None]]:
+                                      vendors: list[str] = ['all']) -> List[Tuple[str, Tuple[str, str] | None]] | None:
         """
         This function is used to perform the Postera superstructure search.
         """
@@ -85,21 +91,21 @@ class Postera(DatabaseSearch):
         if not isinstance(smiles, str):
             self.logger.error("Smiles must be a string.")
             raise TypeError("Smiles must be a string.")
-        superstructure_hits: List[Dict] | int = Postera.get_search_results(
+        superstructure_hits: List[Dict] | None = Postera.get_search_results(
             url=f'{self.url}/api/v1/superstructure/',
             api_key=self.api_key,
             data={
                 'smiles': smiles,
                 "entryType": "both",
-                "patentDatabases": [], # don't search over patent databases,
+                "patentDatabases": [],  # don't search over patent databases,
                 "withPurchaseInfo": True,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": vendors
             }
         )
-        hits_info: List[Tuple[str, Tuple[str, str] | None]] = self.structure_output(superstructure_hits,
-                                                                   query_smiles=smiles,
-                                                                   keep_catalogue=keep_catalogue)
+        hits_info: List[Tuple[str, Tuple[str, str] | None]] | None = self.structure_output(superstructure_hits,
+                                                                                           query_smiles=smiles,
+                                                                                           keep_catalogue=keep_catalogue)
 
         return hits_info
 
@@ -150,15 +156,19 @@ class Postera(DatabaseSearch):
         )
         return exact_hits
 
-
-    def structure_output(self, hits: List[Dict] | int, query_smiles: str, keep_catalogue: bool=False) -> List[Tuple[str, Tuple[str, str] | None]]:
+    def structure_output(self, hits: List[Dict] | None, query_smiles: str, keep_catalogue: bool = False) -> List[
+                                                                                                                Tuple[
+                                                                                                                    str,
+                                                                                                                    Tuple[
+                                                                                                                        str, str] | None]] | None:
         """
         Formats output into a list of tuples with smiles and catalogue.
         """
         hits_info: List[Tuple[str, Tuple[str, str] | None]] = []
-        if type(hits) is int:
-            self.logger.critical("Max retries exceeded, this will be an empty output!")
-            return hits_info
+        if hits is None:
+            self.logger.critical(
+                f"Error with API output, returning empty list for superstructure search for {query_smiles}!")
+            return None
         for hit in hits:
             if keep_catalogue and type(hit['catalogEntries']) is list and len(hit['catalogEntries']) > 0:
                 for entry in hit['catalogEntries']:
@@ -167,7 +177,8 @@ class Postera(DatabaseSearch):
             else:
                 hits_info.append((hit['smiles'], None))
         if len(hits_info) == 0:
-            self.logger.warning(f"No superstructures found for {query_smiles}.")
+            self.logger.warning(
+                f"No superstructures found for {query_smiles}, returning original query reactant, {query_smiles}.")
             # add query smiles just in case it's not returned
             hits_info.append((query_smiles, None))
         return hits_info
@@ -177,7 +188,7 @@ class Postera(DatabaseSearch):
                       api_key: str,
                       data: Dict = None,
                       retries: int = 50,
-                      backoff_factor: float = 0.5) -> Optional[Dict] | int:
+                      backoff_factor: float = 0.5) -> Optional[Dict] | None:
         """
         Directly get the response json from a request, with retry mechanism for handling 429 status code.
         """
@@ -205,9 +216,10 @@ class Postera(DatabaseSearch):
                         time.sleep(wait_time)
                         continue
                     else:
-                        logger.error(f"Max retries exceeded. Please try again later. Returning status code "
-                                     f"{response.status_code}")
-                        return response.status_code
+                        logger.error(
+                            f"Max retries exceeded with status code {response.status_code}. Please try again later. "
+                            f"{response.status_code}")
+                        return None
 
                 response.raise_for_status()
                 return response.json()
@@ -229,7 +241,7 @@ class Postera(DatabaseSearch):
                            api_key: str,
                            data: Dict[str, Any],
                            page: int = 1,
-                           max_pages: int = 900) -> List[Dict] | int:
+                           max_pages: int = 900) -> List[Dict] | None:
         """
         Recursively get all pages for the endpoint until reach null next page or
         the max_pages threshold. The default max_pages is set to 900 since the recursion limit is 1000.
@@ -243,11 +255,9 @@ class Postera(DatabaseSearch):
             **data,
             'page': page,
         }
-        response: Dict | int = Postera.get_resp_json(url, api_key, data)
-        if response is None: # other error
-            return all_hits
-        if type(response) is int: # rate limit exceeded
-            return response
+        response: Dict | None = Postera.get_resp_json(url, api_key, data)
+        if response is None:  # API error, returning None
+            return None
         elif response.get('results') is not None:
             all_hits.extend(response.get('results', []))
         elif response.get('routes') is not None:

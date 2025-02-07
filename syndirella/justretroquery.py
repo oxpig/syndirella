@@ -4,18 +4,22 @@ syndirella.fairy.py
 
 This module provides functions to output retrosynthesis queries for a given list of scaffolds.
 """
+import json
+import logging
 import os.path
 from typing import Dict, List
+
 import pandas as pd
-import logging
-from .cli_defaults import cli_default_settings
+
 from syndirella.Postera import Postera
-import json
+from syndirella.error import APIQueryError
+from .cli_defaults import cli_default_settings
 
 logger = logging.getLogger(__name__)
 with open(cli_default_settings['rxn_smarts_path']) as f:
     reaction_smarts = json.load(f)
 reaction_smarts_names: List[str] = list(reaction_smarts.keys())
+
 
 def save_df(df: pd.DataFrame, output_dir: str, csv_path: str) -> str:
     """
@@ -26,6 +30,7 @@ def save_df(df: pd.DataFrame, output_dir: str, csv_path: str) -> str:
     saved_path = os.path.join(output_dir, f'justretroquery_{pkl_basename}')
     df.to_pickle(saved_path)
     return saved_path
+
 
 def format_routes(routes: List[Dict[str, List[Dict[str, str]]]]) -> Dict:
     """
@@ -54,7 +59,8 @@ def format_routes(routes: List[Dict[str, List[Dict[str, str]]]]) -> Dict:
         passing_routes[f'route{adjusted_i}_CAR']: bool = all(
             [True if reaction['name'] in reaction_smarts_names else False for reaction in reactions])
         passing_routes[f'route{adjusted_i}_non_CAR']: List[str] | None = ([reaction['name'] for reaction in reactions if
-                                                                          reaction['name'] not in reaction_smarts_names]
+                                                                           reaction[
+                                                                               'name'] not in reaction_smarts_names]
                                                                           or None)
         logger.info(f"Route {adjusted_i} has {len(reactions)} reaction(s)")
         logger.info(f"Route {adjusted_i} CAR: {passing_routes[f'route{adjusted_i}_CAR']}")
@@ -63,18 +69,23 @@ def format_routes(routes: List[Dict[str, List[Dict[str, str]]]]) -> Dict:
             break
     return passing_routes
 
+
 def retro_search(scaffold: str) -> pd.DataFrame:
     """
     Perform retrosynthesis search on the given scaffold and formats outputs.
     """
     postera = Postera()
-    routes = postera.perform_route_search(scaffold)
+    routes: List[Dict[str, List[Dict[str, str]]]] | None = postera.perform_route_search(scaffold)
+    if routes is None:
+        logger.critical(f"API retrosynthesis query failed for {scaffold}.")
+        raise APIQueryError(message=f"API retrosynthesis query failed for {scaffold}.", smiles=scaffold)
     formatted_routes: Dict = format_routes(routes)
     logger.info(len(formatted_routes))
     to_add = {'smiles': scaffold}
     for route, details in formatted_routes.items():
         to_add[route] = details
-    return pd.DataFrame([to_add]) # each dictionary is a single row
+    return pd.DataFrame([to_add])  # each dictionary is a single row
+
 
 def process_df(df: pd.DataFrame):
     """
@@ -90,6 +101,7 @@ def process_df(df: pd.DataFrame):
     merged_df = df.merge(route_info_df, on='smiles')
     merged_df.reset_index(drop=True, inplace=True)
     return merged_df
+
 
 #######################################
 
