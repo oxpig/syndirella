@@ -4,16 +4,15 @@ syndirella.check_inputs.py
 
 This module contains the functions used to check the inputs for running the pipeline.
 """
-import os
 import logging
+import os
+import re
+from typing import List, Dict, Set, Tuple, Any
+
 import glob2
 import pandas as pd
-from typing import List, Dict, Set, Tuple, Any
-import re
-
-import numpy as np
-from rdkit import Chem
 from Bio.PDB import PDBParser
+from rdkit import Chem
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +43,9 @@ def metadata_dict(metadata_path: str, long_code_column: str = 'Long code') -> Di
     if 'Code' in metadata.columns and long_code_column in metadata.columns:
         code_info: Dict = metadata.set_index('Code')[long_code_column].to_dict()
     else:
-        logger.warning(f"The metadata does not contain the columns 'Code' and {long_code_column}. Searching for 'crystal_name' "
-                       "column instead.")
+        logger.warning(
+            f"The metadata does not contain the columns 'Code' and {long_code_column}. Searching for 'crystal_name' "
+            "column instead.")
         if 'crystal_name' in metadata.columns:
             # use crystal_name as key and value to match dict
             logger.info("Using 'crystal_name' column as the key and value for the metadata dictionary.")
@@ -161,7 +161,7 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code
         raise FileNotFoundError(f"The hits_path path {hits_path} does not exist")
     sdf = Chem.SDMolSupplier(hits_path)
     sdf_names = [mol.GetProp('_Name') for mol in sdf]
-    if not os.path.exists(metadata_path): # could be None
+    if not os.path.exists(metadata_path):  # could be None
         raise FileNotFoundError(f"The metadata path {metadata_path} does not exist.")
     code_dict = metadata_dict(metadata_path, long_code_column=long_code_column)
     # get the LongCodes for the hit names
@@ -264,9 +264,10 @@ def get_template_path(template_dir: str, template: str, metadata_path: str) -> s
     code_dict = metadata_dict(metadata_path)
     exact_code = [key for key in code_dict if template.lower() in key.lower()]
     if len(exact_code) == 0:
-        logger.critical(f"The template {template} does not exist in the metadata.")
-        raise ValueError(f"The template {template} does not exist in the metadata.")
-    template_path = glob2.glob(f"{template_dir}/**/*{exact_code[0]}*.pdb")
+        logger.warning(f"The template {template} does not exist in the metadata, trying to continue....")
+        template_path = glob2.glob(f"{template_dir}/**/*{template}*.pdb")
+    else:
+        template_path = glob2.glob(f"{template_dir}/**/*{exact_code[0]}*.pdb")
     if len(template_path) == 0:
         logger.critical(f"The template {exact_code[0]} does not exist in the template directory.")
         raise FileNotFoundError(f"The template {exact_code[0]} does not exist in the template directory.")

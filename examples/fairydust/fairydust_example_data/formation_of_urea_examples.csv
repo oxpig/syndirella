@@ -1,0 +1,4 @@
+﻿smiles,1_r1_smiles,1_r2_smiles,1_reaction
+CCc1nc(NC(=O)N2CCN(C(=O)c3ccco3)CC2)no1,O=C(c1ccco1)N1CCNCC1,CCc1nc(N)no1,Formation_of_urea_from_two_amines
+CC1(NC(=O)Nc2ccccc2CS(N)(=O)=O)CCC1,Nc1ccccc1CS(N)(=O)=O,CC1(N)CCC1,Formation_of_urea_from_two_amines
+CCCC(=O)NC1CCN(C(=O)NC2CC(CC#N)C2)CC1,N#CCC1CC(N)C1,CCCC(=O)NC1CCNCC1,Formation_of_urea_from_two_amines

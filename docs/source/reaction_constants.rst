@@ -1,4 +1,3 @@
-
 ==================
 Reaction Constants
 ==================
@@ -6,7 +5,9 @@ Reaction Constants
 All reactions and alternative reaction/reactant specifications are formatted with
 `SMIRKS <https://www.daylight.com/dayhtml_tutorials/languages/smirks/index.html>`_ or
 `SMARTS <https://www.daylight.com/dayhtml_tutorials/languages/smarts/index.html>`_. If you'd like to
-edit or add to the libraries, please feel free to add directly to the following files in your forked version or open an issue and I can help in
+edit or add to the libraries, you can follow my tutorial, here.
+
+Please feel free to add directly to the following files in your forked version or open an issue and I can help in
 formatting SMARTS/SMIRKS strings to your needs as they can be quite finicky.
 
 These are found at `syndirella/syndirella/constants <https://github.com/kate-fie/syndirella/tree/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants>`_.
@@ -26,8 +27,8 @@ The ``.json`` structure follows this format:
 `REACTANT_FILTER_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants/REACTANT_FILTER_CONSTANTS.json>`_
 ----------------------
 
-This file defines options to transform reactants in specific reactants. Such as transforming a boronic acid to a boronate ester. The transformed
-reactant is used as an additional reactant in the library of reactants. It used to structure inputs for ``rdkit.Chem.ReplaceSubstructs()``.
+This file defines options to transform reactants in specific reactions. Such as transforming a boronic acid to a boronate ester. The transformed
+reactant is used as an additional reactant in the library of reactants. It is used to structure inputs for ``rdkit.Chem.ReplaceSubstructs()``.
 
 The ``.json`` structure follows this format:
 
@@ -93,3 +94,8 @@ Example entry:
         "reactant_smarts_to_replace_with": "[#6X3;!$(C-N):1](=[OX1:2])-[#8;H1:3]",
         "replacement_connecting_atom_id": 0
     }
+
+.. note::
+
+    To specify your own options, you can follow the tutorial `syndirella/examples/fairydust/configure_fairydust.ipynb.`
+    Additionally, there are more examples seen in `syndirella/examples/fairydust/additional_rxn_options_examples`

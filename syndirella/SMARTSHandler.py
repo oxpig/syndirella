@@ -7,26 +7,33 @@ This module contains the SMARTSHandler class. This class contains information ab
 import json
 import logging
 from collections import OrderedDict
+from typing import (Set, List, Dict, Tuple, Any)
+
 from rdkit import Chem, DataStructs
 from rdkit.Chem import Mol
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
-from typing import (Set, List, Dict, Tuple, Any)
-from .cli_defaults import cli_default_settings
+
 import syndirella.fairy as fairy
+from .cli_defaults import cli_default_settings
 from .error import SMARTSError
 
 
 class SMARTSHandler:
 
-    def __init__(self):
-        with open(cli_default_settings['rxn_smarts_path']) as f:
-            reaction_smarts = json.load(f)
-        self.reaction_smarts = {name: ReactionFromSmarts(val) for name, val in reaction_smarts.items()}
+    def __init__(self,
+                 rxn_smirks_path: str = None):
+        if rxn_smirks_path is not None:
+            with open(rxn_smirks_path) as f:
+                reaction_smirks = json.load(f)
+        else:
+            with open(cli_default_settings['rxn_smarts_path']) as f:
+                reaction_smirks = json.load(f)
+        self.reaction_smarts = {name: ReactionFromSmarts(val) for name, val in reaction_smirks.items()}
         self.reactant1_dict = OrderedDict()
         self.reactant2_dict = OrderedDict()
         self.product_smarts = OrderedDict()
         self.n_reactants_per_reaction = OrderedDict()
-        for name, smart in reaction_smarts.items():
+        for name, smart in reaction_smirks.items():
             reactants, prod = smart.split(">>")
             try:
                 react1, react2 = reactants.split(".")
@@ -44,7 +51,7 @@ class SMARTSHandler:
         self.found_2 = None
         REACTANT1_PREFIX = self.fromReactionFullNameToReactantName("", 1)
         REACTANT2_PREFIX = self.fromReactionFullNameToReactantName("", 2)
-        REACTIONS_NAMES = list(reaction_smarts.keys())
+        REACTIONS_NAMES = list(reaction_smirks.keys())
         self.logger = logging.getLogger(f"{__name__}")
 
     def fromReactionFullNameToReactantName(self, reactionName, reactantNum):
@@ -120,21 +127,21 @@ class SMARTSHandler:
         # Both reactants match both reactant SMARTS
         if found_1["r1"] and found_2["r1"] and found_2["r2"] and found_1["r2"]:
             self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
-            self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2') # make found_2 r2
+            self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2')  # make found_2 r2
         # reactant 1 matches both reactant SMARTS
         elif found_1["r1"] and found_1["r2"]:
-            if found_2["r2"]: # change r2 to found_2
+            if found_2["r2"]:  # change r2 to found_2
                 self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
                 self.matched_reactants[patt2] = (r2, found_2["r2"], 'r2')
-            if found_2["r1"]: # change r1 to found_2
+            if found_2["r1"]:  # change r1 to found_2
                 self.matched_reactants[patt1] = (r2, found_2["r1"], 'r1')
                 self.matched_reactants[patt2] = (r1, found_1["r2"], 'r2')
         # reactant 2 matches both reactant SMARTS
         elif found_2["r1"] and found_2["r2"]:
-            if found_1["r2"]: # change r2 to found_1
+            if found_1["r2"]:  # change r2 to found_1
                 self.matched_reactants[patt1] = (r2, found_2["r1"], 'r1')
                 self.matched_reactants[patt2] = (r1, found_1["r2"], 'r2')
-            if found_1["r1"]: # change r1 to found_1
+            if found_1["r1"]:  # change r1 to found_1
                 self.matched_reactants[patt1] = (r1, found_1["r1"], 'r1')
                 self.matched_reactants[patt2] = (r2, found_2["r1"], 'r2')
 
@@ -178,7 +185,8 @@ class SMARTSHandler:
 
         return True
 
-    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[str, Tuple[int] | bool]:
+    def find_matching_atoms(self, reactant: Chem.Mol, patt1: str, patt2: str, attachment_idx: set) -> Dict[
+        str, Tuple[int] | bool]:
         """
         This function finds the matched atoms in a reactant against both reactant SMARTS.
         """

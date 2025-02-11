@@ -6,14 +6,16 @@ This module provides functions to find similar cheaper reactants, filter out
 reactants based on simple filters, fingerprint generation, and others...
 """
 
-from typing import Any, List, Dict, Tuple, Optional
-from rdkit.Chem import AllChem, rdinchi
-from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 import json
-from syndirella.cli_defaults import cli_default_settings
-from rdkit import DataStructs
 import logging
+from typing import Any, List, Dict, Tuple, Optional
+
+from rdkit import DataStructs
 from rdkit.Chem import rdFingerprintGenerator
+from rdkit.Chem import rdinchi
+from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
+
+from syndirella.cli_defaults import cli_default_settings
 from syndirella.error import *
 
 # Set up logger
@@ -39,7 +41,7 @@ def do_i_need_alternative_route(reaction_names: List[str], additional_rxn_option
 
 
 def find_similar_reactants(reactant: Chem.Mol, reaction_name: str, reactant_filters: Dict[str, Dict[str, Any]]) -> List[
-    str] | None:
+                                                                                                                       str] | None:
     """
     Find additional similar reactants that are cheaper as defined in the reactant_filters.
     """
@@ -116,22 +118,24 @@ def simple_filters(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     mols = remove_hydrogen_ions(mols)
     return mols
 
+
 def remove_hydrogen_ions(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """Remove molecules with only hydrogen ions."""
     for i, mol in enumerate(mols):
-        mol = Chem.RWMol(mol) # make editable
+        mol = Chem.RWMol(mol)  # make editable
         atoms_to_remove = []
         for atom in mol.GetAtoms():
             # remove single hydrogen ions
             if atom.GetAtomicNum() == 1 and atom.GetHybridization() == Chem.HybridizationType.S:
                 atoms_to_remove.append(atom.GetIdx())
         try:
-            for atom_idx in atoms_to_remove[::-1]: # have to reverse it for some reason
+            for atom_idx in atoms_to_remove[::-1]:  # have to reverse it for some reason
                 mol.RemoveAtom(atom_idx)
-        except Exception as e: # don't know exact Error here
+        except Exception as e:  # don't know exact Error here
             logger.info(f"Error removing hydrogen ion: {e}")
             continue
     return mols
+
 
 def remove_repeat_mols(mols: List[Chem.Mol]) -> List[Chem.Mol]:
     """
@@ -184,6 +188,7 @@ def print_diff(hits: List[Tuple[str, float]], valid_mols: List[Chem.Mol], desc: 
     percent_diff = round((num_filtered / len(hits)) * 100, 2)
     logger.info(f'Removed {num_filtered} molecules ({percent_diff}%) by {desc}.')
 
+
 def calculate_tanimoto(mol1: Chem.Mol,
                        mol2: Chem.Mol) -> float:
     if mol1 is None or mol2 is None:
@@ -204,6 +209,7 @@ def find_reaction_by_name(reaction_name: str, additional_rxn_options: List[Dict[
             return reaction
     return None
 
+
 def get_morgan_fingerprint(mol: Chem.Mol) -> rdFingerprintGenerator.MorganFP:
     """
     Get the fingerprint of a molecule.
@@ -218,7 +224,7 @@ def generate_inchi_ID(smiles: str | None = None, mol: Chem.Mol | None = None, is
     """
     if smiles is not None and isomeric is False:
         mol = Chem.MolFromSmiles(smiles)
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=False) # remove isomeric information
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=False)  # remove isomeric information
         mol = Chem.MolFromSmiles(smiles)
     if smiles is not None and Chem.MolFromSmiles(smiles) is None:
         logger.critical(f"Could not create a molecule from the smiles {smiles}.")
@@ -230,6 +236,7 @@ def generate_inchi_ID(smiles: str | None = None, mol: Chem.Mol | None = None, is
     id = rdinchi.InchiToInchiKey(ID[0])
     return id
 
+
 def check_mol_sanity(mol: Chem.Mol) -> Chem.Mol | None:
     """
     Check if the molecule can be sanitized.
@@ -237,8 +244,8 @@ def check_mol_sanity(mol: Chem.Mol) -> Chem.Mol | None:
     if mol is None:
         return None
     try:
-        Chem.SanitizeMol(mol)
+        copy_mol = Chem.Mol(mol)  # copy to not change original
+        Chem.SanitizeMol(copy_mol)
         return mol
     except ValueError:
         return None
-

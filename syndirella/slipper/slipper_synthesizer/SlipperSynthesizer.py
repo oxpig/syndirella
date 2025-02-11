@@ -4,19 +4,19 @@ slipper_synthesizer/CobblersWorkshop.py
 
 This module contains the SlipperSynthesizer class.
 """
+import logging
+import os
 from typing import (List, Dict, Tuple)
-from rdkit import Chem
-from rdkit.Chem import rdFMCS
-from rdkit import DataStructs
 
+import pandas as pd
+from rdkit import DataStructs
+from rdkit.Chem import rdFMCS
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
+
+import syndirella.fairy as fairy
+from syndirella.error import *
 from syndirella.route.Library import Library
 from syndirella.slipper.slipper_synthesizer.Labeler import Labeler
-import syndirella.fairy as fairy
-import pandas as pd
-from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
-import os
-import logging
-from syndirella.error import *
 
 
 class SlipperSynthesizer:
@@ -155,8 +155,8 @@ class SlipperSynthesizer:
     def filter_analogues_on_smarts(self, df: pd.DataFrame, analogue_columns: Tuple[str, str], reactant_prefix: str) \
             -> pd.DataFrame:
         """
-        This function is used to filter the analogues of reactants dataframes to make sure each analogue contains only
-        the SMARTS pattern of the original reactant and not the other reactant.
+        This function is used to filter the analogues of reactants dataframes to make sure each analogue contains the
+        SMARTS pattern of the original reactant. If the SMARTS pattern of the other reactant is found as well, it is flagged.
         """
         self.logger.info('Filtering analogues of reactants on SMARTS...')
         orig_df = df.copy()

@@ -5,13 +5,15 @@ syndirella.route.Reaction.py
 This module contains the Reaction class. One instance of this object is used to describe a single reaction.
 """
 
+import logging
+from typing import (List, Dict, Tuple)
+
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
-from typing import (List, Dict, Tuple)
+
+import syndirella.fairy as fairy
 from syndirella.SMARTSHandler import SMARTSHandler
 from syndirella.error import ReactionError
-import syndirella.fairy as fairy
-import logging
 
 
 class Reaction():
@@ -33,10 +35,11 @@ class Reaction():
         self.reaction_name: str = reaction_name
         self.smarts_handler: SMARTSHandler = smarts_handler
         self.reaction_pattern: Chem.rdChemReactions = self.smarts_handler.reaction_smarts[self.reaction_name]
-        self.all_attach_ids: Dict[Chem.Mol, List[int]] | None = None
-        self.matched_smarts_to_reactant: Dict[str, Tuple[Chem.Mol, Tuple[int], str]] | None = None
-        self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, Tuple[int], str]] | None = None
+        self.all_attach_ids: Dict[Chem.Mol, List[int]] | None = self.find_attachment_ids_for_all_reactants()
+        self.matched_smarts_to_reactant, self.matched_smarts_index_to_reactant = self.find_reaction_atoms_for_all_reactants()
+
         self.additional_rxn_options: List[Dict[str, str]] = fairy.load_additional_rxn_options()
+        self.alt_reactions: List[Dict[str, str]] | None = self.alt_reaction()
 
     def alt_reaction(self) -> List[Dict[str, str]] | None:
         """
@@ -52,20 +55,23 @@ class Reaction():
         """
         This function edits the reactants to make an additional reaction.
         """
-        alt_rxns: List[Dict[str, str]] = self.alt_reaction()
         new_reactions: List[Tuple[str, Tuple[str, str]]] = []
-        for alt_rxn in alt_rxns: # go through all additional reactions
-            for r_index in self.matched_smarts_index_to_reactant: # go through each reactant
+        for alt_rxn in self.alt_reactions:  # go through all additional reactions
+            self.logger.info(f"Additional reaction {alt_rxn['replace_with']} found for {self.reaction_name}.")
+            for r_index in self.matched_smarts_index_to_reactant:  # go through each reactant
                 if alt_rxn['reactant_id_to_replace'] == r_index:
                     new_reactant: Chem.Mol = self.edit_reactant(self.matched_smarts_index_to_reactant[r_index],
                                                                 alt_rxn['reactant_smarts_to_replace_with'],
                                                                 alt_rxn['reactant_smarts_to_replace'],
                                                                 alt_rxn['replacement_connecting_atom_id'])
                     if new_reactant:
-                        other_reactant: Chem.Mol = next(value for key, value in self.matched_smarts_index_to_reactant.items() if key != r_index)[0]
+                        other_reactant: Chem.Mol = \
+                            next(value for key, value in self.matched_smarts_index_to_reactant.items() if
+                                 key != r_index)[0]
                         # check that new reactants can produce a scaffold
                         reaction_name: str = alt_rxn['replace_with']
-                        can_react: bool = self.check_reaction_can_produce_product(new_reactant, other_reactant, reaction_name)
+                        can_react: bool = self.check_reaction_can_produce_product(new_reactant, other_reactant,
+                                                                                  reaction_name)
                         if can_react:
                             self.logger.info(f"Additional reaction {reaction_name} for {self.reaction_name} found and "
                                              f"validated.")
@@ -73,6 +79,8 @@ class Reaction():
                             other_reactant: str = Chem.MolToSmiles(other_reactant)
                             reactants: Tuple[str, str] = (new_reactant, other_reactant)
                             new_reactions.append((reaction_name, reactants))
+                    else:
+                        self.logger.error(f"Cannot edit reactant for additional reaction {alt_rxn['replace_with']}.")
         return new_reactions
 
     def check_reaction_can_produce_product(self,
@@ -101,27 +109,62 @@ class Reaction():
         """
         to_replace: Chem.Mol = Chem.MolFromSmarts(to_replace_smarts)
         to_replace_with: Chem.Mol = Chem.MolFromSmarts(new_reactant_smarts)
+        self.logger.info(f"to_replace_with_smarts: {new_reactant_smarts}")
+
         reactant_mol: Chem.Mol = reactant[0]
         replaced_reactants: Tuple[Chem.Mol] = Chem.ReplaceSubstructs(mol=reactant_mol,
                                                                      query=to_replace,
                                                                      replacement=to_replace_with,
                                                                      replacementConnectionPoint=replacement_connecting_atom_id,
                                                                      replaceAll=True)
+        self.logger.info(f"Found {len(replaced_reactants)} new reactants.")
         for replaced_reactant in replaced_reactants:
+            self.logger.info(
+                f"Checking new reactant {Chem.MolToSmiles(replaced_reactant)} for reaction {self.reaction_name}...")
+            # try to do full 360 mol to smiles to mol to check if it is valid
+            try:
+                replaced_reactant = Chem.MolFromSmiles(Chem.MolToSmiles(replaced_reactant))
+            except ValueError:
+                self.logger.error(f"Cannot convert new reactant to smiles for reaction {self.reaction_name}")
+                return None
             # check mol can be sanitized
             if not fairy.check_mol_sanity(replaced_reactant):
                 self.logger.error(f"Cannot sanitize new reactant for reaction {self.reaction_name}")
                 return None
+
             # get attach ids
             attach_ids: List[int] = []
             for mol in self.all_attach_ids.keys():
-                if fairy.calculate_tanimoto(mol, reactant_mol) == 1.0: # get attach ids of the right reactant replaced
+                if fairy.calculate_tanimoto(mol, reactant_mol) == 1.0:  # get attach ids of the right reactant replaced
                     attach_ids: List[int] = self.all_attach_ids[mol]
             if len(attach_ids) == 0:
                 self.logger.error(f"No attachment points found for reaction {self.reaction_name}")
                 return None
+
+            # check if molecule returned was two molecules and only keep the one that has the closest number of atoms to the original reactant
+            replaced_reactant_smiles: str = Chem.MolToSmiles(replaced_reactant)
+            if '.' in replaced_reactant_smiles:
+                self.logger.debug(f"Multiple fragmented molecules found in new reactant.")
+                replaced_reactants: List[Chem.Mol] = [Chem.MolFromSmiles(mol) for mol in
+                                                      replaced_reactant_smiles.split('.')]
+                # just check by which replaced_reactant contains the number of atoms closest to the len(matched_atoms)
+                replaced_reactant = min(replaced_reactants,
+                                        key=lambda x: abs(x.GetNumAtoms() - reactant_mol.GetNumAtoms()))
+                replaced_reactant_smiles = Chem.MolToSmiles(replaced_reactant)
+
+            self.logger.debug(f"Replaced reactant smiles: {replaced_reactant_smiles}")
+            assert '.' not in replaced_reactant_smiles, f"Multiple molecules found in new reactant for reaction {self.reaction_name}"
+
             # get atom ids that match new smarts pattern
             matched_atoms: Tuple[int] = replaced_reactant.GetSubstructMatch(to_replace_with)
+            if len(matched_atoms) == 0:
+                self.logger.error(
+                    f"No atoms found in new reactant ({Chem.MolToSmiles(replaced_reactant)}) for reaction {self.reaction_name} that match with "
+                    f"the new SMARTS pattern, {new_reactant_smarts}.")
+                return None
+
+            self.logger.debug(f"Matched atoms: {matched_atoms}")
+
             # get all atoms that matched atoms are bonded to since SMARTS might not match attachment points
             for atom in matched_atoms:
                 for bond in replaced_reactant.GetAtomWithIdx(atom).GetBonds():
@@ -129,7 +172,9 @@ class Reaction():
                         attach_ids.append(bond.GetEndAtomIdx())
                     elif bond.GetEndAtomIdx() in matched_atoms:
                         attach_ids.append(bond.GetBeginAtomIdx())
-            if any(atom in matched_atoms for atom in attach_ids): # If any attach ids are in the SMARTS of the new reactant
+            if any(atom in matched_atoms for atom in
+                   attach_ids):  # If any attach ids are in the SMARTS of the new reactant
+                self.logger.info(f"New reactant for reaction {self.reaction_name} found.")
                 return replaced_reactant
         return None
 
@@ -269,20 +314,21 @@ class Reaction():
 
         return exact_attachment
 
-    def find_attachment_ids_for_all_reactants(self):
+    def find_attachment_ids_for_all_reactants(self) -> Dict[Chem.Mol, List[int]] | None:
         """
         This function is used to find the attachment indices of all reactants in the reaction.
         :returns a list of lists, each containing tuples of attachment indices for each reactant
         """
         all_attachments = {}
         for reactant in self.reactants:
-            attachments:  List[int] | None = self.find_attachment_id_for_reactant(reactant)
+            attachments: List[int] | None = self.find_attachment_id_for_reactant(reactant)
             all_attachments[reactant] = attachments
         if any(len(attach_ids) == 0 for attach_ids in all_attachments.values()):
             raise ReactionError(message=f"No attachment points found for reaction {self.reaction_name}",
                                 mol=self.scaffold,
                                 route_uuid=self.route_uuid)
-        self.all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
+        all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
+        return all_attach_ids
 
     def format_matched_smarts_to_index(self, matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]]) -> Dict[int,
     Tuple[Chem.Mol, List[int], str]] | None:
@@ -301,8 +347,8 @@ class Reaction():
                 return None
         return matched_smarts_index_to_reactant
 
-
-    def find_reaction_atoms_for_all_reactants(self):
+    def find_reaction_atoms_for_all_reactants(self) -> Tuple[
+        Dict[str, Tuple[Chem.Mol, List[int], str]] | None, Dict[int, Tuple[Chem.Mol, List[int], str]]]:
         """
         This function is used to find the reaction atoms of both reactants. And how those atoms correspond to the SMARTS
         pattern associated with the reaction.
@@ -312,10 +358,11 @@ class Reaction():
             self.smarts_handler.assign_reactants_w_rxn_smarts(product=self.scaffold,
                                                               reactant_attach_ids=self.all_attach_ids,
                                                               reaction_name=self.reaction_name))
-        self.matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, List[int], str]] = (
+        matched_smarts_index_to_reactant: Dict[int, Tuple[Chem.Mol, List[int], str]] = (
             self.format_matched_smarts_to_index(matched_reactants))
-        self.matched_smarts_to_reactant = matched_reactants
-        if len(self.matched_smarts_to_reactant) == 0:
+        matched_smarts_to_reactant = matched_reactants
+        if len(matched_smarts_to_reactant) == 0:
             raise ReactionError(message=f"No reaction atoms found for reaction {self.reaction_name}",
                                 mol=self.scaffold,
                                 route_uuid=self.route_uuid)
+        return matched_smarts_to_reactant, matched_smarts_index_to_reactant
