@@ -97,5 +97,5 @@ Example entry:
 
 .. note::
 
-    To specify your own options, you can follow the tutorial `syndirella/examples/fairydust/configure_fairydust.ipynb.`
-    Additionally, there are more examples seen in `syndirella/examples/fairydust/additional_rxn_options_examples`
+    To specify your own options, you can follow the tutorial `syndirella/examples/fairydust/configure_fairydust.ipynb. <https://github.com/kate-fie/syndirella/blob/a32529e0b80ff39287a7c14c6151f70ffb692de3/examples/fairydust/configure_fairydust.ipynb>`_
+    Additionally, there are more examples seen in `syndirella/examples/fairydust/additional_rxn_options_examples <https://github.com/kate-fie/syndirella/tree/a32529e0b80ff39287a7c14c6151f70ffb692de3/examples/fairydust/additional_rxn_options_examples>`_
