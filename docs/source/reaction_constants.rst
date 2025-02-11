@@ -12,7 +12,7 @@ formatting SMARTS/SMIRKS strings to your needs as they can be quite finicky.
 
 These are found at `syndirella/syndirella/constants <https://github.com/kate-fie/syndirella/tree/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants>`_.
 
-`RXN_SMIRKS_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants/RXN_SMIRKS_CONSTANTS.json>`_
+`RXN_SMIRKS_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/main/syndirella/constants/RXN_SMIRKS_CONSTANTS.json>`_
 -------------------------
 
 This file defines the SMIRKS for reactions.
@@ -24,7 +24,7 @@ The ``.json`` structure follows this format:
 - **Value (e.g., "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):3]>>[#6:1](=[#8:2])-[#7X3:3]")**: The reaction SMIRKS.
 
 
-`REACTANT_FILTER_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants/REACTANT_FILTER_CONSTANTS.json>`_
+`REACTANT_FILTER_CONSTANTS.json <https://github.com/kate-fie/syndirella/blob/main/syndirella/constants/REACTANT_FILTER_CONSTANTS.json>`_
 ----------------------
 
 This file defines options to transform reactants in specific reactions. Such as transforming a boronic acid to a boronate ester. The transformed
@@ -61,7 +61,7 @@ Example entry:
     }
 
 
-`ADDITIONAL_RXN_OPTIONS.json <https://github.com/kate-fie/syndirella/blob/e563796e62c604d08aa9ee16beed26a9eee694c0/syndirella/constants/ADDITIONAL_RXN_OPTIONS.json>`_
+`ADDITIONAL_RXN_OPTIONS.json <https://github.com/kate-fie/syndirella/blob/main/syndirella/constants/ADDITIONAL_RXN_OPTIONS.json>`_
 --------------------------------
 
 This file specifies reactions that should be replaced by another reaction to make a new route for the pipeline. Similar
@@ -97,5 +97,5 @@ Example entry:
 
 .. note::
 
-    To specify your own options, you can follow the tutorial `syndirella/examples/fairydust/configure_fairydust.ipynb. <https://github.com/kate-fie/syndirella/blob/a32529e0b80ff39287a7c14c6151f70ffb692de3/examples/fairydust/configure_fairydust.ipynb>`_
-    Additionally, there are more examples seen in `syndirella/examples/fairydust/additional_rxn_options_examples <https://github.com/kate-fie/syndirella/tree/a32529e0b80ff39287a7c14c6151f70ffb692de3/examples/fairydust/additional_rxn_options_examples>`_
+    To specify your own options, you can follow the tutorial `syndirella/examples/fairydust/configure_fairydust.ipynb. <https://github.com/kate-fie/syndirella/blob/main/examples/fairydust/configure_fairydust.ipynb>`_
+    Additionally, there are more examples seen in `syndirella/examples/fairydust/additional_rxn_options_examples <https://github.com/kate-fie/syndirella/tree/main/examples/fairydust/additional_rxn_options_examples>`_
