@@ -222,7 +222,7 @@ class SlipperFitter:
         # only get hits that exactly match the hit_name in the hits_names
         filtered_hits = [hit for hit in hits for hit_name in self.hits_names if hit.GetProp('_Name') == hit_name]
 
-        assert filtered_hits, ([h.GetProp("_Name") for h in hits], self.hits_names)
+        assert filtered_hits, f'Could not find hits. all hits: {[h.GetProp("_Name") for h in hits]}, looking for: {self.hits_names=}'
 
         input_df['hits'] = input_df.apply(lambda row: filtered_hits, axis=1)
         return input_df
