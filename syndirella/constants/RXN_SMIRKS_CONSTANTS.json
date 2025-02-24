@@ -24,6 +24,9 @@
     "Benzyl_alcohol_deprotection": "[#8&X2:2]-[#6&H2]-[c]1[c&H1][c&H1][c&H1][c&H1][c&H1]1>>[#8&X2:2]",
     "Formation_of_urea_by_displacement_of_imidazole_by_amine": "[#7:1]-[C](=[#8X1])[nX3]1[c&H1X3][c&H1X3][nX2][c&H1X3]1.[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):2]>>[#7:1]-[C](=[#8X1])-[#7:2]",
     "Chan-Lam_coupling_(amination)": "[N;H1,H2:1](-[A])-[a,A].[c:2]-[B](-[O])(-[O])>>[N:1]-[c:2]",
-    "Hantzsch_thiazole_synthesis": ""
+    "Hantzsch_thiazole_synthesis": "[a,A:1]-[C](=[S:4])-[N&H2].[a,A:3]-[C:5](=[O])-[C;H1:6](-[$([Cl,Br,I]),$(OS(=O)(=O)C),$(OS(=O)(=O)c1ccc(C)cc1)])-[a,A:2]>>[c]-1([a,A:1])-[s:4]-[c:6](-[a,A:2])-[c:5](-[a,A:3])-[n]-1",
+    "Heck_reaction_(intermolecular)": "[c,C][C:1]=[C:2].[Br]-[c:3]>>[C:1]=[C:2]-[c:3]",
+    "Sonogashira_coupling": "[$([c:1]),$([C:1]=[C:2])]-[Cl,Br,I,F].[C:2]#[C:3]-[c,C:4]>>[c:1]-[C:2]#[C:3]-[c,C:4]",
+    "Iodo_N-arylation": "[c:1]-[I].[n,N;R:2]:,-[c,C;R:3]>>[c:1]-[n,N;R:2]:,-[c,C;R:3]"
 }
 
