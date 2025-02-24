@@ -22,5 +22,8 @@
     "Nucleophilic_substitution": "[Cl,Br]-[#6;H2,H1,H0;+0:1].[OH;+0:2]>>[O&X2;H0;D2;+0:2]-[#6&X4;D2;+0:1]",
     "TBS_alcohol_deprotection": "[#6:1]-[#8&H0:2]-[#14](-[#6&H3])(-[#6&H3])-[#6](-[#6&H3])(-[#6&H3])(-[#6&H3])>>[#6:1]-[#8:2]",
     "Benzyl_alcohol_deprotection": "[#8&X2:2]-[#6&H2]-[c]1[c&H1][c&H1][c&H1][c&H1][c&H1]1>>[#8&X2:2]",
-    "Formation_of_urea_by_displacement_of_imidazole_by_amine": "[#7:1]-[C](=[#8X1])[nX3]1[c&H1X3][c&H1X3][nX2][c&H1X3]1.[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):2]>>[#7:1]-[C](=[#8X1])-[#7:2]"
+    "Formation_of_urea_by_displacement_of_imidazole_by_amine": "[#7:1]-[C](=[#8X1])[nX3]1[c&H1X3][c&H1X3][nX2][c&H1X3]1.[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):2]>>[#7:1]-[C](=[#8X1])-[#7:2]",
+    "Chan-Lam_coupling_(amination)": "[N;H1,H2:1](-[A])-[a,A].[c:2]-[B](-[O])(-[O])>>[N:1]-[c:2]",
+    "Hantzsch_thiazole_synthesis": ""
 }
+
