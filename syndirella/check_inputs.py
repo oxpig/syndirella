@@ -186,10 +186,10 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code
     if not all([any([longcode in sdf_name for sdf_name in sdf_names]) for longcode in hit_longcodes]):
         logger.critical(f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
                         f" from Fragalysis.")
-        raise ValueError(
-            f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
-            f" from Fragalysis. Or set the code_column argument to the correct column in the metadata (such as "
-            f"'Experiment code' or 'Compound code'.")
+        # raise ValueError(
+        #     f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
+        #     f" from Fragalysis. Or set the code_column argument to the correct column in the metadata (such as "
+        #     f"'Experiment code' or 'Compound code'.")
 
 
 def check_apo_template(template_path: str) -> None:
