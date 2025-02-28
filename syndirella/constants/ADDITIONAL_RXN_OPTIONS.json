@@ -38,5 +38,13 @@
         "reactant_id_to_replace": 1,
         "reactant_smarts_to_replace_with": "[#6:1](=[#8:2])-[#8;H1]",
         "replacement_connecting_atom_id": 0
+    },
+    {
+        "name": "Alpha_alkylation_of_ester/amide",
+        "replace_with": "Alpha_alkylation_of_ester/amide_alcohol",
+        "reactant_smarts_to_replace": "[c:1]-[C:2]-[Cl,Br]",
+        "reactant_id_to_replace": "Kate please fill this",
+        "reactant_smarts_to_replace_with": "[c:1]-[C:2]-[OH]",
+        "replacement_connecting_atom_id": "Kate please fill this"
     }
 ]
