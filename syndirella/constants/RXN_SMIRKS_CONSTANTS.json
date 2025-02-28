@@ -27,6 +27,9 @@
     "Hantzsch_thiazole_synthesis": "[a,A:1]-[C](=[S:4])-[N&H2].[a,A:3]-[C:5](=[O])-[C;H1:6](-[$([Cl,Br,I]),$(OS(=O)(=O)C),$(OS(=O)(=O)c1ccc(C)cc1)])-[a,A:2]>>[c]-1([a,A:1])-[s:4]-[c:6](-[a,A:2])-[c:5](-[a,A:3])-[n]-1",
     "Heck_reaction_(intermolecular)": "[c,C][C:1]=[C:2].[Br]-[c:3]>>[C:1]=[C:2]-[c:3]",
     "Sonogashira_coupling": "[$([c:1]),$([C:1]=[C:2])]-[Cl,Br,I,F].[C:2]#[C:3]-[c,C:4]>>[c:1]-[C:2]#[C:3]-[c,C:4]",
-    "Iodo_N-arylation": "[c:1]-[I].[n,N;R:2]:,-[c,C;R:3]>>[c:1]-[n,N;R:2]:,-[c,C;R:3]"
+    "Iodo_N-arylation": "[c:1]-[I].[n,N;R:2]:,-[c,C;R:3]>>[c:1]-[n,N;R:2]:,-[c,C;R:3]",
+    "Alpha_alkylation_of_ester/amide" : "[c:1]-[C:2]-[Cl,Br].[c,C:3][N,O:4]-[C](=[O:5])-[c,C:6]>>[c:1]-[C:2]-[C:6](=[O:5])-[N,O:4][c,C:3]", 
+    "Minisci_reaction_with_carboxylic_acid_(intermolecular)": "[C:1]-[C](=[O])-[OH].[n]:[c:2]>>[C:1]-[c:2]:[n]",
+    "S-nucleophilic_aromatic_substitution": "[c:1]-[F,Cl,Br,I].[SH:2]-[A:3]>>[c:1]-[S:2]-[A:3]"
 }
 
