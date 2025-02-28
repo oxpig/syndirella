@@ -31,6 +31,10 @@
     "Alpha_alkylation_of_ester/amide" : "[c:1]-[C:2]-[Cl,Br].[c,C:3][N,O:4]-[C](=[O:5])-[c,C:6]>>[c:1]-[C:2]-[C:6](=[O:5])-[N,O:4][c,C:3]", 
     "Alpha_alkylation_of_ester/amide_alcohol" : "[c:1]-[C:2]-[OH].[c,C:3][N,O:4]-[C](=[O:5])-[c,C:6]>>[c:1]-[C:2]-[C:6](=[O:5])-[N,O:4][c,C:3]", 
     "Minisci_reaction_with_carboxylic_acid_(intermolecular)": "[C:1]-[C](=[O])-[OH].[n]:[c:2]>>[C:1]-[c:2]:[n]",
-    "S-nucleophilic_aromatic_substitution": "[c:1]-[F,Cl,Br,I].[SH:2]-[A:3]>>[c:1]-[S:2]-[A:3]"
+    "S-nucleophilic_aromatic_substitution": "[c:1]-[F,Cl,Br,I].[SH:2]-[A:3]>>[c:1]-[S:2]-[A:3]",
+    "Amidation-chikv-1": "[O][C:1](=O)[cX3]1[nX2][c&H1X3][nX2][cX3]2[n&H1X3][c&H1X3][c&H1X3][cX3]12.[N&H2:2]Cc1ccccc1>>[N&H1:2](Cc1ccccc1)-[C:1](=O)[cX3]1[nX2][c&H1X3][nX2][cX3]2[n&H1X3][c&H1X3][c&H1X3][cX3]12",
+    "Amidation-chikv-2": "[O][C:1](=O)[cX3]1[c&H1X3][c&H1X3][nX2][cX3]2[n&H1X3][c&H1X3][c&H1X3][cX3]12.[N&H2:2]Cc1ccccc1>>[N&H1:2](Cc1ccccc1)-[C:1](=O)[cX3]1[c&H1X3][c&H1X3][nX2][cX3]2[n&H1X3][c&H1X3][c&H1X3][cX3]12",
+    "Amidation-chikv-3": "[C&H3X4][CX4]([C&H3X4])([C&H3X4])OC(=O)N[cX3]1[nX2][c&H1X3][c&H1X3][cX3]([nX2]1)[C:1](O)=O.[N&H2:2]Cc1ccccc1>>[C&H3X4][CX4]([C&H3X4])([C&H3X4])OC(=O)N[cX3]1[nX2][c&H1X3][c&H1X3][cX3]([nX2]1)[C:1](=O)[N&H2:2]Cc1ccccc1",
+    "Amidation-chikv-4": "[C&H3X4][CX4]([C&H3X4])([C&H3X4])OC(=O)N[cX3]1[nX2][c&H1X3][c&H1X3][cX3]([c&H1X3]1)[C:1](O)=O.[N&H2:2]Cc1ccccc1>>[C&H3X4][CX4]([C&H3X4])([C&H3X4])OC(=O)N[cX3]1[nX2][c&H1X3][c&H1X3][cX3]([c&H1X3]1)[C:1](=O)[N&H2:2]Cc1ccccc1"
 }
 

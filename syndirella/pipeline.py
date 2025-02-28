@@ -237,8 +237,13 @@ def run_pipeline(settings: Dict):
             template=row['template'],
             metadata_path=metadata_path
         )
-        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path,
-                                                           hits_path=hits_path)
+                
+        # hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path,
+                                                           # hits_path=hits_path)
+
+        logger.warning("Assuming hit names in SDF exactly match input CSV")
+        hits = [v for k,v in row.to_dict().items() if k.startswith("hit")]
+
         try:
             if manual_routes:
                 reactants, reaction_names, num_steps = check_inputs.format_manual_route(row)
@@ -328,7 +333,7 @@ def run_pipeline(settings: Dict):
         no_scaffold_place = False
 
     if not scaffold_place:
-        logger.info(f"Running the pipeline with {"manual" if manual_routes else "full auto"} routes.")
+        logger.info(f"Running the pipeline with {'manual' if manual_routes else 'full auto'} routes.")
 
     # Validate inputs
     check_inputs.check_pipeline_inputs(
