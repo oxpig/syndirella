@@ -105,6 +105,9 @@ class Cobbler:
             reaction_names = [reaction['name'].replace(" ", "_") for reaction in reactions]
             if all([name in self.reaction_names for name in reaction_names]):
                 passing_routes.append(reactions)
+            else:
+                not_allowed_reactions = [name for name in reaction_names if name not in self.reaction_names]
+                self.logger.debug(f'Reactions in route that were not found in SMIRKS list: {not_allowed_reactions}')
         return passing_routes
 
     def filter_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
