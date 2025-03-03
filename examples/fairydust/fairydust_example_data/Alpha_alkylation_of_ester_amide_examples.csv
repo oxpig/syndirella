@@ -1,0 +1,4 @@
+﻿smiles,1_r1_smiles,1_r2_smiles,1_reaction
+COC(=O)C(C)C(C)=O,COC(=O)CC(C)=O,CBr,Alpha_alkylation_of_ester/amide
+CCCC(=O)NC,CNC(C)=O,CCCl,Alpha_alkylation_of_ester/amide
+CCCC(=O)NC1CCCCC1,CC(=O)NC1CCCCC1,CCCl,Alpha_alkylation_of_ester/amide

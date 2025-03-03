@@ -1,0 +1,4 @@
+﻿smiles,1_r1_smiles,1_r2_smiles,1_reaction
+Cn1nccc1C(=O)NCc1ccc(O)s1,NCc1ccc(O)s1,CCOC(=O)c1ccnn1C,Ester_amidation
+O=C(NCc1cccs1)c1c(O)ccc2c1OCO2,NCc1cccs1,CCOC(=O)c1c(O)ccc2c1OCO2,Ester_amidation
+NC(=O)Nc1cccc(NC(=O)CCc2nc(Cn3ccccc3=O)no2)c1,NC(=O)Nc1cccc(N)c1,COC(=O)CCc1nc(Cn2ccccc2=O)no1,Ester_amidation
