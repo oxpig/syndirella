@@ -28,7 +28,7 @@ class Postera(DatabaseSearch):
 
     def __init__(self):
         super().__init__()
-        self.url = "https://api.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.logger = logging.getLogger(f"{__name__}")
 
