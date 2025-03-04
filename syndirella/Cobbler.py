@@ -34,7 +34,7 @@ class Cobbler:
         self.atom_diff_max: int = atom_diff_max
 
         # Manifold API
-        self.url = "https://api.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.n_reactants_per_reaction = SMARTSHandler().n_reactants_per_reaction
