@@ -34,7 +34,7 @@ class Cobbler:
         self.atom_diff_max: int = atom_diff_max
 
         # Manifold API
-        self.url = "https://api.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.n_reactants_per_reaction = SMARTSHandler().n_reactants_per_reaction
@@ -105,6 +105,9 @@ class Cobbler:
             reaction_names = [reaction['name'].replace(" ", "_") for reaction in reactions]
             if all([name in self.reaction_names for name in reaction_names]):
                 passing_routes.append(reactions)
+            else:
+                not_allowed_reactions = [name for name in reaction_names if name not in self.reaction_names]
+                self.logger.debug(f'Reactions in route that were not found in SMIRKS list: {not_allowed_reactions}')
         return passing_routes
 
     def filter_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:

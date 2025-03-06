@@ -100,6 +100,11 @@ def main():
         logging.error("MANIFOLD_API_KEY environment variable not set.")
         sys.exit(1)
 
+    # check for MANIFOLD API key
+    if not os.environ.get('MANIFOLD_API_URL'):
+        logging.error("MANIFOLD_API_URL environment variable not set.")
+        sys.exit(1)
+
     # Convert argparse Namespace to dictionary
     settings = vars(args)
 

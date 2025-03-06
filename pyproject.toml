@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "syndirella"
-version = "2.3.0-alpha"
+version = "2.3.1-alpha"
 authors = [
     { name = "Kate Fieseler", email = "kate.fieseler@stats.ox.ac.uk" },
 ]

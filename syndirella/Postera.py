@@ -17,6 +17,7 @@ from rdkit import Chem
 
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
+from syndirella.error import APIRetryLimitExceeded
 
 
 class Postera(DatabaseSearch):
@@ -27,7 +28,7 @@ class Postera(DatabaseSearch):
 
     def __init__(self):
         super().__init__()
-        self.url = "https://api.asap.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.logger = logging.getLogger(f"{__name__}")
 
@@ -223,7 +224,7 @@ class Postera(DatabaseSearch):
                         logger.error(
                             f"Max retries exceeded with status code {response.status_code}. Please try again later. "
                             f"{response.status_code}")
-                        return None
+                        raise APIRetryLimitExceeded(smiles=data.get('smiles', None))
 
                 response.raise_for_status()
                 return response.json()
