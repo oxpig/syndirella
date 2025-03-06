@@ -69,7 +69,7 @@ class SlipperSynthesizer:
         if len(self.analogues_dataframes_to_react) == 1:
             self.products = self.get_products_from_single_reactant()
             return self.products
-        # Get cartesian scaffold of all analogues
+        # Get cartesian combination of all analogues
         self.reactant_combinations: pd.DataFrame = self.combine_analogues()
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
@@ -200,7 +200,7 @@ class SlipperSynthesizer:
                 self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]] = (
                     self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]].head(10000))
             return
-        max_allowed_size = 10000
+        max_allowed_size = 10  # TODO: Change to 10000 when committing
         lengths: List[int] = [len(df) for df in self.analogues_dataframes_to_react.values()]
         product_of_lengths = lengths[0] * lengths[1]
         if product_of_lengths <= max_allowed_size:

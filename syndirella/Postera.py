@@ -27,7 +27,7 @@ class Postera(DatabaseSearch):
 
     def __init__(self):
         super().__init__()
-        self.url = "https://api.postera.ai"
+        self.url = "https://api.asap.postera.ai"
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.logger = logging.getLogger(f"{__name__}")
 
@@ -47,7 +47,8 @@ class Postera(DatabaseSearch):
                 'smiles': compound,
                 "withPurchaseInfo": True,
                 "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
-            }
+            },
+            max_pages=10
         )
         return retro_hits
 
@@ -101,7 +102,8 @@ class Postera(DatabaseSearch):
                 "withPurchaseInfo": True,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": vendors
-            }
+            },
+            max_pages=1  # TODO: Change to 10 before committing.
         )
         hits_info: List[Tuple[str, Tuple[str, str] | None]] | None = self.structure_output(superstructure_hits,
                                                                                            query_smiles=smiles,
@@ -129,7 +131,8 @@ class Postera(DatabaseSearch):
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "withPurchaseInfo": True,
                 "vendors": catalogues
-            }
+            },
+            max_pages=10
         )
         return exact_hits
 
@@ -152,7 +155,8 @@ class Postera(DatabaseSearch):
                 "smilesList": smiles_list,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": catalogues
-            }
+            },
+            max_pages=10
         )
         return exact_hits
 
