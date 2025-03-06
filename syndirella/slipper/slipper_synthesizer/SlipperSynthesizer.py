@@ -200,7 +200,7 @@ class SlipperSynthesizer:
                 self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]] = (
                     self.analogues_dataframes_to_react[list(self.analogues_dataframes_to_react.keys())[0]].head(10000))
             return
-        max_allowed_size = 10  # TODO: Change to 10000 when committing
+        max_allowed_size = 10000
         lengths: List[int] = [len(df) for df in self.analogues_dataframes_to_react.values()]
         product_of_lengths = lengths[0] * lengths[1]
         if product_of_lengths <= max_allowed_size:

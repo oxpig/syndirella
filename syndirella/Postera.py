@@ -103,7 +103,7 @@ class Postera(DatabaseSearch):
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": vendors
             },
-            max_pages=1  # TODO: Change to 10 before committing.
+            max_pages=10
         )
         hits_info: List[Tuple[str, Tuple[str, str] | None]] | None = self.structure_output(superstructure_hits,
                                                                                            query_smiles=smiles,
