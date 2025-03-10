@@ -63,6 +63,11 @@ def check_template_paths(template_dir: str, csv_path: str, metadata_path: str) -
         logger.error("The template directory does not exist.")
         raise NotADirectoryError(f"The template directory {template_dir} does not exist.")
     df = pd.read_csv(csv_path)
+
+    if not len(df[df['template'].notna()]):
+        logger.error("The template directory does not exist.")
+        raise ValueError(f"Input CSV does not contain template values")
+
     templates: List[str] = [template.strip() for template in df['template'].tolist()]  # remove whitespace
     code_dict: Dict = metadata_dict(metadata_path)
     # get exact code for hit from metadata
@@ -269,6 +274,8 @@ def get_template_path(template_dir: str, template: str, metadata_path: str) -> s
     else:
         template_path = glob2.glob(f"{template_dir}/**/*{exact_code[0]}*.pdb")
     if len(template_path) == 0:
+        import mrich
+        mrich.print(locals())
         logger.critical(f"The template {exact_code[0]} does not exist in the template directory.")
         raise FileNotFoundError(f"The template {exact_code[0]} does not exist in the template directory.")
     elif len(template_path) > 1:
