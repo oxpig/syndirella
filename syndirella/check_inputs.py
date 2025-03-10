@@ -274,14 +274,12 @@ def get_template_path(template_dir: str, template: str, metadata_path: str) -> s
     else:
         template_path = glob2.glob(f"{template_dir}/**/*{exact_code[0]}*.pdb")
     if len(template_path) == 0:
-        import mrich
-        mrich.print(locals())
-        logger.critical(f"The template {exact_code[0]} does not exist in the template directory.")
-        raise FileNotFoundError(f"The template {exact_code[0]} does not exist in the template directory.")
+        logger.critical(f"The template {template} does not exist in the template directory.")
+        raise FileNotFoundError(f"The template {template} does not exist in the template directory.")
     elif len(template_path) > 1:
-        logger.critical(f"Multiple templates found for {exact_code[0]}. Please ensure that the template name is unique "
+        logger.critical(f"Multiple templates found for {template}. Please ensure that the template name is unique "
                         f"in the input csv.")
-        raise ValueError(f"Multiple templates found for {exact_code[0]}. Please ensure that the template name is unique"
+        raise ValueError(f"Multiple templates found for {template}. Please ensure that the template name is unique"
                          f"in the input csv.")
     return template_path[0]
 

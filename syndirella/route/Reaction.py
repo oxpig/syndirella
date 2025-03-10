@@ -323,11 +323,17 @@ class Reaction():
         for reactant in self.reactants:
             attachments: List[int] | None = self.find_attachment_id_for_reactant(reactant)
             all_attachments[reactant] = attachments
+
         if any(len(attach_ids) == 0 for attach_ids in all_attachments.values()):
-            raise ReactionError(message=f"No attachment points found for reaction {self.reaction_name}",
-                                mol=self.scaffold,
-                                route_uuid=self.route_uuid)
+            if "deprotect" in self.reaction_name:  # doesn't matter if no attachments found
+                all_attachments = {reactant: [] for reactant in self.reactants}
+            else:
+                raise ReactionError(message=f"No attachment points found for reaction {self.reaction_name}",
+                                    mol=self.scaffold,
+                                    route_uuid=self.route_uuid)
+
         all_attach_ids: Dict[Chem.Mol, List[int]] = all_attachments
+
         return all_attach_ids
 
     def format_matched_smarts_to_index(self, matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]]) -> Dict[int,
@@ -350,10 +356,10 @@ class Reaction():
     def find_reaction_atoms_for_all_reactants(self) -> Tuple[
         Dict[str, Tuple[Chem.Mol, List[int], str]] | None, Dict[int, Tuple[Chem.Mol, List[int], str]]]:
         """
-        This function is used to find the reaction atoms of both reactants. And how those atoms correspond to the SMARTS
+        This function is used to find the reaction atoms of reactants. And how those atoms correspond to the SMARTS
         pattern associated with the reaction.
         """
-        # check reactant smarts in both reactants
+        # check reactant smarts in reactants
         matched_reactants: Dict[str, Tuple[Chem.Mol, List[int], str]] | None = (
             self.smarts_handler.assign_reactants_w_rxn_smarts(product=self.scaffold,
                                                               reactant_attach_ids=self.all_attach_ids,

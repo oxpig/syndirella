@@ -5,16 +5,18 @@ syndirella.route.CobblersWorkshop.py
 This module contains the CobblersWorkshop class. One instance of this object is used to describe a full route.
 """
 
-from .CobblerBench import CobblerBench
-from typing import (List, Tuple)
-from syndirella.route.Library import Library
-from syndirella.SMARTSHandler import SMARTSHandler
-from rdkit import Chem
-from syndirella.slipper.Slipper import Slipper
-from syndirella.error import SMARTSError, MolError
-import logging
 import itertools
+import logging
+from typing import (List, Tuple)
+
 import shortuuid
+from rdkit import Chem
+
+from syndirella.SMARTSHandler import SMARTSHandler
+from syndirella.error import SMARTSError, MolError
+from syndirella.route.Library import Library
+from syndirella.slipper.Slipper import Slipper
+from .CobblerBench import CobblerBench
 
 
 class CobblersWorkshop():
@@ -37,8 +39,8 @@ class CobblersWorkshop():
         self.route_uuid: str = shortuuid.ShortUUID().random(length=6)
         self.product: str = self.check_product(product)
         self.id: str = id
-        self.reactants: List[Tuple[str]] = self.check_reactants(reactants)
         self.reaction_names: List[str] = self.check_reaction_names(reaction_names)
+        self.reactants: List[Tuple[str]] = self.check_reactants(reactants)
         self.atom_diff_min: int = atom_diff_min
         self.atom_diff_max: int = atom_diff_max
 
@@ -66,14 +68,27 @@ class CobblersWorkshop():
         """
         Checks reactants can be converted to molecules and can be sanitized. If not, logs an error.
         """
-        for reactants_step in reactants:
-            for reactant in reactants_step:
+        if self.reaction_names is None:
+            self.logger.error("Reaction names not defined.")
+            raise SMARTSError(message="Reaction names not defined.",
+                              smiles=self.product,
+                              inchi=self.id,
+                              route_uuid=self.route_uuid)
+
+        for i, (reactants_step, reaction_name) in enumerate(zip(reactants, self.reaction_names)):
+            if "deprotect" in reaction_name:  # Filter out None or empty reactants for deprotection steps
+                reactants[i] = tuple(
+                    reactant for reactant in reactants_step if reactant and reactant not in {"None", ""})
+
+            for reactant in reactants[i]:
                 if Chem.MolFromSmiles(reactant) is None:
-                    self.logger.error(f"Could not create a molecule from the smiles {reactant}.")
+                    self.logger.error(
+                        f"Could not create a molecule from the smiles {reactant} for {reaction_name} step.")
                     raise MolError(smiles=reactant,
                                    inchi=self.id,
                                    route_uuid=self.route_uuid,
                                    message=f"Could not create a molecule from the smiles {reactant}.")
+
         return reactants
 
     def check_reaction_names(self, reaction_names: List[str]) -> List[str]:
@@ -104,14 +119,12 @@ class CobblersWorkshop():
                                      output_dir=self.output_dir,
                                      id=self.id,
                                      num_steps=self.num_steps,
-                                     current_step= step + 1,
+                                     current_step=step + 1,
                                      filter=self.filter,
                                      route_uuid=self.route_uuid,
                                      atom_diff_min=self.atom_diff_min,
                                      atom_diff_max=self.atom_diff_max)
         return cobbler_bench
-
-
 
     def define_reaction(self):
         """
@@ -203,7 +216,7 @@ class CobblersWorkshop():
         """
         self.logger.info(route_message)
 
-#################################################
+    #################################################
 
     def get_final_library(self):
         """
@@ -225,6 +238,3 @@ class CobblersWorkshop():
             # Update the final library at each step
             self.final_library = current_library
         return self.final_library
-
-
-
