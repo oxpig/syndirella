@@ -5,13 +5,16 @@ syndirella.CobblerBench.py
 This module contains the CobblerBench class. One instance is made for each step.
 """
 
-from typing import (Any, Callable, Union, Iterator, Sequence, List, Dict, Tuple)
-from rdkit import Chem
-from .Reaction import Reaction
-from .Library import Library
-from ..error import ReactionError, SMARTSError
-from ..SMARTSHandler import SMARTSHandler
 import logging
+from typing import (List, Tuple)
+
+from rdkit import Chem
+
+from .Library import Library
+from .Reaction import Reaction
+from ..SMARTSHandler import SMARTSHandler
+from ..error import ReactionError, SMARTSError
+
 
 class CobblerBench:
     """
@@ -20,6 +23,7 @@ class CobblerBench:
 
     It is given a step of a full route.
     """
+
     def __init__(self,
                  product: str,
                  reactants: Tuple[str] | str,
@@ -51,17 +55,17 @@ class CobblerBench:
         self.additional_reactions: List[Tuple[str, Tuple[str, str]]] = ()
         self.logger = logging.getLogger(f"{__name__}")
 
-        self.define_reaction() # This is where the Reaction object is created
+        self.define_reaction()  # This is where the Reaction object is created
 
     def _make_reactant_mols(self, reactants) -> Tuple[Chem.Mol]:
         """
         This function is used to make reactant molecules from the input SMILES.
         """
         if type(reactants) == str:
-            reactant_mols = (Chem.MolFromSmiles(reactants))
+            reactant_mols = [Chem.MolFromSmiles(reactants)]
         else:
-            reactant_mols = (Chem.MolFromSmiles(reactant) for reactant in reactants)
-        return reactant_mols
+            reactant_mols = [Chem.MolFromSmiles(reactant) for reactant in reactants]
+        return tuple(reactant_mols)
 
     def check_reaction(self):
         """
@@ -86,15 +90,14 @@ class CobblerBench:
         """
         try:
             self.reaction = self.check_reaction()
-            # Find attachment ids -- before finding reaction atoms
-            self.reaction.find_attachment_ids_for_all_reactants()
-            # Find reaction atoms
-            self.reaction.find_reaction_atoms_for_all_reactants()
         except ValueError or SMARTSError as e:
             self.logger.error(f"Reaction {self.reaction_name} could not be defined.")
-            if isinstance(e, ValueError): message = e.args[0]
-            elif isinstance(e, SMARTSError): message = e.message
-            else: message = f"Reaction {self.reaction_name} could not be defined."
+            if isinstance(e, ValueError):
+                message = e.args[0]
+            elif isinstance(e, SMARTSError):
+                message = e.message
+            else:
+                message = f"Reaction {self.reaction_name} could not be defined."
             raise ReactionError(message=message,
                                 smiles=self.product,
                                 route_uuid=self.route_uuid,
@@ -112,13 +115,12 @@ class CobblerBench:
         self.additional_reactions = new_reactions
         return True
 
-
     def find_analogues(self):
         """
         This function is used to find analogues of any step along the route.
         """
         # If having problems might have to define_reaction here again (tried to do it when bench is created)
-        #self.define_reaction()
+        # self.define_reaction()
         # Find the analogues of reactants
         self.library = Library(reaction=self.reaction,
                                output_dir=self.output_dir,
@@ -131,5 +133,3 @@ class CobblerBench:
                                atom_diff_max=self.atom_diff_max)
         self.library.create_library()
         return self.library
-
-

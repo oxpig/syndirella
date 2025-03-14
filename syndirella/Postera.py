@@ -17,6 +17,7 @@ from rdkit import Chem
 
 import syndirella.fairy as fairy
 from syndirella.DatabaseSearch import DatabaseSearch
+from syndirella.error import APIRetryLimitExceeded
 
 
 class Postera(DatabaseSearch):
@@ -27,7 +28,7 @@ class Postera(DatabaseSearch):
 
     def __init__(self):
         super().__init__()
-        self.url = "https://api.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.logger = logging.getLogger(f"{__name__}")
 
@@ -47,7 +48,8 @@ class Postera(DatabaseSearch):
                 'smiles': compound,
                 "withPurchaseInfo": True,
                 "vendors": ["enamine_bb", "mcule", "mcule_ultimate", 'generic']
-            }
+            },
+            max_pages=10
         )
         return retro_hits
 
@@ -101,7 +103,8 @@ class Postera(DatabaseSearch):
                 "withPurchaseInfo": True,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": vendors
-            }
+            },
+            max_pages=10
         )
         hits_info: List[Tuple[str, Tuple[str, str] | None]] | None = self.structure_output(superstructure_hits,
                                                                                            query_smiles=smiles,
@@ -129,7 +132,8 @@ class Postera(DatabaseSearch):
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "withPurchaseInfo": True,
                 "vendors": catalogues
-            }
+            },
+            max_pages=10
         )
         return exact_hits
 
@@ -152,7 +156,8 @@ class Postera(DatabaseSearch):
                 "smilesList": smiles_list,
                 "queryThirdPartyServices": queryThirdPartyServices,
                 "vendors": catalogues
-            }
+            },
+            max_pages=10
         )
         return exact_hits
 
@@ -219,7 +224,7 @@ class Postera(DatabaseSearch):
                         logger.error(
                             f"Max retries exceeded with status code {response.status_code}. Please try again later. "
                             f"{response.status_code}")
-                        return None
+                        raise APIRetryLimitExceeded(smiles=data.get('smiles', None))
 
                 response.raise_for_status()
                 return response.json()

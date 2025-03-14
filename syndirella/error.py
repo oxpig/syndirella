@@ -137,3 +137,14 @@ class APIQueryError(ChemicalErrorBase):
                  route_uuid: str | None = None):
         self.route_uuid = route_uuid
         super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)
+
+
+class APIRetryLimitExceeded(ChemicalErrorBase):
+    def __init__(self,
+                 message: str = "The API query retry limit has been exceeded.",
+                 inchi: str | None = None,
+                 smiles: str | None = None,
+                 mol: Chem.Mol | None = None,
+                 route_uuid: str | None = None):
+        self.route_uuid = route_uuid
+        super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)

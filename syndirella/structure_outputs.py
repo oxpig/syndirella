@@ -259,6 +259,10 @@ def save_output_df(output_df: pd.DataFrame, output_dir: str, csv_path: str):
 
     Format of output csv name: [name_of_input_csv]_output_YYYYMMDD_HHMM.csv
     """
+    # make output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        logger.info(f"Created output directory at {output_dir}")
     csv_name: str = os.path.basename(csv_path).split('.')[0]
     output_name: str = f'{csv_name}_output_{pd.Timestamp.now().strftime("%Y%m%d_%H%M")}.csv'
     output_csv_path: str = os.path.join(output_dir, output_name)

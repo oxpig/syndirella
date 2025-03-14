@@ -70,8 +70,7 @@ class SMARTSHandler:
                                                                  str, tuple[Mol, list[int], str]] | None | dict[
                                                                  Any | None, None]:
         """
-        This function is used to assign the reactant number to input reactants using the reaction SMARTS. For now it
-        only supports bimolecular reactions.
+        This function is used to assign the reactant number to input reactants using the reaction SMARTS.
         """
         if len(reactant_attach_ids) == 1:  # Performing for one reactant
             patt = self.reactant1_dict[reaction_name]
@@ -84,6 +83,7 @@ class SMARTSHandler:
                 self.logger.critical(message)
                 raise SMARTSError(mol=product, message=message)
             return self.matched_reactants
+
         r1: Chem.Mol = list(reactant_attach_ids.keys())[0]
         r2: Chem.Mol = list(reactant_attach_ids.keys())[1]
         # Check to make sure they are not the same

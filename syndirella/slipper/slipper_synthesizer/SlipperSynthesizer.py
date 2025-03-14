@@ -69,7 +69,7 @@ class SlipperSynthesizer:
         if len(self.analogues_dataframes_to_react) == 1:
             self.products = self.get_products_from_single_reactant()
             return self.products
-        # Get cartesian scaffold of all analogues
+        # Get cartesian combination of all analogues
         self.reactant_combinations: pd.DataFrame = self.combine_analogues()
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
