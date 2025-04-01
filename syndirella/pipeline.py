@@ -107,13 +107,13 @@ def start_elaboration(product: str,
                       hits: List[str],
                       output_dir: str,
                       scaffold_place_num: int,
-                      no_scaffold_place: bool) -> Tuple[float, Dict[Chem.Mol, str | None] | Dict]:
+                      scaffold_place: bool) -> Tuple[float, Dict[Chem.Mol, str | None] | Dict]:
     """
     Starts the elaboration of a single compound.
     """
     logger.info(f'Starting: {product} | {inchi.MolToInchiKey(Chem.MolFromSmiles(product))}')
     start_time = time.time()
-    if no_scaffold_place:
+    if not scaffold_place:
         logger.info(f"Skipping initial scaffold placement...")
         scaffold_placements: Dict[Chem.Mol, str | None] = {}
     else:
@@ -140,8 +140,8 @@ def elaborate_compound_with_manual_routes(product: str,
                                           atom_diff_min: int,
                                           atom_diff_max: int,
                                           scaffold_place_num: int,
+                                          only_scaffold_place: bool,
                                           scaffold_place: bool,
-                                          no_scaffold_place: bool,
                                           additional_info=None):
     """
     This function is used to elaborate a single compound using a manually defined route.
@@ -150,8 +150,8 @@ def elaborate_compound_with_manual_routes(product: str,
                                                         hits_path=hits_path,
                                                         hits=hits, output_dir=output_dir,
                                                         scaffold_place_num=scaffold_place_num,
-                                                        no_scaffold_place=no_scaffold_place)
-    if not scaffold_place:  # continue elaboration
+                                                        scaffold_place=scaffold_place)
+    if not only_scaffold_place:  # continue elaboration
         workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                     num_steps=num_steps, output_dir=output_dir, filter=False,
                                     id=fairy.generate_inchi_ID(product, isomeric=False), atom_diff_min=atom_diff_min,
@@ -182,8 +182,8 @@ def elaborate_compound_full_auto(product: str,
                                  atom_diff_min: int,
                                  atom_diff_max: int,
                                  scaffold_place_num: int,
+                                 only_scaffold_place: bool,
                                  scaffold_place: bool,
-                                 no_scaffold_place: bool,
                                  additional_info=None):
     """
     This function is used to elaborate a single compound.
@@ -192,8 +192,8 @@ def elaborate_compound_full_auto(product: str,
                                                         hits_path=hits_path,
                                                         hits=hits, output_dir=output_dir,
                                                         scaffold_place_num=scaffold_place_num,
-                                                        no_scaffold_place=no_scaffold_place)
-    if not scaffold_place:  # continue elaboration
+                                                        scaffold_place=scaffold_place)
+    if not only_scaffold_place:  # continue elaboration
         cobbler = Cobbler(scaffold_compound=product,
                           output_dir=output_dir, atom_diff_min=atom_diff_min,
                           atom_diff_max=atom_diff_max)  # check that output_dirs can be made for different routes
@@ -215,34 +215,21 @@ def elaborate_compound_full_auto(product: str,
 def run_pipeline(settings: Dict):
     """
     Run the whole syndirella pipeline! 👑
-
-    OUTDATED DOCSTRING:
-    Settings dict should have these keys:
-      csv_path=settings['input'],
-      output_dir=settings['output'],
-      template_dir=settings['templates'],
-      hits_path=settings['hits_path'],
-      metadata_path=settings['metadata'],
-      batch_num=settings['batch_num'],
-      additional_columns=['compound_set'], # Will always be compound_set
-      manual_routes=settings['manual'],
-      atom_diff_min=settings['atom_diff_min'],
-      atom_diff_max=settings['atom_diff_max']
     """
 
-    def process_row(row: pd.Series, manual_routes: bool, scaffold_place: bool, no_scaffold_place: bool):
+    def process_row(row: pd.Series, manual_routes: bool, only_scaffold_place: bool, scaffold_place: bool):
         additional_info: dict = check_inputs.format_additional_info(row, additional_columns)
         template_path: str = check_inputs.get_template_path(
             template_dir=template_dir,
             template=row['template'],
             metadata_path=metadata_path
         )
-                
-        # hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path,
-                                                           # hits_path=hits_path)
 
-        logger.warning("Assuming hit names in SDF exactly match input CSV")
-        hits = [v for k,v in row.to_dict().items() if k.startswith("hit")]
+        hits: List[str] = check_inputs.get_exact_hit_names(row=row, metadata_path=metadata_path,
+                                                           hits_path=hits_path)
+
+        # logger.warning("Assuming hit names in SDF exactly match input CSV")
+        # hits = [v for k,v in row.to_dict().items() if k.startswith("hit")]
 
         try:
             if manual_routes:
@@ -262,8 +249,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_min=atom_diff_min,
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
-                    scaffold_place=scaffold_place,
-                    no_scaffold_place=no_scaffold_place
+                    only_scaffold_place=only_scaffold_place,
+                    scaffold_place=scaffold_place
                 )
             else:
                 elaborate_compound_full_auto(
@@ -278,8 +265,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_min=atom_diff_min,
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
-                    scaffold_place=scaffold_place,
-                    no_scaffold_place=no_scaffold_place
+                    only_scaffold_place=only_scaffold_place,
+                    scaffold_place=scaffold_place
                 )
         except Exception as e:
             tb = traceback.format_exc()
@@ -317,22 +304,22 @@ def run_pipeline(settings: Dict):
         manual_routes = False
 
     try:
-        scaffold_place: bool = settings['scaffold_place']
-        # If scaffold_place is True, only place scaffolds and do not continue to elaborate
-        if scaffold_place:
+        only_scaffold_place: bool = settings['only_scaffold_place']
+        # If only_scaffold_place is True, only place scaffolds and do not continue to elaborate
+        if only_scaffold_place:
             logger.info(f"Only placing scaffolds!")
     except KeyError:
-        scaffold_place = False
+        only_scaffold_place = False
         # Log pipeline type
 
     try:
-        no_scaffold_place: bool = settings['no_scaffold_place']
-        if no_scaffold_place:
+        scaffold_place: bool = not settings['no_scaffold_place']  # if no_scaffold_place is True, do not place scaffolds
+        if not scaffold_place:
             logger.warning(f"Skipping initial scaffold placement! Immediately starting elaboration process.")
     except KeyError:
-        no_scaffold_place = False
+        scaffold_place = True
 
-    if not scaffold_place:
+    if not only_scaffold_place:
         logger.info(f"Running the pipeline with {'manual' if manual_routes else 'full auto'} routes.")
 
     # Validate inputs
@@ -351,7 +338,7 @@ def run_pipeline(settings: Dict):
 
     # Process each row in the DataFrame
     for index, row in df.iterrows():
-        process_row(row=row, manual_routes=manual_routes, scaffold_place=scaffold_place,
-                    no_scaffold_place=no_scaffold_place)
+        process_row(row=row, manual_routes=manual_routes, only_scaffold_place=only_scaffold_place,
+                    scaffold_place=scaffold_place)
 
     logger.info("Pipeline complete.")

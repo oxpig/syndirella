@@ -8,8 +8,8 @@ old_README.md
 /syndirella_input_template_manual_old.csv
 /syndirella/constants/ADDITIONAL_RXN_OPTIONS.json
 
-# tests
-/syndirella/tests/
+# tests_OLD
+/syndirella/tests_OLD/
 
 #any output folder
 */output/
