@@ -246,7 +246,7 @@ def find_matches(smirks: str, codes: dict) -> list[dict]:
     return matches
 
 
-def match_template_codes(grouped: list[dict], codes: dict) -> None:
+def match_template_codes(grouped: list[dict], codes: dict) -> list[dict]:
     """Match template codes to grouped smirks."""
     logger.info("Matching template codes to grouped smirks")
     for group in tqdm(grouped):
@@ -258,7 +258,7 @@ def match_template_codes(grouped: list[dict], codes: dict) -> None:
             templates: list[dict] = find_matches(smirks, codes)
             rxn['uspto_templates'] = templates
     logger.info("Finished matching template codes")
-    save_to_json(grouped, '../data/dev/grouped_smirks_with_codes.json')
+    return grouped
 
 
 def get_project_root():
@@ -292,7 +292,9 @@ def main():
             grouped = json.load(f)
         codes = load_template_codes(home_dir=os.path.join(project_root, 'aizynth'))
         if codes:
-            match_template_codes(grouped, codes)
+            grouped = match_template_codes(grouped, codes)
+            save_to_json(grouped,
+                         os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks_with_codes.json'))
 
 
 if __name__ == '__main__':
