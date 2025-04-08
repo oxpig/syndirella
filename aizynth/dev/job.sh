@@ -1,14 +1,14 @@
 #!/bin/bash
 
-#SBATCH --job.sh-name=NAME
-#SBATCH --chdir=[path]
-#SBATCH --output=[path]/logs/slurm-log_%x_%j.log
-#SBATCH --error=[path]/logs/slurm-error_%x_%j.log
+#SBATCH --job-name=smirks_label
+#SBATCH --chdir=/opt/xchem-fragalysis-2/kfieseler
+#SBATCH --output=/opt/xchem-fragalysis-2/kfieseler/logs/slurm-log_%x_%j.log
+#SBATCH --error=/opt/xchem-fragalysis-2/kfieseler/logs/slurm-error_%x_%j.log
 # gpu partition is `gpu`
 #SBATCH --partition=main
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=3GB
+#SBATCH --mem=64GB
 ##SBATCH --time=01:00:00
 
 # extras
@@ -17,6 +17,9 @@
 ##SBATCH --mem-per-cpu=<memory>
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint=<constraint>
+# this does nothing
+#SBATCH --mail-type=END
+#SBATCH --mail-user=kate.fieseler@stats.ox.ac.uk
 
 # -------------------------------------------------------
 
@@ -33,7 +36,7 @@ echo "job_pid=$SLURM_TASK_PID job_gid=$SLURM_JOB_GID topology_addr=$SLURM_TOPOLO
 
 # -------------------------------------------------------
 # CONDA
-source [path_to_bashrc]
+source /opt/xchem-fragalysis-2/kfieseler/.bashrc
 # debug
 echo '$CONDA_PREFIX = ' $CONDA_PREFIX
 echo '$LD_LIBRARY_PATH = ' $LD_LIBRARY_PATH
@@ -44,21 +47,9 @@ conda activate syndirella
 conda info
 # -------------------------------------------------------
 
+cd $HOME2/syndirella/aizynth/dev
 pwd;
 
-export INPUT="syndirella_input/syndirella_input4.csv"
-export OUTPUT=[path_to_output]
-export TEMPLATES=[path_to_templates];
-export HITS=[path_to_hits];
-export METADATA=[path_to_metadata];
-
-echo "Running syndirella";
-
-nice -19 syndirella \
---input $INPUT \
---output $OUTPUT \
---templates $TEMPLATES \
---hits $HITS \
---metadata $METADATA;
+nice -19 python precompute_grouped_smirks.py
 
 echo 'COMPLETE'

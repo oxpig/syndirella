@@ -1,4 +1,3 @@
-
 ==========
 User Guide
 ==========
@@ -15,6 +14,22 @@ On Mac OS and Linux you can install from PyPI using Conda.
 .. attention::
 
     Installation and usage have not been tested on Windows OS.
+
+Setting Up
+==========
+
+Once you have installed Syndirella, follow these steps to set it up:
+
+1. Install AiZynthFinder:
+-------------------------------------
+
+.. code-block:: bash
+
+    pip install aizynthfinder
+    cd syndirella/aizynth
+    download_public_data .
+    export AIZYNTH_CONFIG_FILE="path/to/syndirella/aizynth/config.yml"
+
 
 Setting Up
 ==========

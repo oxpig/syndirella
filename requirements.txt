@@ -1,10 +1,11 @@
-python>=3.10
-pandas
-numpy<2
+aizynthfinder[all]
+biopython
+fragmenstein
 glob2
+jupyter
+numpy
+pandas
+pillow
 rdkit
 requests
-pillow
-fragmenstein>=1.0.8
 shortuuid
-jupyter
