@@ -143,7 +143,9 @@ def group_smirks(labels: pd.DataFrame, to_group: pd.DataFrame, how: str = 'by_sc
                 not_grouped_indices.add(i)
             scores['compared'] = label_scored
             scored.append(scores)
-        save_to_json(scored, '../data/dev/scored_smirks.json')
+        project_root = get_project_root()
+        scored_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'scored_smirks.json')
+        save_to_json(scored, scored_path)
 
         for _, row in labels.iterrows():
             labelled_rxn: dict = {}
@@ -248,8 +250,6 @@ def match_template_codes(grouped: list[dict], codes: dict) -> None:
     """Match template codes to grouped smirks."""
     logger.info("Matching template codes to grouped smirks")
     for group in tqdm(grouped):
-        if group['name'] != 'Amidation':
-            continue
         logger.info(f"Matching {group['name']}")
         templates: list[dict] = find_matches(group['smirks'], codes)
         group['uspto_templates'] = templates
@@ -261,19 +261,36 @@ def match_template_codes(grouped: list[dict], codes: dict) -> None:
     save_to_json(grouped, '../data/dev/grouped_smirks_with_codes.json')
 
 
+def get_project_root():
+    """Get the absolute path to the project root directory."""
+    script_path = os.path.abspath(__file__)
+    # If script is in project/aizynth/dev/, we need to go up two levels
+    return os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
+
+
 def main():
-    if not os.path.exists("../data/dev/grouped_smirks.json"):
-        syn: pd.DataFrame = load_smirks('../../syndirella/constants/RXN_SMIRKS_CONSTANTS.json')
-        rxni: pd.DataFrame = load_smirks('../data/dev/smirks.json')
+    project_root = get_project_root()
+    grouped_smirks_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks.json')
+
+    if not os.path.exists(grouped_smirks_path):
+        syn_path = os.path.join(project_root, 'syndirella', 'constants', 'RXN_SMIRKS_CONSTANTS.json')
+        rxni_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'smirks.json')
+
+        syn = load_smirks(syn_path)
+        rxni = load_smirks(rxni_path)
         grouped, not_grouped = group_smirks(syn, rxni)
-        if not save_to_json(grouped, '../data/dev/grouped_smirks.json'):
-            logger.error("Failed to save grouped smirks")
-        if not save_to_json(not_grouped, '../data/dev/not_grouped_smirks.json'):
-            logger.error("Failed to save not_grouped smirks")
+
+        grouped_output_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks.json')
+        not_grouped_output_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'not_grouped_smirks.json')
+
+        if not save_to_json(grouped, grouped_output_path):
+            logger.error(f"Failed to save grouped smirks to {grouped_output_path}")
+        if not save_to_json(not_grouped, not_grouped_output_path):
+            logger.error(f"Failed to save not_grouped smirks to {not_grouped_output_path}")
     else:
-        with open(os.path.join("../data/dev/grouped_smirks.json"), "r") as f:
+        with open(grouped_smirks_path, "r") as f:
             grouped = json.load(f)
-        codes: dict = load_template_codes(home_dir='..')
+        codes = load_template_codes(home_dir=os.path.join(project_root, 'aizynth'))
         if codes:
             match_template_codes(grouped, codes)
 
