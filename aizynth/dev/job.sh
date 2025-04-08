@@ -47,9 +47,9 @@ conda activate syndirella
 conda info
 # -------------------------------------------------------
 
-cd $HOME2/syndirella/aizynth/dev
+cd $HOME2/syndirella/aizynth
 pwd;
 
-nice -19 python precompute_grouped_smirks.py
+nice -19 python dev/precompute_grouped_smirks.py
 
 echo 'COMPLETE'
