@@ -318,7 +318,7 @@ def main(concatenate: bool, fp: str, avg_sim_threshold: float, rxn_sim_threshold
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Group SMIRKS and match template codes.")
-    parser.add_argument("--concatenate", as_type=bool, default=False, help="Whether to concatenate fingerprints.")
+    parser.add_argument("--concatenate", type=bool, default=False, help="Whether to concatenate fingerprints.")
     parser.add_argument("--fp", type=str, default="MACCS", help="Fingerprint type (e.g., MACCS, morgan).")
     parser.add_argument("--avg_sim_threshold", type=float, default=0.2, help="Average similarity threshold.")
     parser.add_argument("--rxn_sim_threshold", type=float, default=0.2, help="Reaction similarity threshold.")
