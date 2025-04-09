@@ -1,5 +1,6 @@
 # python
 
+import argparse
 import csv
 import gzip
 import json
@@ -86,15 +87,17 @@ def calculate_name_similarity(name1: str, name2: str) -> float:
     return len(intersection) / max(len(tokens1), len(tokens2))
 
 
-def calculate_rxn_similarity(reaction1: str, reaction2: str) -> float:
+def calculate_rxn_similarity(reaction1: str, reaction2: str, concatenate: bool = False, fp: str = 'MACCS') -> float:
     """Calculate similarity between two reactions."""
-    fp1: npt.NDArray[Any] = get_fp(reaction1, fp="MACCS", concatenate=True)
-    fp2: npt.NDArray[Any] = get_fp(reaction2, fp="MACCS", concatenate=True)
+    fp1: npt.NDArray[Any] = get_fp(reaction1, fp=fp, concatenate=concatenate)
+    fp2: npt.NDArray[Any] = get_fp(reaction2, fp=fp, concatenate=concatenate)
     sim: float = calc_jaccard_similarity(fp1, fp2)
     return sim
 
 
-def group_smirks(labels: pd.DataFrame, to_group: pd.DataFrame, how: str = 'by_score') -> tuple[list[dict], list[dict]]:
+def group_smirks(labels: pd.DataFrame, to_group: pd.DataFrame, how: str = 'by_score', avg_sim_threshold: float = 0.2,
+                 concatenate: bool = False, fp: str = 'MACCS') -> \
+        tuple[list[dict], list[dict]]:
     """Group the to_group smirks using the labels smirks. Return grouped and not_grouped smirks"""
     grouped: list = []
     matched_indices = set()
@@ -118,11 +121,11 @@ def group_smirks(labels: pd.DataFrame, to_group: pd.DataFrame, how: str = 'by_sc
                 label_smirks = row['smirks']
                 this_label['name'] = label_name
                 this_label['smirks'] = label_smirks
-                this_label['rxn_sim'] = calculate_rxn_similarity(label_smirks, tgsmirks)
+                this_label['rxn_sim'] = calculate_rxn_similarity(label_smirks, tgsmirks, concatenate=concatenate, fp=fp)
                 this_label['name_sim'] = calculate_name_similarity(label_name, tgname)
                 this_label['avg_sim'] = (this_label['rxn_sim'] + this_label['name_sim']) / 2
                 label_scored.append(this_label)
-                if this_label['avg_sim'] >= 0.4:  # baseline threshold
+                if this_label['avg_sim'] >= avg_sim_threshold:  # baseline threshold
                     if not max_score_rxn or this_label['rxn_sim'] > max_score_rxn['rxn_sim']:
                         max_score_rxn = this_label
             if max_score_rxn:
@@ -233,12 +236,13 @@ def transform_retro_to_forward(reaction: str) -> str:
     return f"{reactants}>>{product}"
 
 
-def find_matches(smirks: str, codes: dict) -> list[dict]:
+def find_matches(smirks: str, codes: dict, rxn_sim_threshold: float, concatenate: bool = False, fp: str = 'MACCS') -> \
+        list[dict]:
     """Find matches in the template codes."""
     matches: list[dict] = []
     for code, template in tqdm(codes.items()):
-        rxn_sim = calculate_rxn_similarity(smirks, transform_retro_to_forward(template))
-        if rxn_sim >= 0.46:  # catch as many as possible
+        rxn_sim = calculate_rxn_similarity(smirks, transform_retro_to_forward(template), concatenate=concatenate, fp=fp)
+        if rxn_sim >= rxn_sim_threshold:  # catch as many as possible
             matches.append({"template_code": code, "template": template, "rxn_sim": rxn_sim})
     # Sort matches by similarity
     matches.sort(key=lambda x: x['rxn_sim'], reverse=True)
@@ -246,16 +250,19 @@ def find_matches(smirks: str, codes: dict) -> list[dict]:
     return matches
 
 
-def match_template_codes(grouped: list[dict], codes: dict) -> list[dict]:
+def match_template_codes(grouped: list[dict], codes: dict, rxn_sim_threshold: float = 0.2, concatenate: bool = False,
+                         fp: str = 'MACCS') -> list[dict]:
     """Match template codes to grouped smirks."""
     logger.info("Matching template codes to grouped smirks")
     for group in tqdm(grouped):
         logger.info(f"Matching {group['name']}")
-        templates: list[dict] = find_matches(group['smirks'], codes)
+        templates: list[dict] = find_matches(group['smirks'], codes, rxn_sim_threshold=rxn_sim_threshold,
+                                             concatenate=concatenate, fp=fp)
         group['uspto_templates'] = templates
         for rxn in group['matched']:
             smirks = rxn['smirks']
-            templates: list[dict] = find_matches(smirks, codes)
+            templates: list[dict] = find_matches(smirks, codes, rxn_sim_threshold=rxn_sim_threshold,
+                                                 concatenate=concatenate, fp=fp)
             rxn['uspto_templates'] = templates
     logger.info("Finished matching template codes")
     return grouped
@@ -268,9 +275,10 @@ def get_project_root():
     return os.path.dirname(os.path.dirname(os.path.dirname(script_path)))
 
 
-def main():
+def main(concatenate: bool, fp: str, avg_sim_threshold: float, rxn_sim_threshold: float):
     project_root = get_project_root()
     grouped_smirks_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks.json')
+    logger.info(f"Performing grouping with concatenate={concatenate}, fp={fp}, avg_sim_threshold={avg_sim_threshold}")
 
     if not os.path.exists(grouped_smirks_path):
         syn_path = os.path.join(project_root, 'syndirella', 'constants', 'RXN_SMIRKS_CONSTANTS.json')
@@ -278,10 +286,17 @@ def main():
 
         syn = load_smirks(syn_path)
         rxni = load_smirks(rxni_path)
-        grouped, not_grouped = group_smirks(syn, rxni)
+        grouped, not_grouped = group_smirks(syn, rxni, concatenate=concatenate, fp=fp,
+                                            avg_sim_threshold=avg_sim_threshold)
 
-        grouped_output_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks.json')
-        not_grouped_output_path = os.path.join(project_root, 'aizynth', 'data', 'dev', 'not_grouped_smirks.json')
+        grouped_output_path = os.path.join(
+            project_root, 'aizynth', 'data', 'dev',
+            f'grouped_smirks_concat_{concatenate}_fp_{fp}_threshold_{avg_sim_threshold}.json'
+        )
+        not_grouped_output_path = os.path.join(
+            project_root, 'aizynth', 'data', 'dev',
+            f'not_grouped_smirks_concat_{concatenate}_fp_{fp}_threshold_{avg_sim_threshold}.json'
+        )
 
         if not save_to_json(grouped, grouped_output_path):
             logger.error(f"Failed to save grouped smirks to {grouped_output_path}")
@@ -292,10 +307,22 @@ def main():
             grouped = json.load(f)
         codes = load_template_codes(home_dir=os.path.join(project_root, 'aizynth'))
         if codes:
-            grouped = match_template_codes(grouped, codes)
-            save_to_json(grouped,
-                         os.path.join(project_root, 'aizynth', 'data', 'dev', 'grouped_smirks_with_codes.json'))
+            grouped = match_template_codes(grouped, codes, rxn_sim_threshold=rxn_sim_threshold, concatenate=concatenate,
+                                           fp=fp)
+            grouped_with_codes_output_path = os.path.join(
+                project_root, 'aizynth', 'data', 'dev',
+                f'grouped_smirks_with_codes_concat_{concatenate}_fp_{fp}_threshold_{avg_sim_threshold}.json'
+            )
+            save_to_json(grouped, grouped_with_codes_output_path)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Group SMIRKS and match template codes.")
+    parser.add_argument("--concatenate", as_type=bool, default=False, help="Whether to concatenate fingerprints.")
+    parser.add_argument("--fp", type=str, default="MACCS", help="Fingerprint type (e.g., MACCS, morgan).")
+    parser.add_argument("--avg_sim_threshold", type=float, default=0.2, help="Average similarity threshold.")
+    parser.add_argument("--rxn_sim_threshold", type=float, default=0.2, help="Reaction similarity threshold.")
+    args = parser.parse_args()
+
+    main(concatenate=args.concatenate, fp=args.fp, avg_sim_threshold=args.avg_sim_threshold,
+         rxn_sim_threshold=args.rxn_sim_threshold)

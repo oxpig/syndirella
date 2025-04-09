@@ -50,6 +50,6 @@ conda info
 cd $HOME2/syndirella
 pwd;
 
-nice -19 python aizynth/dev/precompute_grouped_smirks.py
+nice -19 python aizynth/dev/precompute_grouped_smirks.py --fp maccs --concatenate False
 
 echo 'COMPLETE'
