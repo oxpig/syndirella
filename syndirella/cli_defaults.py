@@ -10,6 +10,7 @@ import os
 # If the environment variable is not set, a default path is used
 # syndirella_base_path = os.environ['SYNDIRELLA_BASE_PATH']
 syndirella_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+os.environ['DISABLE_PANDERA_IMPORT_WARNING'] = 'True'
 
 # Append the specific paths to the scaffold path
 print(syndirella_base_path)

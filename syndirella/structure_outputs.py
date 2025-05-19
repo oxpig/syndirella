@@ -23,12 +23,18 @@ logger = logging.getLogger(__name__)
 
 def add_route_info(reaction_names: List[str],
                    reactants: List[Tuple[str]],
-                   route_uuid: str) -> Dict:
+                   route_uuid: str,
+                   elab_single_reactant: bool) -> Dict:
     """
     This function formats the full route into seperate columns for each reactant.
     """
     num_steps: int = len(reaction_names)
-    route: Dict[str, str] = {'route_uuid': route_uuid}
+    try:
+        elab_single_reactant = bool(elab_single_reactant)
+    except Exception:
+        pass
+    route: Dict[str, str] = {'route_uuid': route_uuid,
+                             'elab_single_reactant': elab_single_reactant}
     for step in range(num_steps):
         route[f'{step + 1}_reaction'] = reaction_names[step]
         route[f'{step + 1}_r1_smiles'] = reactants[step][0]
@@ -182,6 +188,7 @@ def check_route_to_add(workshop: CobblersWorkshop | None) -> bool:
             route_uuid: str = workshop.route_uuid
             reaction_names: List[str] = workshop.reaction_names
             reactants: List[Tuple[str, str]] = workshop.reactants
+            elab_single_reactant: bool = workshop.elab_single_reactant
             return True
         except AttributeError:
             return False
@@ -285,7 +292,8 @@ def structure_route_outputs(error_message: str | None, error_type: str | None, o
     if check_route_to_add(workshop):  # True if route exists
         reaction_info: Dict | None = add_route_info(reaction_names=workshop.reaction_names,
                                                     reactants=workshop.reactants,
-                                                    route_uuid=workshop.route_uuid)
+                                                    route_uuid=workshop.route_uuid,
+                                                    elab_single_reactant=workshop.elab_single_reactant)
         row.update(reaction_info)
 
     if check_placement_to_add(slipper):  # True if slipper exists and at least contains hits_names

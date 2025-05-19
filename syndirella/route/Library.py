@@ -45,11 +45,12 @@ class Library:
         self.extra_dir_path: str = os.path.join(self.output_dir, "extra")
         self.num_steps: int = num_steps
         self.current_step: int = current_step
-        self.analogues_dataframes: Dict[str: pd.DataFrame] = {}
+        self.analogues_dataframes: Dict[str: Tuple[pd.DataFrame, Tuple[str, str]]] = {}
         self.filter: bool = filter
         self.route_uuid: str = route_uuid
         self.atom_diff_min: int = atom_diff_min
         self.atom_diff_max: int = atom_diff_max
+        self.elab_single_reactant_int: int | None = None
 
         self.logger = logging.getLogger(f"{__name__}")
         self.r1 = None
@@ -58,12 +59,27 @@ class Library:
     def create_library(self):
         """
         This function is used to create the analogue library from the Reaction object.
+        It handles the case where only one reactant is elaborated based on self.elab_single_reactant_int.
         """
-        for key, value in self.reaction.matched_smarts_to_reactant.items():  # can work for 1 and 2 reactants
-            reactant = value[0]
-            reactant_smarts = key
-            analogue_prefix = value[2]
-            df, analogue_columns = self.process_reactant(reactant, reactant_smarts, analogue_prefix)
+        for index, (key, value) in enumerate(
+                self.reaction.matched_smarts_to_reactant.items()):  # can work for 1 and 2 reactants
+            reactant: Chem.Mol = value[0]
+            reactant_smarts: str = key
+            analogue_prefix: str = value[2]
+
+            if self.elab_single_reactant_int is not None and index != self.elab_single_reactant_int:
+                # Run only if elab_single_reactant_int is set at matches the index in matched smarts
+                self.logger.info(
+                    f"Skipping elaboration for reactant {analogue_prefix}. Storing original reactant only.")
+                df, analogue_columns = (
+                    self.process_analogues([Chem.MolToSmiles(reactant)],
+                                           reactant_smarts,
+                                           analogue_prefix,
+                                           previous_product=False))
+                self.save_library(df, analogue_prefix)
+            else:
+                # Process the reactant as usual
+                df, analogue_columns = self.process_reactant(reactant, reactant_smarts, analogue_prefix)
             df: pd.DataFrame
             analogue_columns: Tuple[str, str]
             self.analogues_dataframes[analogue_prefix] = (df, analogue_columns)

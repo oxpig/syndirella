@@ -142,6 +142,7 @@ def elaborate_compound_with_manual_routes(product: str,
                                           scaffold_place_num: int,
                                           only_scaffold_place: bool,
                                           scaffold_place: bool,
+                                          elab_single_reactant: bool,
                                           additional_info=None):
     """
     This function is used to elaborate a single compound using a manually defined route.
@@ -155,7 +156,7 @@ def elaborate_compound_with_manual_routes(product: str,
         workshop = CobblersWorkshop(product=product, reactants=reactants, reaction_names=reaction_names,
                                     num_steps=num_steps, output_dir=output_dir, filter=False,
                                     id=fairy.generate_inchi_ID(product, isomeric=False), atom_diff_min=atom_diff_min,
-                                    atom_diff_max=atom_diff_max)
+                                    atom_diff_max=atom_diff_max, elab_single_reactant=elab_single_reactant)
         cobblers_workshops = [workshop]
         alternative_routes: List[CobblersWorkshop] | None = workshop.get_additional_routes(edit_route=True)
         if alternative_routes is not None:
@@ -184,6 +185,7 @@ def elaborate_compound_full_auto(product: str,
                                  scaffold_place_num: int,
                                  only_scaffold_place: bool,
                                  scaffold_place: bool,
+                                 elab_single_reactant: bool,
                                  additional_info=None):
     """
     This function is used to elaborate a single compound.
@@ -196,7 +198,8 @@ def elaborate_compound_full_auto(product: str,
     if not only_scaffold_place:  # continue elaboration
         cobbler = Cobbler(scaffold_compound=product,
                           output_dir=output_dir, atom_diff_min=atom_diff_min,
-                          atom_diff_max=atom_diff_max)  # check that output_dirs can be made for different routes
+                          atom_diff_max=atom_diff_max,
+                          elab_single_reactant=elab_single_reactant)  # check that output_dirs can be made for different routes
         cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
         elaborate_from_cobbler_workshops(cobbler_workshops=cobbler_workshops, template_path=template_path,
                                          hits_path=hits_path, hits=hits, batch_num=batch_num,
@@ -250,7 +253,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
                     only_scaffold_place=only_scaffold_place,
-                    scaffold_place=scaffold_place
+                    scaffold_place=scaffold_place,
+                    elab_single_reactant=elab_single_reactant
                 )
             else:
                 elaborate_compound_full_auto(
@@ -266,7 +270,8 @@ def run_pipeline(settings: Dict):
                     atom_diff_max=atom_diff_max,
                     scaffold_place_num=scaffold_place_num,
                     only_scaffold_place=only_scaffold_place,
-                    scaffold_place=scaffold_place
+                    scaffold_place=scaffold_place,
+                    elab_single_reactant=elab_single_reactant
                 )
         except Exception as e:
             tb = traceback.format_exc()
@@ -313,7 +318,8 @@ def run_pipeline(settings: Dict):
         # Log pipeline type
 
     try:
-        scaffold_place: bool = not settings['no_scaffold_place']  # if no_scaffold_place is True, do not place scaffolds
+        # if no_scaffold_place is True, do not place scaffolds
+        scaffold_place: bool = not settings['no_scaffold_place']
         if not scaffold_place:
             logger.warning(f"Skipping initial scaffold placement! Immediately starting elaboration process.")
     except KeyError:
@@ -321,6 +327,13 @@ def run_pipeline(settings: Dict):
 
     if not only_scaffold_place:
         logger.info(f"Running the pipeline with {'manual' if manual_routes else 'full auto'} routes.")
+
+    try:
+        elab_single_reactant: bool = settings['elab_single_reactant']
+        if elab_single_reactant:
+            logger.info(f"'--elab_single_reactant' set. Only elaborating a single reactant per elaboration series.")
+    except KeyError:
+        elab_single_reactant = False
 
     # Validate inputs
     check_inputs.check_pipeline_inputs(

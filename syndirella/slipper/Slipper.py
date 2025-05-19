@@ -5,19 +5,21 @@ syndirella.slipper.Slipper.py
 This module contains the Slipper class. A slipper in this metaphor is the set of molecules that is the
 scaffold of a reaction.
 """
+import glob
+import logging
+import os
+import shutil
 from typing import List, Dict, Optional
+
 import pandas as pd
+from rdkit import Chem
+from rdkit.Chem import inchi
 
 from syndirella.error import NoScaffold, NoToHippo
-from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
 from syndirella.route.Library import Library
 from syndirella.slipper.SlipperFitter import SlipperFitter
 from syndirella.slipper._placement_data import get_placement_data
-import os, shutil
-import glob
-from rdkit import Chem
-from rdkit.Chem import inchi
-import logging
+from syndirella.slipper.slipper_synthesizer.SlipperSynthesizer import SlipperSynthesizer
 
 
 class Slipper:
@@ -42,6 +44,7 @@ class Slipper:
         self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
         self.scaffold_placements: Dict[Chem.Mol, str | None] = scaffold_placements
+
         # need Fragmenstein information
         self.template: str = template  # path to pdb file
         self.hits_path: str = hits_path  # path to .sdf or .mol file
@@ -57,8 +60,8 @@ class Slipper:
         self.num_placed: int | None = None
         self.num_successful: int | None = None
         self.to_hippo_path: str | None = None
-        self.num_unique_products: int | None = None # number of unique products not including stereoisomers found at the end of the route.
-        self.num_products_enumstereo: int | None = None # number of products after stereoisomer enumeration found at the end of the route.
+        self.num_unique_products: int | None = None  # number of unique products not including stereoisomers found at the end of the route.
+        self.num_products_enumstereo: int | None = None  # number of products after stereoisomer enumeration found at the end of the route.
 
     def get_products(self) -> pd.DataFrame and str:
         """
@@ -94,7 +97,7 @@ class Slipper:
                                        scaffold_placements=self.scaffold_placements)
         slipper_fitter.atom_diff_min = self.library.atom_diff_min
         slipper_fitter.atom_diff_max = self.library.atom_diff_max
-        slipper_fitter.final_products = self.products # products with enumerated stereoisomers from final library
+        slipper_fitter.final_products = self.products  # products with enumerated stereoisomers from final library
         slipper_fitter.batch_num = self.batch_num
         slipper_fitter.final_products_pkl_path = self.final_products_pkl_path
         slipper_fitter.final_products_csv_path = self.final_products_csv_path
@@ -147,10 +150,11 @@ class Slipper:
         """
         if not any('scaffold' in name for name in hippo_df[f'{self.library.num_steps}_product_name']):
             self.logger.warning("Scaffold was not found in the scaffold names of the HIPPO output.")
-            raise NoScaffold(message=f"Scaffold was not found in the scaffold names of the HIPPO output at {hippo_path}."
-                                     f"Most likely due to an incorrectly written SMIRKS.",
-                             route_uuid=self.route_uuid,
-                             inchi=self.library.id)
+            raise NoScaffold(
+                message=f"Scaffold was not found in the scaffold names of the HIPPO output at {hippo_path}."
+                        f"Most likely due to an incorrectly written SMIRKS.",
+                route_uuid=self.route_uuid,
+                inchi=self.library.id)
 
     def _load_products_dfs(self, products_files: List[str]) -> Dict[int, pd.DataFrame]:
         """
@@ -160,7 +164,8 @@ class Slipper:
         for file in products_files:
             df = pd.read_pickle(file)
             if len(df) == 0:
-                self.logger.info(f"Empty dataframe found in {file}. Continuing with next file to structure hippo outputs")
+                self.logger.info(
+                    f"Empty dataframe found in {file}. Continuing with next file to structure hippo outputs")
                 continue
             step = df['step'].iloc[0]
             product_dfs[step] = df
@@ -265,7 +270,7 @@ class Slipper:
             r2_is_previous_product: bool = None
         # find which reactants were products of the previous step
         r_previous_product: int | None = self.which_reactant_was_previous_product(r1_is_previous_product,
-                                                                           r2_is_previous_product)
+                                                                                  r2_is_previous_product)
         product_smiles: List[str] = products_df['smiles'].tolist()
         product_names: List[str] = products_df['name'].tolist()
         try:
@@ -274,6 +279,16 @@ class Slipper:
             flags = [None if pd.isna(flag) else flag for flag in flags]
         except KeyError:
             flags: List[str | None] = [None] * len(products_df)
+        single_reactant_elab: bool = products_df['single_reactant_elab'].iloc[0]
+        # make HIPPO output dataframe
+        hippo_df_step = pd.DataFrame({f'{step}_reaction': reaction,
+                                      f'{step}_r1_smiles': r1_smiles,
+                                      f'{step}_r2_smiles': r2_smiles,
+                                      f'{step}_r_previous_product': r_previous_product,
+                                      f'{step}_product_smiles': product_smiles,
+                                      f'{step}_product_name': product_names,
+                                      f'{step}_flag': flags,
+                                      f'{step}_single_reactant_elab': single_reactant_elab})
         # variables for the last step
         if step == self.library.num_steps:
             num_atom_diff: List[int] = products_df['num_atom_diff'].tolist()
@@ -286,15 +301,7 @@ class Slipper:
             regarded: List[bool] = products_df['regarded'].tolist()
             intra_geometry_pass: List[bool] = products_df['intra_geometry_pass'].tolist()
             path_to_mol: List[Optional[str]] = products_df['path_to_mol'].tolist()
-        # make HIPPO output dataframe
-        hippo_df_step = pd.DataFrame({f'{step}_reaction': reaction,
-                                      f'{step}_r1_smiles': r1_smiles,
-                                      f'{step}_r2_smiles': r2_smiles,
-                                      f'{step}_r_previous_product': r_previous_product,
-                                      f'{step}_product_smiles': product_smiles,
-                                      f'{step}_product_name': product_names,
-                                      f'{step}_flag': flags})
-        if step == self.library.num_steps:
+
             hippo_df_step[f'{step}_num_atom_diff'] = num_atom_diff
             hippo_df_step[f'{step}_stereoisomer'] = stereoisomer
             hippo_df_step[f'error'] = error
@@ -332,10 +339,10 @@ class Slipper:
         try:
             if os.path.isfile(path) or os.path.islink(path):
                 os.unlink(path)
-                #print(f"Deleted file: {path}")
+                # print(f"Deleted file: {path}")
             elif os.path.isdir(path):
                 shutil.rmtree(path)
-                #print(f"Deleted directory: {path}")
+                # print(f"Deleted directory: {path}")
         except Exception as e:
             self.logger.warning('Failed to delete %s. Reason: %s' % (path, e))
 

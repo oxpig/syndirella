@@ -14,7 +14,6 @@ def handle_file_path(user_path: str) -> str:
 
 
 class TestPipelineIntegration(unittest.TestCase):
-    # TODO: Need to check when getting AiZynthFinder functionality
     def setUp(self):
         self.settings = {
             'input': handle_file_path('../syndirella_input_template.csv'),
@@ -24,7 +23,7 @@ class TestPipelineIntegration(unittest.TestCase):
             'metadata': handle_file_path('inputs/test_inputs/metadata.csv'),
             'batch_num': 1,
             'atom_diff_min': 0,
-            'atom_diff_max': 10,
+            'atom_diff_max': 1,  # use only 1 for faster test
             'scaffold_place': True,
             'scaffold_place_num': 1,
             'long_code_column': 'Long code',
@@ -34,6 +33,7 @@ class TestPipelineIntegration(unittest.TestCase):
             shutil.rmtree(self.settings['output'])
 
     def test_pipeline_creates_output(self):
+        print('This will take a while... I would get a coffee if I were you')
         logging.basicConfig(level=logging.INFO)
         run_pipeline(settings=self.settings)
         self.assertTrue(os.path.exists(self.settings['output']))

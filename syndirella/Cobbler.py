@@ -27,11 +27,13 @@ class Cobbler:
                  scaffold_compound: str,
                  output_dir: str,
                  atom_diff_min: int,
-                 atom_diff_max: int):
+                 atom_diff_max: int,
+                 elab_single_reactant: bool):
         self.scaffold_compound: str = scaffold_compound
         self.id: str = fairy.generate_inchi_ID(self.scaffold_compound, isomeric=False)
         self.atom_diff_min: int = atom_diff_min
         self.atom_diff_max: int = atom_diff_max
+        self.elab_single_reactant: bool = elab_single_reactant
 
         # Manifold API
         self.url = os.environ["MANIFOLD_API_URL"]
@@ -87,7 +89,8 @@ class Cobbler:
             filter=False,
             atom_diff_min=self.atom_diff_min,
             atom_diff_max=self.atom_diff_max,
-            atoms_ids_expansion=None
+            atoms_ids_expansion=None,
+            elab_single_reactant=self.elab_single_reactant,
         )
         return cobblers_workshop
 

@@ -69,6 +69,9 @@ def config_parser(syndirella_base_path: str):
     parser.add_argument('--no_scaffold_place', action='store_true',
                         help="Do not place scaffolds initially before elaborating, "
                              "immediately start elaboration process.")
+    parser.add_argument('--elab_single_reactant', action='store_true',
+                        help="Only elaborate one reactant per elaboration series. "
+                             "Warning: Functionality only provided for single step reactions.")
     return parser
 
 

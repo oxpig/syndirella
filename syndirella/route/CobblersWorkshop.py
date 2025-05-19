@@ -13,7 +13,7 @@ import shortuuid
 from rdkit import Chem
 
 from syndirella.SMARTSHandler import SMARTSHandler
-from syndirella.error import SMARTSError, MolError
+from syndirella.error import SMARTSError, MolError, SingleReactantElabError
 from syndirella.route.Library import Library
 from syndirella.slipper.Slipper import Slipper
 from .CobblerBench import CobblerBench
@@ -34,6 +34,7 @@ class CobblersWorkshop():
                  id: str,
                  atom_diff_min: int,
                  atom_diff_max: int,
+                 elab_single_reactant: bool = False,
                  atoms_ids_expansion: dict = None):
         self.logger = logging.getLogger(f"{__name__}")
         self.route_uuid: str = shortuuid.ShortUUID().random(length=6)
@@ -43,6 +44,8 @@ class CobblersWorkshop():
         self.reactants: List[Tuple[str]] = self.check_reactants(reactants)
         self.atom_diff_min: int = atom_diff_min
         self.atom_diff_max: int = atom_diff_max
+        self.elab_single_reactant_int: int | None = None
+        self.elab_single_reactant: bool = self.check_and_assign_elab_setting(elab_single_reactant)
 
         self.num_steps: int = num_steps
         self.output_dir: str = output_dir
@@ -107,6 +110,21 @@ class CobblersWorkshop():
                                   route_uuid=self.route_uuid)
         return reaction_names
 
+    def check_and_assign_elab_setting(self, elab_single_reactant: bool) -> bool:
+        """
+        Checks if elab_single_reactant is only True for single step routes.
+        """
+        if elab_single_reactant and (len(self.reaction_names) != 1 or len(self.reactants[0]) != 2):
+            self.logger.error(
+                f"Setting 'elab_single_reactant' to True is only allowed for single step routes. Stopping...")
+            raise SingleReactantElabError(message=f"The route {self.reaction_names} is not a single step route.",
+                                          smiles=self.product,
+                                          inchi=self.id,
+                                          route_uuid=self.route_uuid)
+        if elab_single_reactant:
+            self.elab_single_reactant_int: int = self.assign_single_reactant_int()
+        return elab_single_reactant
+
     def get_cobbler_bench(self, step: int) -> CobblerBench:
         """
         This function is used to get the cobbler bench for a specific step.
@@ -123,10 +141,12 @@ class CobblersWorkshop():
                                      filter=self.filter,
                                      route_uuid=self.route_uuid,
                                      atom_diff_min=self.atom_diff_min,
-                                     atom_diff_max=self.atom_diff_max)
+                                     atom_diff_max=self.atom_diff_max,
+                                     elab_single_reactant=self.elab_single_reactant)
+        cobbler_bench.elab_single_reactant_int = self.elab_single_reactant_int
         return cobbler_bench
 
-    def define_reaction(self):
+    def define_route(self):
         """
         This function is used to define the reaction and finding ids and attachment atoms.
         """
@@ -141,8 +161,9 @@ class CobblersWorkshop():
         [(('reaction1_name', ('reactant1_smiles','reactant2_smiles)), ('reaction2_name', ('reactant2_smiles',)), ...), # first route
         (('reaction1_name', ('reactant1_smiles','reactant2_smiles)), ('reaction2_name', ('reactant2_smiles',)), ...),...]
         """
+        # can either be single route or more than one
         workshops = []
-        for route in routes:
+        for i, route in enumerate(routes):
             product: str = self.product
             reactants: List[Tuple[str]] = [rxn[1] for rxn in route]
             reaction_names: List[str] = [rxn[0] for rxn in route]
@@ -156,7 +177,16 @@ class CobblersWorkshop():
                                                 id=self.id,
                                                 atoms_ids_expansion=self.atoms_ids_expansion,
                                                 atom_diff_min=self.atom_diff_min,
-                                                atom_diff_max=self.atom_diff_max)
+                                                atom_diff_max=self.atom_diff_max,
+                                                elab_single_reactant=self.elab_single_reactant)
+            if self.elab_single_reactant:
+                if reaction_names == self.reaction_names and all(
+                        set(r) in [set(x) for x in self.reactants] for r in reactants):
+                    # it is the original route
+                    elab_int = 1 if self.elab_single_reactant_int == 0 else 0
+                else:
+                    elab_int = 0 if i % 2 == 0 else 1
+                cobbler_workshop.elab_single_reactant_int = elab_int
             workshops.append(cobbler_workshop)
         if len(workshops) == 0:
             self.logger.error(f"No additional routes for {self.product} could be created...")
@@ -165,26 +195,47 @@ class CobblersWorkshop():
     def configure_additional_routes(self, reaction_names_to_replace: List[str]) -> List:
         """
         This function is used to configure the additional routes from the combination of all the cobbler benches.
+        Could be improved to read better...
         """
         master_benches = []
         for bench in self.cobbler_benches:
-            if len(bench.additional_reactions) == 0:  # only add original if no additional reactions
+            all_benches = [rxn for rxn in bench.additional_reactions]
+            master_benches.extend(all_benches)
+        combinations = list(itertools.product(master_benches))
+        if not self.elab_single_reactant:
+            # check there is no route that matches the original if an extra route is not needed
+            for route in combinations:
+                if all([rxn[0] in reaction_names_to_replace for rxn in route]):
+                    combinations.remove(route)
+        if self.elab_single_reactant:
+            # Copy each combination and insert it directly after the original
+            for i in range(len(combinations)):
+                combinations.insert(2 * i + 1, combinations[2 * i])
+            # add the workshop reaction first in the list
+            original_route = []
+            for bench in self.cobbler_benches:
                 original_bench = (bench.reaction_name, bench.reactant_smiles)
-                all_benches = [original_bench]
-            else:
-                all_benches = [rxn for rxn in bench.additional_reactions]
-            master_benches.append(all_benches)
-        combinations = list(itertools.product(*master_benches))
-        # check there is no route that matches the original
-        for route in combinations:
-            if all([rxn[0] in reaction_names_to_replace for rxn in route]):
-                combinations.remove(route)
+                original_route.append(original_bench)
+            combinations.insert(0, tuple(original_route))
         additional_routes: List[CobblersWorkshop] = self.format_workshops_from_routes(combinations)
         return additional_routes
 
+    def assign_single_reactant_int(self) -> int:
+        """
+        Assigns the reactant int to elaborate for the route, always assign 0 if not already assigned.
+        """
+        if self.elab_single_reactant_int is None:
+            elab_single_reactant_int = 0
+        else:
+            elab_single_reactant_int = self.elab_single_reactant_int
+        self.logger.info(
+            f"Assigning the reactant to elaborate as {elab_single_reactant_int} out of {self.reactants[0]}")
+        return elab_single_reactant_int
+
     def get_additional_routes(self, edit_route: bool = True) -> List | None:
         """
-        This function is used to get an alternative route (as a CobblersWorkshop object) if it is needed.
+        This function is used to get an alternative route (as a CobblersWorkshop object) if it is needed such as
+        containing alternative reactions or setting only one reactant to elaborate.
 
         Args:
         edit_route: bool
@@ -192,15 +243,17 @@ class CobblersWorkshop():
             If False, an additional route containing the additional reactions specified from a Postera search will be
                 returned.
         """
-        self.define_reaction()
+        self.define_route()
         reaction_names_to_replace = []
         for bench in self.cobbler_benches:
             if bench.get_additional_reactions():  # Checks if alternative reaction is possible and get it
                 reaction_names_to_replace.append(bench.reaction_name)
         if len(reaction_names_to_replace) == 0:
             self.logger.info(f"No alternative reactions found for {self.product}.")
-            return None
-        additional_routes: List[CobblersWorkshop] = self.configure_additional_routes(reaction_names_to_replace)
+            if self.elab_single_reactant is False:
+                return None
+        additional_routes: List[CobblersWorkshop] = self.configure_additional_routes(
+            reaction_names_to_replace)
         return additional_routes
 
     def log_route(self):
