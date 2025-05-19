@@ -69,7 +69,7 @@ class SlipperSynthesizer:
         if len(self.analogues_dataframes_to_react) == 1:
             self.products = self.get_products_from_single_reactant()
             return self.products
-        # Get cartesian scaffold of all analogues
+        # Get cartesian combination of all analogues
         self.reactant_combinations: pd.DataFrame = self.combine_analogues()
         # Find products by applying reaction
         self.products: pd.DataFrame = self.find_products_from_reactants()
@@ -606,8 +606,9 @@ class SlipperSynthesizer:
         products['reaction'] = self.library.reaction.reaction_name
         products['step'] = self.library.current_step
         products['total_steps'] = self.library.num_steps
-        products['base_compound'] = f"{self.library.id}-scaffold"
+        products['scaffold'] = f"{self.library.id}-scaffold"
         products['route_uuid'] = self.route_uuid
+        products['single_reactant_elab'] = True if self.library.elab_single_reactant_int is not None else False
         # Add additional info
         if self.additional_info:
             for key, value in self.additional_info.items():
@@ -677,7 +678,7 @@ class SlipperSynthesizer:
             self.final_products_pkl_path: str = f"{self.output_dir}/{pkl_name}"
             self.final_products_csv_path: str = f"{self.output_dir}/{csv_name}"
             self.logger.info(f"Saving final products to {self.final_products_pkl_path} \n")
-            os.makedirs(f"{self.output_dir}/", exist_ok=True)
+            os.makedirs(f"{self.output_dir}", exist_ok=True)
             self.products.to_pickle(self.final_products_pkl_path)
             self.logger.info(f"Saving final products to {self.final_products_csv_path} \n")
             self.products.to_csv(self.final_products_csv_path, index=False)

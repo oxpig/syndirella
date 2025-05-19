@@ -148,3 +148,14 @@ class APIRetryLimitExceeded(ChemicalErrorBase):
                  route_uuid: str | None = None):
         self.route_uuid = route_uuid
         super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)
+
+
+class SingleReactantElabError(ChemicalErrorBase):
+    def __init__(self,
+                 message: str = "There was an error with producing a series with only a single reactant elaborated.",
+                 inchi: str | None = None,
+                 smiles: str | None = None,
+                 mol: Chem.Mol | None = None,
+                 route_uuid: str | None = None):
+        self.route_uuid = route_uuid
+        super().__init__(message=message, inchi=inchi, smiles=smiles, mol=mol)

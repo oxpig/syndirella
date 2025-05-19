@@ -5,6 +5,7 @@
 
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
@@ -19,21 +20,20 @@ release = '2024'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-              'sphinx.ext.autodoc',
-              'sphinx.ext.doctest',
-              'sphinx.ext.extlinks',
-              'sphinx.ext.mathjax',
-              'sphinx.ext.viewcode',
-              'sphinx.ext.napoleon',
-              'sphinx.ext.intersphinx',
-              'autoapi.extension'
-            ]
+    'sphinx.ext.autodoc',
+    'sphinx.ext.doctest',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
+    'autoapi.extension'
+]
 
 templates_path = ['_templates']
 exclude_patterns = []
 autoapi_dirs = [os.path.abspath("../../")]
-autoapi_ignore = ['*/tests/*', '*/conf.py']  # ignore test files and conf.py
-
+autoapi_ignore = ['*/tests_OLD/*', '*/conf.py']  # ignore test files and conf.py
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

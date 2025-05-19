@@ -1,42 +1,50 @@
 [
-    {
-        "name": "Amide_schotten-baumann",
-        "replace_with": "Amidation",
-        "reactant_smarts_to_replace": "[#6X3;!$(C-N):1](=[OX1:2])-[#17,#9,#35:3]",
-        "reactant_id_to_replace": 2,
-        "reactant_smarts_to_replace_with": "[#6X3;!$(C-N):1](=[OX1:2])-[#8;H1:3]",
-        "replacement_connecting_atom_id": 0
-    },
-    {
-        "name": "Amide_Schotten-Baumann_with_amine",
-        "replace_with": "Amidation",
-        "reactant_smarts_to_replace": "[#6X3;!$(C-N):1](=[OX1:2])-[#17,#9,#35:3]",
-        "reactant_id_to_replace": 1,
-        "reactant_smarts_to_replace_with": "[#6X3;!$(C-N):1](=[OX1:2])-[#8;H1:3]",
-        "replacement_connecting_atom_id": 0
-    },
-    {
-        "name": "Sulfonamide_Schotten-Baumann_with_amine_(intermolecular)",
-        "replace_with": "Amidation",
-        "reactant_smarts_to_replace": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9,#35]",
-        "reactant_id_to_replace": 1,
-        "reactant_smarts_to_replace_with": "[#6:1](=[#8:2])-[#8;H1]",
-        "replacement_connecting_atom_id": 0
-    },
-    {
-        "name": "Formation_of_urea_from_two_amines",
-        "replace_with": "Formation_of_urea_by_displacement_of_imidazole_by_amine",
-        "reactant_smarts_to_replace": "[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o)]",
-        "reactant_id_to_replace": 2,
-        "reactant_smarts_to_replace_with": "[#7:1]-[C](=[#8X1])[nX3]1[c&H1X3][c&H1X3][nX2][c&H1X3]1",
-        "replacement_connecting_atom_id": 0
-    },
-    {
-        "name": "Ester_amidation",
-        "replace_with": "Amidation",
-        "reactant_smarts_to_replace": "[C;H0;D3;+0;R0:1](=[O;D1;H0:2])-[O;R0X2]",
-        "reactant_id_to_replace": 1,
-        "reactant_smarts_to_replace_with": "[#6:1](=[#8:2])-[#8;H1]",
-        "replacement_connecting_atom_id": 0
-    }
+  {
+    "name": "Amide_schotten-baumann",
+    "replace_with": "Amidation",
+    "reactant_smarts_to_replace": "[#6X3;!$(C-N):1](=[OX1:2])-[#17,#9,#35:3]",
+    "reactant_id_to_replace": 2,
+    "reactant_smarts_to_replace_with": "[#6X3;!$(C-N):1](=[OX1:2])-[#8;H1:3]",
+    "replacement_connecting_atom_id": 0
+  },
+  {
+    "name": "Amide_Schotten-Baumann_with_amine",
+    "replace_with": "Amidation",
+    "reactant_smarts_to_replace": "[#6X3;!$(C-N):1](=[OX1:2])-[#17,#9,#35:3]",
+    "reactant_id_to_replace": 1,
+    "reactant_smarts_to_replace_with": "[#6X3;!$(C-N):1](=[OX1:2])-[#8;H1:3]",
+    "replacement_connecting_atom_id": 0
+  },
+  {
+    "name": "Sulfonamide_Schotten-Baumann_with_amine_(intermolecular)",
+    "replace_with": "Amidation",
+    "reactant_smarts_to_replace": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9,#35]",
+    "reactant_id_to_replace": 1,
+    "reactant_smarts_to_replace_with": "[#6:1](=[#8:2])-[#8;H1]",
+    "replacement_connecting_atom_id": 0
+  },
+  {
+    "name": "Formation_of_urea_from_two_amines",
+    "replace_with": "Formation_of_urea_by_displacement_of_imidazole_by_amine",
+    "reactant_smarts_to_replace": "[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o)]",
+    "reactant_id_to_replace": 2,
+    "reactant_smarts_to_replace_with": "[#7:1]-[C](=[#8X1])[nX3]1[c&H1X3][c&H1X3][nX2][c&H1X3]1",
+    "replacement_connecting_atom_id": 0
+  },
+  {
+    "name": "Ester_amidation",
+    "replace_with": "Amidation",
+    "reactant_smarts_to_replace": "[C;H0;D3;+0;R0:1](=[O;D1;H0:2])-[O;R0X2]",
+    "reactant_id_to_replace": 1,
+    "reactant_smarts_to_replace_with": "[#6:1](=[#8:2])-[#8;H1]",
+    "replacement_connecting_atom_id": 0
+  },
+  {
+    "name": "Alpha_alkylation_of_ester/amide",
+    "replace_with": "Alpha_alkylation_of_ester/amide_alcohol",
+    "reactant_smarts_to_replace": "[C;R0:1]-[Cl,Br]",
+    "reactant_id_to_replace": 1,
+    "reactant_smarts_to_replace_with": "[C;R0:1]-[OH]",
+    "replacement_connecting_atom_id": 0
+  }
 ]

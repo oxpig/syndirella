@@ -1,0 +1,5 @@
+﻿smiles,hit1,hit2,hit3,template,compound_set
+O=C(NC1CC(C(F)(F)F)C1)c1cc2ccsc2[nH]1,Ax0556a,Ax0566a,,Ax0310a,syndirella_auto_1
+O=C1NCCC1C(=O)N1CCCC(NCc2ccccc2)C1,Ax0365a,Ax0528a,,Ax0310a,syndirella_auto_1
+CC(=O)Nc1cc(CC(=O)NCC(NC(=O)CCl)c2cccnc2)c(NC(C)=O)nn1,1346a,,,Ax1346a,syndirella_auto_1
+O=C(Cc1cn[nH]c1CC(=O)N1CCCC(C(F)(F)F)C1)NC1CC1,X0926,x1346,x1019,X0926,syndirella_auto_1

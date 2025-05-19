@@ -63,6 +63,11 @@ def check_template_paths(template_dir: str, csv_path: str, metadata_path: str) -
         logger.error("The template directory does not exist.")
         raise NotADirectoryError(f"The template directory {template_dir} does not exist.")
     df = pd.read_csv(csv_path)
+
+    if not len(df[df['template'].notna()]):
+        logger.error("The template directory does not exist.")
+        raise ValueError(f"Input CSV does not contain template values")
+
     templates: List[str] = [template.strip() for template in df['template'].tolist()]  # remove whitespace
     code_dict: Dict = metadata_dict(metadata_path)
     # get exact code for hit from metadata
@@ -186,10 +191,10 @@ def check_hit_names(csv_path: str, hits_path: str, metadata_path: str, long_code
     if not all([any([longcode in sdf_name for sdf_name in sdf_names]) for longcode in hit_longcodes]):
         logger.critical(f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
                         f" from Fragalysis.")
-        raise ValueError(
-            f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
-            f" from Fragalysis. Or set the code_column argument to the correct column in the metadata (such as "
-            f"'Experiment code' or 'Compound code'.")
+        # raise ValueError(
+        #     f"Not all hit names found in the sdf file. You might need to re-download hits_path and metadata"
+        #     f" from Fragalysis. Or set the code_column argument to the correct column in the metadata (such as "
+        #     f"'Experiment code' or 'Compound code'.")
 
 
 def check_apo_template(template_path: str) -> None:
@@ -269,12 +274,12 @@ def get_template_path(template_dir: str, template: str, metadata_path: str) -> s
     else:
         template_path = glob2.glob(f"{template_dir}/**/*{exact_code[0]}*.pdb")
     if len(template_path) == 0:
-        logger.critical(f"The template {exact_code[0]} does not exist in the template directory.")
-        raise FileNotFoundError(f"The template {exact_code[0]} does not exist in the template directory.")
+        logger.critical(f"The template {template} does not exist in the template directory.")
+        raise FileNotFoundError(f"The template {template} does not exist in the template directory.")
     elif len(template_path) > 1:
-        logger.critical(f"Multiple templates found for {exact_code[0]}. Please ensure that the template name is unique "
+        logger.critical(f"Multiple templates found for {template}. Please ensure that the template name is unique "
                         f"in the input csv.")
-        raise ValueError(f"Multiple templates found for {exact_code[0]}. Please ensure that the template name is unique"
+        raise ValueError(f"Multiple templates found for {template}. Please ensure that the template name is unique"
                          f"in the input csv.")
     return template_path[0]
 

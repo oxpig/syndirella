@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=NAME
+#SBATCH --job.sh-name=NAME
 #SBATCH --chdir=[path]
 #SBATCH --output=[path]/logs/slurm-log_%x_%j.log
 #SBATCH --error=[path]/logs/slurm-error_%x_%j.log

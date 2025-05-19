@@ -1,4 +1,3 @@
-
 ==========
 User Guide
 ==========
@@ -21,7 +20,17 @@ Setting Up
 
 Once you have installed Syndirella, follow these steps to set it up:
 
-1. Manifold API Key:
+1. Install AiZynthFinder:
+-------------------------------------
+
+.. code-block:: bash
+
+    pip install aizynthfinder
+    cd syndirella/aizynth
+    download_public_data .
+    export AIZYNTH_CONFIG_FILE="path/to/syndirella/aizynth/config.yml"
+
+2. Manifold API Key Setup:
 -------------------------------------
 
 Syndirella uses `Postera's Manifold <https://app.postera.ai/>`_ API to perform retrosynthesis searches of input scaffolds
@@ -267,6 +276,27 @@ Structure of the important columns are:
 
 If there are `NaN` values for all above columns, it means that there are no routes found for the scaffold.
 
+Usage Option: Only Elaborate One Reactant per Series
+========================================================
+
+.. attention::
+
+    This functionality is only provided for single step reactions.
+
+You can have Syndirella output elaboration series for one reactant at a time. For example, if the route is a single step
+amidation, there will be two elaboration series output: (1) only elaborating reactant 1 and (2) only elaborating reactant 2.
+
+.. note::
+
+    Each series per reactant will be handled as seperate, so they will have their own unique route uuids. If an
+    alternative route is found for the original route, the alternative route will produce two seperate series as well
+    for each reactant elaboration.
+
+.. code-block:: bash
+
+    syndirella --input [path_to_input.csv] --output [path_to_output_dir] --templates [path_to_templates_dir]
+    --hits_path [path_to_fragments.sdf] --metadata [path_to_metadata.csv] --elab_single_reactant
+
 Command Line Interface
 ======================
 
@@ -304,6 +334,9 @@ Command Line Interface
                             Column name for long code in metadata csv to match to SDF name. The column can contain a substring for the SDF name. (default: Long code)
       --just_retro          Only run retrosynthesis querying of scaffolds. (default: False)
       --no_scaffold_place   Do not place scaffolds initially before elaborating, immediately start elaboration process. (default: False)
+      --elab_single_reactant
+                            Only elaborate one reactant per elaboration series. Warning: Functionality only provided for single step reactions. (default: False)
+
 
         Syndirella is installed at [path_to_installation]
 

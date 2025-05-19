@@ -9,7 +9,7 @@ fi
 # Use the first argument as the JOB_LIST file
 JOB_LIST="$1"
 
-# Use the second argument as the directory containing the job scripts
+# Use the second argument as the directory containing the job.sh scripts
 JOB_DIR="$2"
 
 # Use the third argument as the directory for log files
@@ -21,7 +21,7 @@ if [ ! -d "$LOG_DIR" ]; then
     exit 1
 fi
 
-# Extract the base name of the job list file (without the directory path)
+# Extract the base name of the job.sh list file (without the directory path)
 JOB_LIST_BASENAME=$(basename "$JOB_LIST")
 
 # Replace the file extension with .log and use the log directory
@@ -30,19 +30,19 @@ LOG_FILE="${LOG_DIR}/${JOB_LIST_BASENAME%.*}.log"
 # Clear the log file if it already exists
 > "$LOG_FILE"
 
-# Loop through each job script in the list
+# Loop through each job.sh script in the list
 while IFS= read -r job_script; do
-    # Full path to the job script
+    # Full path to the job.sh script
     full_path="$JOB_DIR/$job_script"
 
     if [[ -f "$full_path" ]]; then
-        # Submit the job and capture the job ID
+        # Submit the job.sh and capture the job.sh ID
         job_id=$(sbatch "$full_path" | awk '{print $4}')
 
-        # Log the job ID with the corresponding script name
+        # Log the job.sh ID with the corresponding script name
         echo "$job_script: $job_id" >> "$LOG_FILE"
 
-        # Wait for 30 seconds before submitting the next job
+        # Wait for 30 seconds before submitting the next job.sh
         sleep 30
     else
         echo "Job script $full_path not found!" >> "$LOG_FILE"

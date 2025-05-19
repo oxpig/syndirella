@@ -27,14 +27,16 @@ class Cobbler:
                  scaffold_compound: str,
                  output_dir: str,
                  atom_diff_min: int,
-                 atom_diff_max: int):
+                 atom_diff_max: int,
+                 elab_single_reactant: bool):
         self.scaffold_compound: str = scaffold_compound
         self.id: str = fairy.generate_inchi_ID(self.scaffold_compound, isomeric=False)
         self.atom_diff_min: int = atom_diff_min
         self.atom_diff_max: int = atom_diff_max
+        self.elab_single_reactant: bool = elab_single_reactant
 
         # Manifold API
-        self.url = "https://api.postera.ai"
+        self.url = os.environ["MANIFOLD_API_URL"]
         self.api_key = os.environ["MANIFOLD_API_KEY"]
         self.reaction_names = SMARTSHandler().reaction_smarts.keys()
         self.n_reactants_per_reaction = SMARTSHandler().n_reactants_per_reaction
@@ -87,7 +89,8 @@ class Cobbler:
             filter=False,
             atom_diff_min=self.atom_diff_min,
             atom_diff_max=self.atom_diff_max,
-            atoms_ids_expansion=None
+            atoms_ids_expansion=None,
+            elab_single_reactant=self.elab_single_reactant,
         )
         return cobblers_workshop
 
@@ -105,6 +108,9 @@ class Cobbler:
             reaction_names = [reaction['name'].replace(" ", "_") for reaction in reactions]
             if all([name in self.reaction_names for name in reaction_names]):
                 passing_routes.append(reactions)
+            else:
+                not_allowed_reactions = [name for name in reaction_names if name not in self.reaction_names]
+                self.logger.debug(f'Reactions in route that were not found in SMIRKS list: {not_allowed_reactions}')
         return passing_routes
 
     def filter_routes(self, routes: List[List[Dict]]) -> List[List[Dict]]:
