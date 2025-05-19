@@ -7,7 +7,7 @@ packages = ["syndirella"]
 
 [project]
 name = "syndirella"
-version = "3.0.0-alpha"
+version = "3.0.1-alpha"
 authors = [
     { name = "Kate Fieseler", email = "kate.fieseler@stats.ox.ac.uk" },
 ]
