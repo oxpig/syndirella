@@ -30,13 +30,7 @@ Once you have installed Syndirella, follow these steps to set it up:
     download_public_data .
     export AIZYNTH_CONFIG_FILE="path/to/syndirella/aizynth/config.yml"
 
-
-Setting Up
-==========
-
-Once you have installed Syndirella, follow these steps to set it up:
-
-1. Manifold API Key:
+2. Manifold API Key Setup:
 -------------------------------------
 
 Syndirella uses `Postera's Manifold <https://app.postera.ai/>`_ API to perform retrosynthesis searches of input scaffolds
