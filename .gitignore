@@ -7,6 +7,8 @@ old_README.md
 /syndirella_input_template_old.csv
 /syndirella_input_template_manual_old.csv
 /syndirella/constants/ADDITIONAL_RXN_OPTIONS.json
+setup.py
+requirements.txt
 
 # tests_OLD
 /syndirella/tests_OLD/
