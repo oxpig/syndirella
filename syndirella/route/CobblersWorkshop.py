@@ -63,9 +63,6 @@ class CobblersWorkshop():
         self.reference_db: str | None = reference_db
         self.retro_tool: RetrosynthesisTool = retro_tool
 
-        if not self.reference_db:
-            raise ValueError
-
     def check_product(self, product: str) -> str:
         """
         Checks scaffold can be converted to a molecule and can be sanitized. If not, logs an error.
