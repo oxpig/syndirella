@@ -36,7 +36,8 @@ class Cobbler:
                  atom_diff_max: int,
                  elab_single_reactant: bool,
                  retro_tool: RetrosynthesisTool = DEFAULT_RETROSYNTHESIS_TOOL,
-                 db_search_tool: DatabaseSearchTool = DEFAULT_DATABASE_SEARCH_TOOL):
+                 db_search_tool: DatabaseSearchTool = DEFAULT_DATABASE_SEARCH_TOOL,
+                 reference_db: str | None = None):
         self.scaffold_compound: str = scaffold_compound
         self.id: str = fairy.generate_inchi_ID(self.scaffold_compound, isomeric=False)
         self.atom_diff_min: int = atom_diff_min
@@ -55,6 +56,7 @@ class Cobbler:
         self.logger = logging.getLogger(f"{__name__}")
 
         self.db_search_tool: DatabaseSearchTool = db_search_tool
+        self.reference_db: str | None = reference_db
 
     def _check_retro_tool(self, retro_tool: RetrosynthesisTool) -> RetrosynthesisTool:
         """
@@ -139,7 +141,8 @@ class Cobbler:
                                                                 atom_diff_max=self.atom_diff_max,
                                                                 elab_single_reactant=self.elab_single_reactant,
                                                                 db_search_tool=self.db_search_tool,
-                                                                retro_tool=self.retro_tool)
+                                                                retro_tool=self.retro_tool,
+                                                                reference_db=self.reference_db)
         return cobblers_workshop
 
     def get_passing_routes(self, routes: List[Dict[str, List[Dict[str, str]]]]) -> List[List[Dict]]:

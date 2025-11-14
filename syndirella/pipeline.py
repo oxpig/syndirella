@@ -284,6 +284,7 @@ def elaborate_compound_full_auto(product: str,
                                  elab_single_reactant: bool,
                                  retro_tool: RetrosynthesisTool,
                                  db_search_tool: DatabaseSearchTool,
+                                 reference_db: str | None = None,
                                  assert_scaffold_intra_geom_flatness: bool = True,
                                  additional_info=None):
     """
@@ -308,7 +309,8 @@ def elaborate_compound_full_auto(product: str,
             atom_diff_max=atom_diff_max,
             elab_single_reactant=elab_single_reactant,
             retro_tool=retro_tool,
-            db_search_tool=db_search_tool
+            db_search_tool=db_search_tool,
+            reference_db=reference_db
         )
         cobbler_workshops: List[CobblersWorkshop] = cobbler.get_routes()
         elaborate_from_cobbler_workshops(
@@ -391,6 +393,7 @@ def process_row(row: pd.Series, config: PipelineConfig):
                 elab_single_reactant=config.elab_single_reactant,
                 retro_tool=config.retro_tool,
                 db_search_tool=config.db_search_tool,
+                reference_db=config.reference_db,
                 assert_scaffold_intra_geom_flatness=config.assert_scaffold_intra_geom_flatness,
             )
     except Exception as e:
