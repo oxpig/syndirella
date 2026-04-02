@@ -16,6 +16,7 @@ os.environ['DISABLE_PANDERA_IMPORT_WARNING'] = 'True'
 rxn_smarts_path = os.path.join(syndirella_base_path, "syndirella/constants/RXN_SMIRKS_CONSTANTS.json")
 reactant_filters_path = os.path.join(syndirella_base_path, "syndirella/constants/REACTANT_FILTER_CONSTANTS.json")
 additional_rxn_options_path = os.path.join(syndirella_base_path, "syndirella/constants/ADDITIONAL_RXN_OPTIONS.json")
+substructure_to_include_path = os.path.join(syndirella_base_path, "syndirella/constants/SUBSTRUCTURE_TO_INCLUDE.json")
 
 cli_default_settings = dict(
     ranking=os.environ.get('SYNDIRELLA_RANKING', 'num_atom_diff'),
@@ -23,5 +24,6 @@ cli_default_settings = dict(
     rxn_smarts_path=rxn_smarts_path,
     reactant_filters_path=reactant_filters_path,
     additional_rxn_options_path=additional_rxn_options_path,
+    substructure_to_include_path=substructure_to_include_path,
     supressed_exceptions=(Exception,)
 )

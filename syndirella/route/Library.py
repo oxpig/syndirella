@@ -134,7 +134,8 @@ class Library:
                     self.process_analogues([Chem.MolToSmiles(reactant)],
                                            reactant_smarts,
                                            analogue_prefix,
-                                           previous_product=False))
+                                           previous_product=False,
+                                           original_reactant=reactant))
                 self.save_library(df, analogue_prefix)
             else:
                 # Process the reactant as usual
@@ -181,7 +182,8 @@ class Library:
                 self.logger.warning(f"Database search failed for {analogue_prefix}.")
                 raise APIQueryError(f"Database search of {self.db_search_tool} failed for {analogue_prefix}.")
         
-        df, analogue_columns = self.process_analogues(analogues, reactant_smarts, analogue_prefix, previous_product)
+        df, analogue_columns = self.process_analogues(analogues, reactant_smarts, analogue_prefix, previous_product,
+                                                        original_reactant=reactant)
         self.save_library(df, analogue_prefix)
         return df, analogue_columns
 
@@ -189,10 +191,13 @@ class Library:
                           analogues: List[str],
                           reactant_smarts: str,
                           analogue_prefix: str,
-                          previous_product: bool) -> pd.DataFrame:
+                          previous_product: bool,
+                          original_reactant: Chem.Mol = None) -> pd.DataFrame:
         """
         This function puts list of analogues in dataframe and does SMART checking to check if the analogues contains
         the SMARTS pattern of the original reactant and against all other reactants SMARTS.
+        Also detects protecting groups on the original reactant and filters analogues to only keep those
+        that contain the same protecting groups.
         """
         analogues_mols: List[Chem.Mol] = [Chem.MolFromSmiles(analogue) for analogue in analogues]
         analogues_mols: List[Chem.Mol] = fairy.remove_chirality(analogues_mols)
@@ -200,6 +205,32 @@ class Library:
         self.print_diff(analogues, analogues_mols, analogue_prefix)
         if self.filter:
             analogues: List[str] = self.filter_analogues(analogues, analogue_prefix)
+
+        # Detect protecting groups on the original reactant and filter analogues
+        pg_smarts = fairy.load_substructure_to_include()
+        required_pg_names: List[str] = []
+        if original_reactant is not None:
+            required_pg_names = fairy.detect_protecting_groups(original_reactant, pg_smarts)
+            if required_pg_names:
+                self.logger.info(
+                    f"Protecting group(s) detected on original reactant for {analogue_prefix}: "
+                    f"{', '.join(required_pg_names)}. Filtering analogues to match.")
+                keep, pg_labels = fairy.filter_analogues_on_protecting_groups(
+                    analogues_mols, required_pg_names, pg_smarts)
+                num_before = len(analogues_mols)
+                analogues_mols = [mol for mol, k in zip(analogues_mols, keep) if k]
+                pg_labels = [label for label, k in zip(pg_labels, keep) if k]
+                self.logger.info(
+                    f"Protecting group filter removed {num_before - len(analogues_mols)} of {num_before} "
+                    f"analogues for {analogue_prefix}.")
+            else:
+                self.logger.info(f"No protecting groups detected on original reactant for {analogue_prefix}.")
+
+        # If no PG filtering was done, generate empty labels
+        if not required_pg_names:
+            _, pg_labels = fairy.filter_analogues_on_protecting_groups(
+                analogues_mols, [], pg_smarts)
+
         reactant_smarts_mol: Chem.Mol = Chem.MolFromSmarts(reactant_smarts)
         contains_smarts_pattern, num_matches = self.check_analogue_contains_smarts_pattern(analogues_mols,
                                                                                            reactant_smarts_mol)
@@ -220,7 +251,8 @@ class Library:
                           f"{analogue_prefix}_{self.reaction.reaction_name}": contains_smarts_pattern,
                           f"{analogue_prefix}_{self.reaction.reaction_name}_num_matches": num_matches,
                           f"{other_reactant_prefix}_{self.reaction.reaction_name}": contains_other_reactant_smarts_pattern,
-                          f"{analogue_prefix}_is_previous_product": previous_product}))
+                          f"{analogue_prefix}_is_previous_product": previous_product,
+                          f"{analogue_prefix}_protecting_group": pg_labels}))
         if self.filter:
             analogues_df['is_PAINS_A'] = False
         return analogues_df, (f"{analogue_prefix}_{self.reaction.reaction_name}",
