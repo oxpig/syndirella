@@ -345,53 +345,71 @@ class SlipperSynthesizer:
         self.logger.info(f"Found {len(set(list(all_products['name'])))} unique products.")
         return all_products
 
+    def _should_calc_difference(self) -> bool:
+        """Only calculate atom difference on the final route step."""
+        return self.library.current_step == self.library.num_steps
+
+    def _flags_to_list(self, flag_value) -> List[str]:
+        """Normalize stored flag representations into a mutable list."""
+        if isinstance(flag_value, list):
+            return list(flag_value)
+        if isinstance(flag_value, tuple):
+            return list(flag_value)
+        if isinstance(flag_value, str):
+            return [flag_value]
+        if pd.isna(flag_value):
+            return []
+        return []
+
+    def _collect_unique_sanitized_products(self,
+                                           products,
+                                           calc_difference: bool) -> List[Tuple[str, int | None]]:
+        """Flatten RDKit reaction outcomes and keep unique, sanitizable products."""
+        unique_products: List[Tuple[str, int | None]] = []
+        seen_smiles = set()
+        base = self.library.reaction.scaffold
+        for product_set in products:
+            for product in product_set:
+                if not self.can_be_sanitized(product):
+                    continue
+                product_smiles = Chem.MolToSmiles(product, isomericSmiles=False)
+                if product_smiles in seen_smiles: # only keep unique products based on SMILES (fast)
+                    continue
+                seen_smiles.add(product_smiles)
+                if calc_difference:
+                    num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
+                else:
+                    num_atom_diff = None
+                unique_products.append((product_smiles, num_atom_diff))
+        return unique_products
+
+    def _set_reaction_outputs(self, row, products, flags: List[str], calc_difference: bool) -> pd.Series:
+        if len(products) == 0:
+            self.logger.info("No products found.")
+            row['flag'] = flags if flags else None
+            row['combined'] = [(None, None)]
+            return row
+
+        unique_products = self._collect_unique_sanitized_products(products, calc_difference)
+        if len(unique_products) > 1 and 'one_of_multiple_products' not in flags:
+            flags.append('one_of_multiple_products')
+
+        row['flag'] = flags if flags else None
+        row['combined'] = unique_products if unique_products else [(None, None)]
+        return row
+
     def apply_reaction_single(self, row) -> pd.Series:
         """
         For mono-molecular reactions:
         This function applies the original reaction to each row of the reactant combinations dataframe. Can return
         multiple products.
         """
-        if self.library.current_step == self.library.num_steps:  # calculate difference if final step
-            calc_difference: bool = True
-        else:
-            calc_difference: bool = False
+        calc_difference = self._should_calc_difference()
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         products = reaction.RunReactants((r1,))
-        flags = row['flag'] if isinstance(row['flag'], list) else []
-        if len(products) == 0:
-            self.logger.info("No products found.")
-            row['flag'] = flags if flags else None
-            row['combined'] = [(None, None)]
-        elif len(products) > 1 or len(products[0]) > 1:
-            # check if all products can be sanitized and keep unique ones, only keep the ones that can be sanitized
-            # and are unique
-            row_smiles = []
-            row_num_atom_diff = []
-            for product in products:
-                if self.can_be_sanitized(product[0]):
-                    row_smiles.append(Chem.MolToSmiles(product[0]))
-                    if calc_difference:
-                        row_num_atom_diff.append(
-                            self.calc_num_atom_diff_absolute(self.library.reaction.scaffold, product[0]))
-                    else:
-                        row_num_atom_diff.append(None)
-                if len(row_smiles) > 1:  # if more than 1 scaffold can be sanitized then flag
-                    if 'one_of_multiple_products' not in flags:
-                        flags.append('one_of_multiple_products')
-                row['combined'] = list(zip(row_smiles, row_num_atom_diff))
-                row['flag'] = flags if flags else None
-        else:
-            product = products[0][0]
-            if self.can_be_sanitized(product):
-                base = self.library.reaction.scaffold
-                if calc_difference:
-                    num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-                else:
-                    num_atom_diff = None
-                row['flag'] = flags if flags else None
-                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-        return row
+        flags = self._flags_to_list(row.get('flag'))
+        return self._set_reaction_outputs(row, products, flags, calc_difference)
 
     def apply_reaction(self, row) -> pd.Series:
         """
@@ -399,48 +417,13 @@ class SlipperSynthesizer:
         This function applies the original reaction to each row of the reactant combinations dataframe. Checks to return
         only products that are sanitized.
         """
-        if self.library.current_step == self.library.num_steps:  # calculate difference only if final step
-            calc_difference: bool = True
-        else:
-            calc_difference: bool = False
+        calc_difference = self._should_calc_difference()
         reaction: Chem.rdChemReactions = self.library.reaction.reaction_pattern
         r1: str = row['r1_mol']
         r2: str = row['r2_mol']
-        flags = list(row['flag']) if isinstance(row['flag'], tuple) else []  # turn into list to append to
+        flags = self._flags_to_list(row.get('flag'))
         products = reaction.RunReactants((r1, r2))
-        if len(products) == 0:
-            row['flag'] = flags if flags else None
-            row['combined'] = [(None, None)]
-        elif len(products) > 1 or len(
-                products[0]) > 1:  # should only return 1 scaffold, if more than 1 then there are selectivity issues
-            # check if all products can be sanitized, only keep the ones that can
-            row_smiles = []
-            row_num_atom_diff = []
-            for product in products:
-                if self.can_be_sanitized(product[0]):  # only keep products that can be sanitized
-                    row_smiles.append(Chem.MolToSmiles(product[0]))
-                    if calc_difference:
-                        row_num_atom_diff.append(
-                            self.calc_num_atom_diff_absolute(self.library.reaction.scaffold, product[0]))
-                    else:
-                        row_num_atom_diff.append(None)
-            if len(row_smiles) > 1:  # if more than 1 scaffold can be sanitized then flag
-                if 'one_of_multiple_products' not in flags:
-                    flags.append('one_of_multiple_products')
-            row['combined'] = list(zip(row_smiles, row_num_atom_diff))
-            row['flag'] = flags if flags else None
-        else:
-            product = products[0][0]
-            if self.can_be_sanitized(product):
-                base = self.library.reaction.scaffold
-                if calc_difference:
-                    num_atom_diff = self.calc_num_atom_diff_absolute(base, product)
-                else:
-                    num_atom_diff = None
-                row['combined'] = [(Chem.MolToSmiles(product), num_atom_diff)]
-                # Set flag column to list of flags or None if empty
-                row['flag'] = flags if flags else None
-        return row
+        return self._set_reaction_outputs(row, products, flags, calc_difference)
 
     def can_be_sanitized(self, mol: Chem.Mol) -> bool:
         if type(mol) != Chem.Mol:
