@@ -118,6 +118,8 @@ def config_parser(syndirella_base_path: str):
                         help="Path to reference HIPPO database file for superstructure search, must set --db_search_tool to 'hippo'.")
     pipeline_parser.add_argument('--no_assert_scaffold_intra_geom_flatness', action='store_true',
                         help="Don't check scaffold for intra geometry or flatness.")
+    pipeline_parser.add_argument('--substructure_check_products', action='store_true',
+                                 help="Only keep products that are substructures of their scaffolds.")
     
     add_reaction_parser = subparsers.add_parser('add-reaction', 
                                                help='Add a new reaction to the library',

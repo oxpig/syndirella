@@ -32,10 +32,13 @@ class SlipperSynthesizer:
                  library: Library,
                  output_dir: str,
                  atom_ids_expansion: dict = None,
-                 additional_info: dict = None):
+                 additional_info: dict = None,
+                 substructure_check_products: bool = False,
+                 ):
         self.route_uuid: str = library.route_uuid
         self.library = library
         self.output_dir = output_dir
+        self.substructure_check_products = substructure_check_products
         self.analogues_dataframes_to_react: Dict[str, pd.DataFrame] = {}
         self.analogue_columns: List[str] = None
         self.products: pd.DataFrame = None
@@ -372,6 +375,10 @@ class SlipperSynthesizer:
             for product in product_set:
                 if not self.can_be_sanitized(product):
                     continue
+
+                if self.substructure_check_products and not product.HasSubstructMatch(self.library.reaction.scaffold):
+                    continue
+
                 product_smiles = Chem.MolToSmiles(product, isomericSmiles=False)
                 if product_smiles in seen_smiles: # only keep unique products based on SMILES (fast)
                     continue
