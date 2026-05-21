@@ -54,6 +54,7 @@ class PipelineConfig:
     additional_columns: List[str] = None
     reference_db: str = None
     assert_scaffold_intra_geom_flatness: bool = True
+    substructure_check_products: bool = False
     
     def __post_init__(self):
         if self.additional_columns is None:
@@ -79,7 +80,8 @@ class PipelineConfig:
                 scaffold_place=not settings.get('no_scaffold_place', False),
                 elab_single_reactant=settings.get('elab_single_reactant', False),
                 reference_db=settings.get('reference_db', None),
-                assert_scaffold_intra_geom_flatness=not settings.get('no_assert_scaffold_intra_geom_flatness', False)
+                assert_scaffold_intra_geom_flatness=not settings.get('no_assert_scaffold_intra_geom_flatness', False),
+                substructure_check_products=settings.get('substructure_check_products', False)
             )
         except KeyError as e:
             logger.critical(f"Missing critical argument to run pipeline: {e}")
@@ -148,7 +150,8 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                                      csv_path: str,
                                      output_dir: str,
                                      scaffold_placements: Dict[Chem.Mol, str],
-                                     additional_info=None):
+                                     additional_info=None,
+                                     substructure_check_products: bool = False,):
     """
     Does elaboration once the cobbler workshops are created.
     """
@@ -163,7 +166,7 @@ def elaborate_from_cobbler_workshops(cobbler_workshops: List[CobblersWorkshop],
                 continue
             slipper = Slipper(library=final_library, template=template_path, hits_path=hits_path, hits_names=hits,
                               batch_num=batch_num, atoms_ids_expansion=None, additional_info=additional_info,
-                              scaffold_placements=scaffold_placements)
+                              scaffold_placements=scaffold_placements, substructure_check_products=substructure_check_products)
             slipper.get_products()
             slipper.place_products()
             try:
@@ -234,7 +237,9 @@ def elaborate_compound_with_manual_routes(product: str,
                                           db_search_tool: DatabaseSearchTool,
                                           reference_db: str,
                                           assert_scaffold_intra_geom_flatness: bool = True,
-                                          additional_info=None):
+                                          additional_info=None,
+                                          substructure_check_products: bool = False,
+                                          ):
     """
     Elaborate compound using manual routes.
     """
@@ -277,7 +282,8 @@ def elaborate_compound_with_manual_routes(product: str,
             additional_info=additional_info,
             csv_path=csv_path,
             output_dir=output_dir,
-            scaffold_placements=scaffold_placements
+            scaffold_placements=scaffold_placements,
+            substructure_check_products=substructure_check_products,
         )
         
         end_time = time.time()
@@ -304,7 +310,8 @@ def elaborate_compound_full_auto(product: str,
                                  retro_tool: RetrosynthesisTool,
                                  db_search_tool: DatabaseSearchTool,
                                  assert_scaffold_intra_geom_flatness: bool = True,
-                                 additional_info=None):
+                                 additional_info=None,
+                                 substructure_check_products: bool = False):
     """
     Elaborate compound using full automatic retrosynthesis.
     """
@@ -348,7 +355,8 @@ def elaborate_compound_full_auto(product: str,
             additional_info=additional_info, 
             csv_path=csv_path, 
             output_dir=output_dir,
-            scaffold_placements=scaffold_placements
+            scaffold_placements=scaffold_placements,
+            substructure_check_products=substructure_check_products,
         )
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -398,6 +406,7 @@ def process_row(row: pd.Series, config: PipelineConfig):
                 db_search_tool=config.db_search_tool,
                 reference_db=config.reference_db,
                 assert_scaffold_intra_geom_flatness=config.assert_scaffold_intra_geom_flatness,
+                substructure_check_products= config.substructure_check_products
             )
         else:
             elaborate_compound_full_auto(
@@ -418,6 +427,7 @@ def process_row(row: pd.Series, config: PipelineConfig):
                 retro_tool=config.retro_tool,
                 db_search_tool=config.db_search_tool,
                 assert_scaffold_intra_geom_flatness=config.assert_scaffold_intra_geom_flatness,
+                substructure_check_products=config.substructure_check_products
             )
     except Exception as e:
         tb = traceback.format_exc()
