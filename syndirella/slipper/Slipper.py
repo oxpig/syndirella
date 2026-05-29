@@ -36,7 +36,9 @@ class Slipper:
                  batch_num: int = None,
                  atoms_ids_expansion: dict = None,
                  additional_info: dict = None,
-                 scaffold_placements: Dict[Chem.Mol, str | None] = None):
+                 scaffold_placements: Dict[Chem.Mol, str | None] = None,
+                 substructure_check_products: bool = False,
+                 ):
         self.products: pd.DataFrame = None
         self.library: Library = library
         self.route_uuid: str = library.route_uuid
@@ -44,6 +46,7 @@ class Slipper:
         self.final_products_pkl_path: str = None
         self.final_products_csv_path: str = None
         self.scaffold_placements: Dict[Chem.Mol, str | None] = scaffold_placements
+        self.substructure_check_products: bool = substructure_check_products
 
         # need Fragmenstein information
         self.template: str = template  # path to pdb file
@@ -70,7 +73,8 @@ class Slipper:
         slipper_synth = SlipperSynthesizer(self.library,
                                            self.output_dir,
                                            self.atoms_ids_expansion,
-                                           self.additional_info)
+                                           self.additional_info,
+                                           substructure_check_products=self.substructure_check_products)
         self.products: pd.DataFrame = slipper_synth.get_products()
         if self.atoms_ids_expansion is not None:
             slipper_synth.label_products()
