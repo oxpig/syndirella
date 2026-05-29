@@ -272,9 +272,15 @@ def elaborate_compound_with_manual_routes(product: str,
             filter=False,
             reference_db=reference_db
         )
+
+        cobbler_workshops = [workshop]
+        if elab_single_reactant:
+            additional_routes = workshop.get_additional_routes()
+            if additional_routes is not None:
+                cobbler_workshops = [workshop] + additional_routes
         
         elaborate_from_cobbler_workshops(
-            cobbler_workshops=[workshop],
+            cobbler_workshops=cobbler_workshops,
             template_path=template_path,
             hits_path=hits_path,
             hits=hits,
