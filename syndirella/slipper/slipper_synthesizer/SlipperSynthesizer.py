@@ -376,7 +376,9 @@ class SlipperSynthesizer:
                 if not self.can_be_sanitized(product):
                     continue
 
-                if self.substructure_check_products and not product.HasSubstructMatch(self.library.reaction.scaffold):
+                if self.substructure_check_products and not product.HasSubstructMatch(
+                        self.library.reaction.scaffold, useChirality=False
+                ):
                     continue
 
                 product_smiles = Chem.MolToSmiles(product, isomericSmiles=False)
