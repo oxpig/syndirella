@@ -13,7 +13,7 @@ syndirella = [
 
 [project]
 name = "syndirella"
-version = "5.0.7-alpha"
+version = "5.1.7-alpha"
 authors = [
     { name = "Kate Fieseler", email = "kate.k.fieseler@gmail.com" },
 ]
