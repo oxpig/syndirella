@@ -46,6 +46,47 @@ class Arthor(DatabaseSearch):
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
+        # Cache of the databases currently available on Arthor (populated lazily).
+        self._available_databases: list[str] | None = None
+
+    # Vendor families -> the (case-insensitive) name fragments that identify their
+    # databases on Arthor. Rather than pinning exact, versioned database names (which
+    # change every quarter, e.g. Mcule-22Q1 -> Mcule-Full-25Q3), we discover whatever
+    # databases are currently live on Arthor and match them by these fragments.
+    VENDOR_NAME_FRAGMENTS: dict[str, list[str]] = {
+        'mcule': ['mcule'],
+        'stock': ['in-stock'],
+        'zinc': ['zinc'],
+        'enamine': ['enamine', 'real'],
+        'real': ['real'],
+    }
+
+    # Aliases so previously accepted vendor keys keep working. They resolve to one of
+    # the families above.
+    VENDOR_ALIASES: dict[str, str] = {
+        'enamine_real': 'enamine',
+        'enamine_bb': 'enamine',
+        'mcule_bb': 'mcule',
+        'mcule_full': 'mcule',
+        'mcule_v': 'mcule',
+        'mcule_ultimate': 'mcule',
+        'mcule_in_stock': 'mcule',
+        'mcule_purchasable': 'mcule',
+    }
+
+    # Static fallback used only when the live Arthor database list cannot be fetched.
+    # Kept current as of Arthor 25Q3 (https://arthor.docking.org).
+    STATIC_VENDOR_TO_DBS: dict[str, list[str]] = {
+        'mcule': ['MMcule-In-Stock-25Q3-6.5M', 'Mcule-Full-BBs-25Q3-6.5M',
+                  'Mcule-Full-25Q3-140M', 'Mcule-Virtual-25Q3-133M',
+                  'Mcule-Ultimate-25Q3-111M'],
+        'stock': ['In-Stock-19Q4-14.1M'],
+        'zinc': ['ZINC-All-19Q4-1.4B', 'ZINC-Interesting-19Q4-307K',
+                 'ZINC-On-Demand-19Q4-311M', 'ZINC20-ForSale-22Q1'],
+        'enamine': ['REAL-Database-22Q1'],
+        'real': ['REAL-Database-22Q1'],
+    }
+
     def perform_database_search(self,
                                 reactant: Chem.Mol,
                                 reaction_name: str,
@@ -141,70 +182,80 @@ class Arthor(DatabaseSearch):
 
     def _convert_vendors_to_arthor_dbs(self, vendors: list[str]) -> list[str]:
         """
-        Convert vendor names to Arthor database names.
-        """
-        vendor_to_db_mapping = {
-            # Enamine databases (actual available databases)
-            'enamine_real': 'REAL-Database-22Q1',
+        Convert vendor names into the Arthor database names that are actually live.
 
-            # Stock databases
-            'stock': 'In-Stock-19Q4-14.1M',
-            'chemspace': 'ChemSpace-SC-Stock-Mar2022-346K',
-            
-            # Mcule databases
-            'mcule': 'Mcule-22Q1-8.7M',
-            'mcule_bb': 'Mcule-BB-22Q1-2.1M',
-            'mcule_full': 'Mcule-Full-22Q1-60M',
-            'mcule_v': 'Mcule-V-22Q1-51M',
-            'mcule_ultimate': 'Mcule-Ultimate-20Q2-126M',
-            'mcule_purchasable': 'mcule_purchasable_virtual_230121',
-            
-            # ZINC databases
-            'zinc_all': 'ZINC-All-19Q4-1.4B',
-            'zinc_interesting': 'ZINC-Interesting-19Q4-307K',
-            'zinc_on_demand': 'ZINC-On-Demand-19Q4-311M',
-            'zinc_for_sale': 'ZINC20-ForSale-22Q1',
-            
-            # Grouped vendor databases (all major vendors)
-            'enamine': 'REAL-Database-22Q1',
-            'mcule': 'Mcule-22Q1-8.7M,Mcule-BB-22Q1-2.1M,Mcule-Full-22Q1-60M,Mcule-V-22Q1-51M,Mcule-Ultimate-20Q2-126M,mcule_purchasable_virtual_230121',
-            'zinc': 'ZINC-All-19Q4-1.4B,ZINC-Interesting-19Q4-307K,ZINC-On-Demand-19Q4-311M,ZINC20-ForSale-22Q1',
-            
-            # Default mappings for backward compatibility
-            'all': 'ZINC20-ForSale-22Q1,REAL-Database-22Q1,In-Stock-19Q4-14.1M,Mcule-22Q1-8.7M,Mcule-BB-22Q1-2.1M,ZINC-All-19Q4-1.4B,ZINC-Interesting-19Q4-307K,ZINC-On-Demand-19Q4-311M'
-        }
-        
-        arthor_dbs = []
-        for vendor in vendors:
-            if vendor in vendor_to_db_mapping:
-                db_names = vendor_to_db_mapping[vendor].split(',')
-                for db_name in db_names:
-                    if db_name not in arthor_dbs:
-                        arthor_dbs.append(db_name)
-        
-        if not arthor_dbs:
-            # Default to commonly available chemicals (In-Stock and ZINC20)
-            arthor_dbs = ['In-Stock-19Q4-14.1M', 'ZINC20-ForSale-22Q1']
-        
-        return arthor_dbs
-    
-    def get_available_databases(self) -> list[str]:
+        Each vendor is resolved to a family (mcule, stock, zinc, enamine, real) and
+        matched against the databases currently available on Arthor by case-insensitive
+        name fragment, so the most recent versioned databases are picked up
+        automatically. Passing ``'all'`` resolves to every known family. If the live
+        database list cannot be fetched, a static (versioned) fallback is used.
         """
-        Get the list of available databases from Arthor API.
-        
+        available_databases = self.get_available_databases()
+        use_dynamic = len(available_databases) > 0
+        if not use_dynamic:
+            self.logger.warning("Could not fetch live Arthor databases; falling back to "
+                                 "static (versioned) database names.")
+
+        # Expand 'all' to every family.
+        requested_families: list[str] = []
+        for vendor in vendors:
+            if vendor == 'all':
+                requested_families.extend(self.VENDOR_NAME_FRAGMENTS.keys())
+                continue
+            family = self.VENDOR_ALIASES.get(vendor, vendor)
+            if family in self.VENDOR_NAME_FRAGMENTS:
+                requested_families.append(family)
+            else:
+                self.logger.warning(f"Unknown Arthor vendor '{vendor}'; skipping.")
+
+        arthor_dbs: list[str] = []
+        for family in requested_families:
+            if use_dynamic:
+                fragments = self.VENDOR_NAME_FRAGMENTS[family]
+                matches = [db for db in available_databases
+                           if any(fragment in db.lower() for fragment in fragments)]
+                if not matches:
+                    self.logger.warning(f"No live Arthor databases matched vendor "
+                                        f"'{family}' (fragments: {fragments}).")
+            else:
+                matches = self.STATIC_VENDOR_TO_DBS.get(family, [])
+            for db_name in matches:
+                if db_name not in arthor_dbs:
+                    arthor_dbs.append(db_name)
+
+        if not arthor_dbs:
+            # Default to a commonly available in-stock database.
+            fallback = [db for db in available_databases if 'in-stock' in db.lower()] \
+                if use_dynamic else ['In-Stock-19Q4-14.1M']
+            arthor_dbs = fallback or ['In-Stock-19Q4-14.1M']
+            self.logger.warning(f"No databases resolved for vendors {vendors}; "
+                                f"defaulting to {arthor_dbs}.")
+
+        return arthor_dbs
+
+    def get_available_databases(self, force_refresh: bool = False) -> list[str]:
+        """
+        Get the list of databases currently available on Arthor.
+
+        The result is cached on the instance so repeated reactant searches do not
+        re-query the ``/dt/data`` endpoint. Pass ``force_refresh=True`` to re-fetch.
+
         Returns
         -------
         list[str]
-            List of available database names
+            List of available database names (empty if the API could not be reached).
         """
+        if self._available_databases is not None and not force_refresh:
+            return self._available_databases
         try:
-            response = self.session.get(f'{self.url}/dt/data')
+            response = self.session.get(f'{self.url}/dt/data', timeout=30)
             response.raise_for_status()
             databases = response.json()
-            return [db['displayName'] for db in databases]
+            self._available_databases = [db['displayName'] for db in databases]
         except Exception as e:
             self.logger.error(f"Error fetching available databases: {str(e)}")
-            return []
+            self._available_databases = []
+        return self._available_databases
     
 
 

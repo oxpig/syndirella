@@ -44,16 +44,52 @@ class TestArthorIntegration(unittest.TestCase):
         for method in required_methods:
             self.assertTrue(hasattr(arthor, method), f"Arthor missing method: {method}")
             
+    # A representative snapshot of the databases live on Arthor (25Q3), used to make
+    # vendor-conversion tests deterministic without hitting the network.
+    LIVE_DATABASES = [
+        'ChemSpace-SC-Stock-Mar2022-346K',
+        'In-Stock-19Q4-14.1M',
+        'MMcule-In-Stock-25Q3-6.5M',
+        'Mcule-Full-25Q3-140M',
+        'Mcule-Full-BBs-25Q3-6.5M',
+        'Mcule-Ultimate-25Q3-111M',
+        'Mcule-Virtual-25Q3-133M',
+        'REAL-Database-22Q1',
+        'ZINC-All-19Q4-1.4B',
+        'ZINC-Interesting-19Q4-307K',
+        'ZINC-On-Demand-19Q4-311M',
+        'ZINC20-ForSale-22Q1',
+    ]
+
     def test_arthor_vendor_conversion(self):
-        """Test that vendor names are correctly converted to Arthor database names."""
+        """Vendor names resolve to the live databases matching their family."""
         arthor = Arthor()
-        
-        # Test vendor conversion
-        vendors = ['enamine_real', 'stock']
-        arthor_dbs = arthor._convert_vendors_to_arthor_dbs(vendors)
-        
-        expected_dbs = ['REAL-Database-22Q1', 'In-Stock-19Q4-14.1M']
-        self.assertEqual(arthor_dbs, expected_dbs)
+        with patch.object(arthor, 'get_available_databases', return_value=self.LIVE_DATABASES):
+            self.assertEqual(
+                arthor._convert_vendors_to_arthor_dbs(['enamine_real']),
+                ['REAL-Database-22Q1'])
+            # The mcule family picks up all current (versioned) mcule databases.
+            self.assertEqual(
+                set(arthor._convert_vendors_to_arthor_dbs(['mcule'])),
+                {'MMcule-In-Stock-25Q3-6.5M', 'Mcule-Full-25Q3-140M',
+                 'Mcule-Full-BBs-25Q3-6.5M', 'Mcule-Ultimate-25Q3-111M',
+                 'Mcule-Virtual-25Q3-133M'})
+
+    def test_arthor_vendor_conversion_dynamic_picks_up_new_versions(self):
+        """A newer mcule database name is used automatically once it appears live."""
+        arthor = Arthor()
+        future_dbs = self.LIVE_DATABASES + ['Mcule-Full-26Q1-200M']
+        with patch.object(arthor, 'get_available_databases', return_value=future_dbs):
+            self.assertIn('Mcule-Full-26Q1-200M',
+                          arthor._convert_vendors_to_arthor_dbs(['mcule']))
+
+    def test_arthor_vendor_conversion_static_fallback(self):
+        """When the live list can't be fetched, static versioned names are used."""
+        arthor = Arthor()
+        with patch.object(arthor, 'get_available_databases', return_value=[]):
+            dbs = arthor._convert_vendors_to_arthor_dbs(['enamine', 'stock'])
+            self.assertIn('REAL-Database-22Q1', dbs)
+            self.assertIn('In-Stock-19Q4-14.1M', dbs)
         
     def test_arthor_structure_output(self):
         """Test that structure_output correctly formats results."""

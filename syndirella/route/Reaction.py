@@ -245,12 +245,46 @@ class Reaction():
         mcs = rdFMCS.FindMCS([reactant, self.scaffold])
         mcs_smarts = Chem.MolFromSmarts(mcs.smartsString)
         product_matches = self.scaffold.GetSubstructMatches(mcs_smarts)
-        # Can return multiple product_matches, only take the first one
-        product_match = product_matches[0]
         reactant_matches = reactant.GetSubstructMatches(mcs_smarts)
-        reactant_match = reactant_matches[0]
-        product_to_reactant_mapping = dict(zip(product_match, reactant_match))
+        # The MCS SMARTS can match in multiple places (e.g. a piperidine reactant's
+        # ring MCS also matches an aromatic pyridine ring in the scaffold). Blindly
+        # taking the first match can map reactant atoms onto the wrong part of the
+        # scaffold, which pushes the attachment index onto the wrong atom and makes
+        # the reactant fail its reaction SMARTS (see issue #107). Pick the
+        # product/reactant match pairing whose mapped atoms agree best on element
+        # and aromaticity to disambiguate.
+        product_to_reactant_mapping = self._select_best_fmcs_mapping(reactant, product_matches, reactant_matches)
         return product_to_reactant_mapping
+
+    def _select_best_fmcs_mapping(self,
+                                  reactant: Chem.Mol,
+                                  product_matches: Tuple[Tuple[int]],
+                                  reactant_matches: Tuple[Tuple[int]]) -> Dict[int, int]:
+        """
+        Selects the product/reactant substructure-match pairing whose atom-to-atom
+        mapping best agrees on atomic number and aromaticity. Falls back to the first
+        pairing when there is only one option or nothing scores.
+        """
+        if len(product_matches) == 1 and len(reactant_matches) == 1:
+            return dict(zip(product_matches[0], reactant_matches[0]))
+
+        best_mapping: Dict[int, int] = dict(zip(product_matches[0], reactant_matches[0]))
+        best_score: Tuple[int, int] = (-1, -1)
+        for product_match in product_matches:
+            for reactant_match in reactant_matches:
+                element_agreement = sum(
+                    1 for p_idx, r_idx in zip(product_match, reactant_match)
+                    if self.scaffold.GetAtomWithIdx(p_idx).GetAtomicNum()
+                    == reactant.GetAtomWithIdx(r_idx).GetAtomicNum())
+                aromaticity_agreement = sum(
+                    1 for p_idx, r_idx in zip(product_match, reactant_match)
+                    if self.scaffold.GetAtomWithIdx(p_idx).GetIsAromatic()
+                    == reactant.GetAtomWithIdx(r_idx).GetIsAromatic())
+                score = (element_agreement, aromaticity_agreement)
+                if score > best_score:
+                    best_score = score
+                    best_mapping = dict(zip(product_match, reactant_match))
+        return best_mapping
 
     def find_attachment_id_for_reactant(self, reactant: Chem.Mol) -> List[int] | None:
         """
