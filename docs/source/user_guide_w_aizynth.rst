@@ -100,6 +100,7 @@ Syndirella provides a command-line interface with multiple subcommands. Get help
                       [--atom_diff_min ATOM_DIFF_MIN] [--atom_diff_max ATOM_DIFF_MAX]
                       [--just_retro] [--no_scaffold_place] [--elab_single_reactant]
                       [--reference_db REFERENCE_DB] [--no_assert_scaffold_intra_geom_flatness]
+                      [--substructure_check_products]
 
     Run the full Syndirella pipeline with specified input files and parameters.
 
@@ -139,6 +140,8 @@ Syndirella provides a command-line interface with multiple subcommands. Get help
                             --db_search_tool to 'hippo'.
     --no_assert_scaffold_intra_geom_flatness
                             Don't check scaffold for intra geometry or flatness.
+    --substructure_check_products
+                            Only keep products that are superstructures of their scaffolds.
 
 **Add Reaction Command Help:**
 
