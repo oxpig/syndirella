@@ -2,6 +2,9 @@
   <img src="logos/Full.png" alt="Syndirella Logo" width="400"/>
 </div>
 
+![GitHub Tag](https://img.shields.io/github/v/tag/xchem/syndirella?include_prereleases&label=PyPI&link=https%3A%2F%2Fpypi.org%2Fproject%2Fxchem-syndirella%2F)
+![release](https://img.shields.io/github/actions/workflow/status/xchem/syndirella/release.yaml?label=release&link=https%3A%2F%2Fgithub.com%2Fxchem%2Fsyndirella%2Factions%2Fworkflows%2Frelease.yaml)
+
 Syndirella (Synthesis Directed Elaborations) is a tool for generating and scoring synthetically practical elaborations of molecules designed from fragment screens. Starting from the retrosynthetic analysis of fragment merged molecules, superstructures of the original reactants are found by catalog search and filtered by selectivity issues. The elaborated final products are defined by reaction SMIRKS patterns and energy minimized in the protein with restraints to experimental data.
 
 **Preprint:** [https://chemrxiv.org/engage/chemrxiv/article-details/68d4f08ff416303770403a44](https://chemrxiv.org/engage/chemrxiv/article-details/68d4f08ff416303770403a44)
@@ -48,7 +51,7 @@ See the [HIPPO documentation](https://hippo-docs.winokan.com) for full setup and
 
 1. **Setup AiZynthFinder** (required for retrosynthesis):
 
-   ⚠️ WARNING: This step downloads large model files (~750MB total) if run the first time. These are required to run AiZynthFinder. 
+   ⚠️ WARNING: This step downloads large model files (~750MB total) if run the first time. These are required to run AiZynthFinder.
 
    Files will be downloaded to: `[syndirella_package_path]/aizynth/`
 
@@ -60,7 +63,7 @@ See the [HIPPO documentation](https://hippo-docs.winokan.com) for full setup and
    ```bash
    syndirella run --input /absolute/path/to/input.csv --output /absolute/path/to/output_directory --templates /absolute/path/to/templates/ --hits_path /absolute/path/to/fragments.sdf
    ```
-   
+
    **Note**: All paths must be absolute paths.
 
 ### Example Input

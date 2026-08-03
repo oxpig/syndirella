@@ -12,8 +12,8 @@ syndirella = [
 ]
 
 [project]
-name = "syndirella"
-version = "5.3.0-alpha"
+name = "xchem-syndirella"
+version = "5.0.7-alpha"
 authors = [
     { name = "Kate Fieseler", email = "kate.k.fieseler@gmail.com" },
 ]
@@ -32,7 +32,7 @@ dependencies = [
     "glob2",
     "requests",
     "pillow",
-    "fragmenstein>=1.0.7",
+    "xchem-fragmenstein>=1.0.0",
     "shortuuid",
     "pandas",
     "biopython",
@@ -47,7 +47,7 @@ dependencies = [
     "pyrosetta-installer",
 ]
 [project.optional-dependencies]
-hippo = ["hippo-db", "rdkit>=2024.9.6"]
+hippo = ["xchem-hippo", "rdkit>=2024.9.6"]
 
 [project.urls]
 "Documentation" = "https://syndirella.readthedocs.io/en/latest/"

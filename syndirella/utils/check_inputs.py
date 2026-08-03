@@ -176,7 +176,7 @@ def get_exact_hit_names(row: pd.Series, hits_path: str) -> List[str]:
     Get the exact hit name to use for placement.
     """
     hit_cols = [col for col in row.index if re.match(r'^hit\d+$', col)]
-    hit_names = row[hit_cols].values.flatten()
+    hit_names = row[hit_cols].to_numpy().flatten()
     hit_names = [name.strip() for name in hit_names if str(name) != 'nan']
     
     # Validate that hit names exist in SDF

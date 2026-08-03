@@ -1,0 +1,58 @@
+---
+# The standard xchem Python package release process.
+# Run on 'Release' and published to PyPI as a 'trusted' publisher.
+#
+# See https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/
+# See https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+name: Release
+
+on:
+  release:
+    types:
+    - published
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.x'
+    - name: Install build package
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install uv==0.10.6 --user
+    - name: Build
+      run: |
+        uv version ${{ github.ref_name }}
+        uv build
+    - name: Store the distribution
+      uses: actions/upload-artifact@v5
+      with:
+        name: python-package-distribution
+        path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/xchem-syndirella
+    permissions:
+      id-token: write
+    steps:
+    - name: Download distribution
+      uses: actions/download-artifact@v6
+      with:
+        name: python-package-distribution
+        path: dist/
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@release/v1

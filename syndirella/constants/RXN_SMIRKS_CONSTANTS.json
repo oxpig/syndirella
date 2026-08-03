@@ -629,5 +629,337 @@
     "source": "rxn-insight",
     "type": "child",
     "parent": "Benzimidazole_synthesis"
+  },
+  "ACETYLATION": {
+    "smirks": "[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):3].[#6X3;!$(C-N):1](=[OX1])[#17,#9,#35]>>[#6:1](=[#8:2])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "ACYLSULFAMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[#7;H2,H1:3][#16:4](=[#8:5])(=[#8:6])>>[#6:1](=[#8:2])-[#7:3][#16:4](=[#8:5])(=[#8:6])",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "AMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "AMIDE1": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "AMIDE2": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "AMIDEMSCl": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "AMIDOXIME1-CN": {
+    "smirks": "[CX2:1]#[NX1:2].[#6:3](=[#8])-[#8;H1]>>[c:1]1:[n:2]:[o]:[c:3]:[n]:1",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "ARYLATION": {
+    "smirks": "[#6:3]-[#7;H3,H2,H1:2].[c:1]-[F,Cl,Br,I]>>[#6:3]-[#7:2]-[c:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "B-AMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "B-REDUCTION3": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-ACYLSULFAMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[#7;H2,H1:3][#16:4](=[#8:5])(=[#8:6])>>[#6:1](=[#8:2])-[#7:3][#16:4](=[#8:5])(=[#8:6])",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-AMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-AMIDE1": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-AMIDE2": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-AMIDEMSCl": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-AMIDOXIME1": {
+    "smirks": "[NX3:1]C(=[NX2:2])[OX2H1:3].[#6:4](=[#8])-[#8;H1]>>[c:4]1:[n:2]:[o:3]:[c]:[n:1]:1",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-ARYLATION": {
+    "smirks": "[#6:3]-[#7;H3,H2,H1:2].[c:1]-[F,Cl,Br,I]>>[#6:3]-[#7:2]-[c:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-MA2": {
+    "smirks": "[#7&X3;H2,H1;+0:5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[#7&X3;+0:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-OXYME": {
+    "smirks": "[$([#7;H2,H1;+0]),$([#8;H1;+0]),$([#16;H1;+0]):5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[*:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-REDUCTION3": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-SULFAMIDE1": {
+    "smirks": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9,#35].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):5]>>[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])-[#7:5]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-SUZUKI": {
+    "smirks": "[#6:1]-[Cl,Br,I].[#6:2]-[B](-[O])(-[O])>>[#6:1]-[#6:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-URETANE1": {
+    "smirks": "[N&X3;H2,H1;!$(NC=O);!$(NS):3].[N&X3;H2,H1;!$(NC=O);!$(NS):4]>>[#7&X3:3]-[#6](=[#8])-[#7&X3:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Boc-URETANE4": {
+    "smirks": "[N&X3;H2,H1;!$(NC=O);!$(NS):3].[N&X3;H2,H1;!$(NC=O);!$(NS):4]>>[#7&X3:3]-[#6](=[#8])-[#7&X3:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "EPOXYDE2": {
+    "smirks": "[#6:1]-[CH;D3;+0:2]1-[CH2;D2;+0:3]-[O;H0;D2;+0:4]-1.[N;H2,H1;+0:6]-[#6:7]>>[#6:1]-[C;+0:2](-[OH;D1;+0:4])-[C&X4;+0:3]-[N&X3;+0:6]-[#6:7]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "ESTER-NS": {
+    "smirks": "[$([#7;H2,H1;+0]),$([#8;H1;+0]),$([#16;H1;+0]):5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[*:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "ESTER-PH": {
+    "smirks": "[$([#7;H2,H1;+0]),$([#8;H1;+0]),$([#16;H1;+0]):5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[*:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "HYDANTOIN4": {
+    "smirks": "[NX3;H2:1].[NX3:2][CX4:3][CX3:4](=O)[OX2]>>[N:1]C(=O)[N:2][C:3][C:4](=O)",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "HYDANTOIN6": {
+    "smirks": "[NX3;H2:1].[NX3:2][CX4:3][CX3:4](=O)[OX2]>>[N:1]C(=O)[N:2][C:3][C:4](=O)",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "HYDRAZON": {
+    "smirks": "[CX3H1:1](=[OX1]).[NX3;H2,H1:2][NX3:3]>>[C:1]=[N:2][N:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "K-AMIDE": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "K-AMIDE1": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "MA1": {
+    "smirks": "[#7&X3;H2,H1;+0:5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[#7&X3;+0:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "MA2-POLY": {
+    "smirks": "[#7&X3;H2,H1;+0:5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[#7&X3;+0:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "METHYLEN": {
+    "smirks": "[$([CX4H2]([CX3]=O)),$([CX4H2](C#N)):1].[CX3H1:2](=O)>>[C:1]=[C:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "OXAMIDE": {
+    "smirks": "[NX3;H2,H1;+0:1].[NX3;H2,H1;+0:2]>>[N:1]C(=O)C(=O)[N:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "OXAMIDE1Pri": {
+    "smirks": "[NX3;H2,H1;+0:1].[NX3;H2,H1;+0:2]>>[N:1]C(=O)C(=O)[N:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "OXAMIDE1Sec": {
+    "smirks": "[NX3;H2,H1;+0:1].[NX3;H2,H1;+0:2]>>[N:1]C(=O)C(=O)[N:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "OXYME": {
+    "smirks": "[$([#7;H2,H1;+0]),$([#8;H1;+0]),$([#16;H1;+0]):5].[Cl,Br,I]-[C;H2,H1;+0:1]>>[*:5]-[C&X4;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "R030-TRIAZOLE": {
+    "smirks": "[NX1:1]~[NX2:2]~[NX2:3]-[#6:4].[CX2:5]#[CX2:6]-[#6:7]>>[#6:4]-[n:3]1:[n:2]:[n:1]:[c:5](-[#6:7]):[c:6]:1",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "R040-TRIAZOLE": {
+    "smirks": "[#7;H2;D1:1]-[#6:4].[CX2:5]#[CX2:6]-[#6:7]>>[#6:4]-[n:1]1:[n]:[n]:[c:5](-[#6:7]):[c:6]:1",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "R071b-Rd-Ac": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "R111-ACYLATION": {
+    "smirks": "[OX2H1:1][#6:2].[#6:3][CX3:4](=[OX1:5])[OX2H1]>>[#6:2][O:1][C:4](=[O:5])[#6:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "R192-CARBAMATE": {
+    "smirks": "[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):3].[Cl][CX3:1](=[OX1:2])[OX2:4]>>[#7:3]-[CX3:1](=[OX1:2])[OX2:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "REDUCTION": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "REDUCTION-TI": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "REDUCTION3": {
+    "smirks": "[C:2](=[O])(-[C,c:1]).[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:2](-[#6:1])-[#7:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-022-AA-Ac-Boc-Ac": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-036-NAc-Click": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-049-DA-Ac-Boc-Ac": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-138-Ac-tBu-Ac": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-176-Ugi-MF": {
+    "smirks": "[#7;H2,H1:3].[CX3H1:4](=O).[CX1-:5]#[NX2+:6]>>[#7:3]-[C:4]-[C:5](=[O])-[N:6]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "Radd-178-AT-Click": {
+    "smirks": "[#7;H2;D1:1]-[#6:4].[CX2:5]#[CX2:6]-[#6:7]>>[#6:4]-[n:1]1:[n]:[n]:[c:5](-[#6:7]):[c:6]:1",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "STILLE": {
+    "smirks": "[#6:1]-[#50].[#6:2]-[Cl,Br,I]>>[#6:1]-[#6:2]",
+    "source": "enamine_real_tools",
+    "type": "parent",
+    "original_enamine_name": "SUZUKI"
+  },
+  "SULFAMIDE1": {
+    "smirks": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9,#35].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):5]>>[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])-[#7:5]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "SULFAMIDE2": {
+    "smirks": "[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])[#17,#9,#35].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o):5]>>[#16X4:1](=[OX1:2])(=[OX1:3])([#6,#7:4])-[#7:5]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "SULFONE": {
+    "smirks": "[Cl,Br,I]-[C;H2,H1;+0:1].[SH;+0:2]>>[S&X2;H0;D2;+0:2]-[C&X4;D2;+0:1]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "SUZUKI": {
+    "smirks": "[#6:1]-[Cl,Br,I].[#6:2]-[B](-[O])(-[O])>>[#6:1]-[#6:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "T-ACYLATION": {
+    "smirks": "[#6:1](=[#8:2])-[#8;H1].[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):3]>>[#6:1](=[#8:2])-[#7X3:3]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "UREA": {
+    "smirks": "[*:1]-[N;H0;D2;+0:2]=[C;H0;D2;+0:3]=[O;H0;D1;+0:4].[#6;+0:5]-[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):6]>>[*:1]-[N;+0:2]-[C;H0;D3;+0:3](=[O;H0;D1;+0:4])-[N;+0:6]-[#6;+0:5]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "UREA-CDI": {
+    "smirks": "[N&X3;H2,H1;!$(NC=O);!$(NS):3].[N&X3;H2,H1;!$(NC=O);!$(NS):4]>>[#7&X3:3]-[#6](=[#8])-[#7&X3:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "UREA_CARBAMOYL_CHLORIDE": {
+    "smirks": "[$([N+0&H1,N+0&H2]);!$(NC=*);!$(NS);!$(N=*);!$(N-O);!$(N-o);!$(N([c])[c]):4].[#7:1]-[CX3:2](=[OX1:3])-[Cl]>>[#7:4]-[C:2](=[O:3])-[#7:1]",
+    "source": "enamine_real_tools",
+    "type": "parent",
+    "original_enamine_name": "UREA"
+  },
+  "URETANE": {
+    "smirks": "[NX3;H2,H1;+0:1].[#7:2][CX3:3](=[OX1:4])[OX2H0]>>[N:1][C:3](=[O:4])[N:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "URETANE1": {
+    "smirks": "[N&X3;H2,H1;!$(NC=O);!$(NS):3].[N&X3;H2,H1;!$(NC=O);!$(NS):4]>>[#7&X3:3]-[#6](=[#8])-[#7&X3:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "URETANE2": {
+    "smirks": "[NX3;H2,H1;+0:1].[#7:2][CX3:3](=[OX1:4])[OX2H0]>>[N:1][C:3](=[O:4])[N:2]",
+    "source": "enamine_real_tools",
+    "type": "parent"
+  },
+  "URETANE4": {
+    "smirks": "[N&X3;H2,H1;!$(NC=O);!$(NS):3].[N&X3;H2,H1;!$(NC=O);!$(NS):4]>>[#7&X3:3]-[#6](=[#8])-[#7&X3:4]",
+    "source": "enamine_real_tools",
+    "type": "parent"
   }
 }

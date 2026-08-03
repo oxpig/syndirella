@@ -33,6 +33,48 @@ def load_additional_rxn_options() -> List[Dict[str, str]]:
         return json.load(f)
 
 
+def load_substructure_to_include() -> Dict[str, str]:
+    with open(cli_default_settings['substructure_to_include_path']) as f:
+        return json.load(f)
+
+
+def detect_protecting_groups(mol: Chem.Mol, pg_smarts: Dict[str, str]) -> List[str]:
+    """
+    Check if a molecule contains any protecting groups defined in pg_smarts.
+    Returns a list of protecting group names found.
+    """
+    found = []
+    for pg_name, smarts in pg_smarts.items():
+        pattern = Chem.MolFromSmarts(smarts)
+        if pattern is not None and mol.HasSubstructMatch(pattern):
+            found.append(pg_name)
+    return found
+
+
+def filter_analogues_on_protecting_groups(
+        analogues_mols: List[Chem.Mol],
+        required_pg_names: List[str],
+        pg_smarts: Dict[str, str]
+) -> Tuple[List[bool], List[str]]:
+    """
+    For each analogue, check it contains all the required protecting groups.
+    Returns:
+        - keep: list of booleans (True if analogue should be kept)
+        - pg_labels: list of comma-separated PG names found per analogue (empty string if none)
+    """
+    all_patterns = [(name, Chem.MolFromSmarts(smarts)) for name, smarts in pg_smarts.items()
+                    if Chem.MolFromSmarts(smarts) is not None]
+    required_set = set(required_pg_names)
+    keep = []
+    pg_labels = []
+    for mol in analogues_mols:
+        found = [name for name, pattern in all_patterns if mol.HasSubstructMatch(pattern)]
+        has_all_required = required_set.issubset(set(found))
+        keep.append(has_all_required)
+        pg_labels.append(", ".join(found) if found else "")
+    return keep, pg_labels
+
+
 def do_i_need_alternative_route(reaction_names: List[str], additional_rxn_options: List[Dict[str, str]]) -> bool:
     """
     Check if the reaction names need an alternative route.
