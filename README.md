@@ -4,7 +4,9 @@
 
 Syndirella (Synthesis Directed Elaborations) is a tool for generating and scoring synthetically practical elaborations of molecules designed from fragment screens. Starting from the retrosynthetic analysis of fragment merged molecules, superstructures of the original reactants are found by catalog search and filtered by selectivity issues. The elaborated final products are defined by reaction SMIRKS patterns and energy minimized in the protein with restraints to experimental data.
 
-**Preprint:** [https://chemrxiv.org/engage/chemrxiv/article-details/68d4f08ff416303770403a44](https://chemrxiv.org/engage/chemrxiv/article-details/68d4f08ff416303770403a44)
+**Publication:** [https://pubs.rsc.org/sc/article/doi/10.1039/d6sc02032a/1368296/Syndirella-synthesis-directed-fragment-elaboration](https://pubs.rsc.org/sc/article/doi/10.1039/d6sc02032a/1368296/Syndirella-synthesis-directed-fragment-elaboration)
+
+**Companion paper w/ experimental validation:** [https://pubs.rsc.org/sc/article/doi/10.1039/d6sc02031c/1355884/A-resource-efficient-structure-based-workflow-for](https://pubs.rsc.org/sc/article/doi/10.1039/d6sc02031c/1355884/A-resource-efficient-structure-based-workflow-for)
 
 ## Documentation
 
